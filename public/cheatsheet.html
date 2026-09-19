@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetDeck Cheat Sheet</title>
+<script>
+  try { if (localStorage.getItem('netdeck.theme') === 'light') document.documentElement.dataset.theme = 'light'; } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<script src="api.js"></script>
+<style>
+  body { padding-bottom: 40px; }
+  .sheet-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 20px 14px; }
+  .sheet-head h1 { margin: 0; font-family: var(--mono); font-size: 19px; color: var(--bright); }
+  .sheet-head .sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); }
+  .sheet-tools { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+  .sheet-tools input { background: var(--ground); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--bright); font-family: var(--mono); font-size: 12.5px; padding: 6px 10px; min-width: 200px; }
+  .sheet-tools select { background: var(--ground); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 8px; }
+  .sheet-intro { font-size: 13px; color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  .cat { margin: 18px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); border-bottom: 1px solid var(--border-soft); padding-bottom: 4px; break-after: avoid; }
+  table.sheet { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.sheet th { text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 500; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--border-soft); }
+  table.sheet td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+  table.sheet tr { break-inside: avoid; }
+  table.sheet code { font-family: var(--mono); font-size: 12px; color: var(--bright); white-space: nowrap; }
+  table.sheet .alt { display: block; }
+  table.sheet .purpose { color: var(--text); }
+  table.sheet .star { color: var(--ok); }
+  table.sheet .name { font-family: var(--mono); font-weight: 600; color: var(--bright); white-space: nowrap; }
+  .help-syntax { margin-top: 24px; font-size: 12.5px; color: var(--muted); }
+  .help-syntax code { font-family: var(--mono); color: var(--bright); }
+  .sheet-empty { font-family: var(--mono); color: var(--muted); padding: 32px 0; text-align: center; }
+  @media print {
+    :root { --bg: #fff; --surface: #fff; --ground: #f2f2f2; --border: #999; --border-soft: #ccc; --muted: #555; --text: #111; --bright: #000; --ok: #2a6a36; }
+    body { padding: 0; font-size: 11px; }
+    .sheet-tools, .no-print { display: none !important; }
+    .sheet-head { padding-block: 0 8px; }
+    table.sheet { font-size: 9.5pt; }
+    table.sheet code { font-size: 9pt; white-space: normal; }
+    .cat { margin-top: 12px; }
+    a { color: inherit; text-decoration: none; }
+    @page { margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+  <header class="sheet-head">
+    <div><h1>NetDeck cheat sheet</h1><div class="sub">network &amp; system commands · windows vs linux/macos</div></div>
+    <div class="sheet-tools">
+      <input id="q" type="search" placeholder="Filter…" aria-label="Filter commands" autocomplete="off">
+      <select id="cat" aria-label="Category"><option value="">All categories</option></select>
+      <button class="tbtn" id="print">Print / save PDF</button>
+      <a class="tbtn no-print" href="index.html">Back to NetDeck</a>
+    </div>
+  </header>
+  <p class="sheet-intro">One line per command. <span class="star">★</span> marks the most useful commands on Windows. Angle brackets are placeholders: replace <code>&lt;host&gt;</code> with a name or IP address.</p>
+  <div id="sheet"></div>
+  <p class="help-syntax">Built-in help: Windows <code>&lt;command&gt; /?</code> · PowerShell <code>Get-Help &lt;cmdlet&gt;</code> · Linux/macOS <code>man &lt;command&gt;</code> or <code>&lt;command&gt; --help</code></p>
+
+<script>
+(async () => {
+  // In the desktop app this page has its own window; a link back would load the app inside it.
+  if (window.__TAURI__) document.querySelectorAll('a[href="index.html"]').forEach((a) => a.remove());
+  const STATIC = window.NETDECK_STATIC === true;
+  const sheet = document.getElementById('sheet');
+  const q = document.getElementById('q');
+  const catSel = document.getElementById('cat');
+
+  const pref = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+  const customs = () => { try { return JSON.parse(localStorage.getItem('netdeck.custom') || '[]'); } catch { return []; } };
+
+  async function load() {
+    const api = STATIC ? pref('netdeck.agent.url') : '';
+    if (!STATIC || api) {
+      try {
+        if (STATIC) window.NetDeckAPI.configure({ base: api, token: pref('netdeck.agent.token') });
+        return (await window.NetDeckAPI.commands()).commands;
+      } catch { /* fall through to the static file */ }
+    }
+    const raw = await fetch('commands.json').then((r) => r.json());
+    return [...raw, ...customs()];
+  }
+
+  const all = (await load()).filter((c) => !c.hidden);
+  [...new Set(all.map((c) => c.category))].forEach((c) => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+  const params = new URLSearchParams(location.search);
+  if (params.get('cat')) catSel.value = params.get('cat');
+  if (params.get('q')) q.value = params.get('q');
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  function draw() {
+    const term = q.value.trim().toLowerCase();
+    const cat = catSel.value;
+    const rows = all.filter((c) => (!cat || c.category === cat) && (!term || `${c.name} ${c.win || ''} ${(c.unix || []).join(' ')} ${c.purpose}`.toLowerCase().includes(term)));
+    sheet.textContent = '';
+    if (!rows.length) { sheet.innerHTML = '<p class="sheet-empty">Nothing matches.</p>'; return; }
+    const groups = new Map();
+    rows.forEach((c) => { if (!groups.has(c.category)) groups.set(c.category, []); groups.get(c.category).push(c); });
+    for (const [category, cmds] of groups) {
+      const h = document.createElement('h2');
+      h.className = 'cat';
+      h.textContent = category;
+      sheet.appendChild(h);
+      const t = document.createElement('table');
+      t.className = 'sheet';
+      t.innerHTML = '<thead><tr><th style="width:18%">Command</th><th style="width:27%">Windows</th><th style="width:27%">Linux / macOS</th><th>Purpose</th></tr></thead><tbody></tbody>';
+      const tb = t.querySelector('tbody');
+      cmds.forEach((c) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="name">${esc(c.name)}${c.essential ? ' <span class="star">★</span>' : ''}</td>
+          <td>${c.win ? `<code>${esc(c.win)}</code>` : '<span class="dim">—</span>'}</td>
+          <td>${(c.unix || []).length ? c.unix.map((u) => `<code class="alt">${esc(u)}</code>`).join('') : '<span class="dim">—</span>'}</td>
+          <td class="purpose">${esc(c.purpose)}${c.note ? ` <em>(${esc(c.note)})</em>` : ''}</td>`;
+        tb.appendChild(tr);
+      });
+      sheet.appendChild(t);
+    }
+  }
+
+  q.addEventListener('input', draw);
+  catSel.addEventListener('change', draw);
+  document.getElementById('print').addEventListener('click', () => window.print());
+  draw();
+})();
+</script>
+</body>
+</html>

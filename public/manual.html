@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // Follow the theme chosen in the app (same localStorage key); dark when nothing is saved.
+  try { document.documentElement.dataset.theme = localStorage.getItem('netdeck.theme') === 'light' ? 'light' : 'dark'; } catch (e) {}
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+</head>
+<body>
+<title>NetDeck Manual</title>
+<style>
+  :root {
+    --bg: #f3f4f3;
+    --surface: #ffffff;
+    --ground: #e7e9e7;
+    --border: #d2d5d2;
+    --border-soft: #e1e3e1;
+    --text: #232623;
+    --muted: #666a67;
+    --bright: #0e0f0e;
+    --ok: #3d7a48;
+    --ok-dim: rgba(61, 122, 72, 0.10);
+    --warn: #9a5a3c;
+    --warn-dim: rgba(154, 90, 60, 0.10);
+    --err: #a53c3c;
+    --err-dim: rgba(165, 60, 60, 0.10);
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --sans: "IBM Plex Sans", system-ui, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141514; --surface: #191a19; --ground: #0e0f0e; --border: #3f413f; --border-soft: #2a2c2a;
+      --text: #c9cdc9; --muted: #8d918d; --bright: #eef1ee;
+      --ok: #8fb896; --ok-dim: rgba(143,184,150,.12); --warn: #c49a86; --warn-dim: rgba(196,154,134,.10);
+      --err: #c08484; --err-dim: rgba(192,132,132,.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141514; --surface: #191a19; --ground: #0e0f0e; --border: #3f413f; --border-soft: #2a2c2a;
+    --text: #c9cdc9; --muted: #8d918d; --bright: #eef1ee;
+    --ok: #8fb896; --ok-dim: rgba(143,184,150,.12); --warn: #c49a86; --warn-dim: rgba(196,154,134,.10);
+    --err: #c08484; --err-dim: rgba(192,132,132,.12);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.6;
+    padding-inline: clamp(16px, 3vw, 40px); padding-block: 0 80px;
+  }
+  a { color: inherit; }
+
+  .wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 48px; max-width: 1180px; margin: 0 auto; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+  /* ---- sidebar ---- */
+  .side { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto; padding-block: 28px; scrollbar-width: thin; }
+  @media (max-width: 860px) { .side { position: static; max-height: none; padding-bottom: 0; } }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .brand-mark { font-family: var(--mono); font-weight: 600; color: var(--ok); background: var(--ground); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; line-height: 1; }
+  .brand b { font-family: var(--mono); color: var(--bright); font-size: 16px; }
+  .brand small { display: block; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .toc { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+  .toc li { margin: 0; }
+  .toc a { display: block; padding: 4px 10px; border-left: 2px solid var(--border-soft); color: var(--muted); text-decoration: none; }
+  .toc a:hover { color: var(--bright); border-left-color: var(--muted); }
+  .toc .sub a { padding-left: 22px; font-size: 12.5px; }
+  .toc .group { margin-top: 10px; padding: 0 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  details.toc-mobile summary { cursor: pointer; font-family: var(--mono); font-size: 13px; color: var(--muted); padding: 10px 0; list-style: none; }
+  details.toc-mobile summary::before { content: "\2630  "; }
+  @media (min-width: 861px) { details.toc-mobile > summary { display: none; } details.toc-mobile { display: contents; } }
+
+  /* ---- content ---- */
+  main { padding-block: 28px; max-width: 780px; }
+  h1 { font-size: 34px; line-height: 1.15; margin: 0 0 6px; color: var(--bright); letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { font-size: 17px; color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
+  h2 { font-size: 24px; margin: 56px 0 12px; color: var(--bright); padding-top: 18px; border-top: 1px solid var(--border-soft); text-wrap: balance; }
+  h3 { font-size: 18px; margin: 32px 0 8px; color: var(--bright); }
+  h4 { font-size: 15.5px; margin: 0 0 6px; color: var(--bright); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  p { margin: 0 0 12px; max-width: 68ch; }
+  ul, ol { padding-left: 22px; margin: 0 0 12px; max-width: 68ch; }
+  li { margin-bottom: 4px; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--ground); border: 1px solid var(--border-soft); border-radius: 4px; padding: 1px 5px; color: var(--bright); }
+  pre { margin: 10px 0 12px; background: var(--ground); border: 1px solid var(--border-soft); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; color: var(--text); }
+  pre code { background: none; border: none; padding: 0; color: inherit; }
+  pre .hl { color: var(--ok); font-weight: 500; }
+  pre .dim { color: var(--muted); }
+  kbd { font-family: var(--mono); font-size: 12px; color: var(--bright); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; background: var(--surface); }
+
+  .tag { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .08em; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+  .tag.run { color: var(--ok); border-color: var(--ok); }
+  .tag.copy { color: var(--warn); border-color: var(--warn); }
+  .tag.star { color: var(--ok); border-color: transparent; padding-left: 0; }
+
+  .callout { border-left: 3px solid var(--border); background: var(--surface); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; max-width: 70ch; }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-dim); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-dim); }
+  .callout.err { border-left-color: var(--err); background: var(--err-dim); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .lbl { display: block; font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 2px; }
+
+  /* UI element table */
+  .ui { display: grid; grid-template-columns: minmax(150px, 200px) minmax(0, 1fr); gap: 10px 18px; margin: 12px 0 18px; }
+  .ui > div:nth-child(odd) { font-family: var(--mono); font-size: 13px; color: var(--bright); }
+  .ui > div:nth-child(even) { max-width: 62ch; }
+  @media (max-width: 520px) { .ui { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .ui > div:nth-child(even) { margin-bottom: 10px; } }
+
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; margin-right: 6px; background: var(--border); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.err { background: var(--err); }
+
+  .btn { display: inline-block; font-family: var(--mono); font-size: 11.5px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 2px 9px; vertical-align: middle; }
+  .btn.run { color: var(--ok); background: var(--ok-dim); border-color: var(--ok); font-weight: 600; }
+  .btn.pick { font-size: 11px; padding: 1px 7px; }
+  .btn.pick small { color: var(--muted); margin-left: 4px; }
+
+  /* command entries */
+  .cmd { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 16px 18px 12px; margin: 14px 0; }
+  .cmd h4 code { font-size: 15px; background: none; border: none; padding: 0; }
+  .cmd .lbl { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 10px 0 2px; }
+  .cmd p { margin-bottom: 8px; }
+  .cmd pre { margin: 6px 0 8px; }
+
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 500; }
+  td code { white-space: nowrap; }
+  .tbl-wrap { overflow-x: auto; }
+
+  dl.gloss { margin: 0; max-width: 70ch; }
+  dl.gloss dt { font-family: var(--mono); color: var(--bright); font-weight: 600; margin-top: 12px; }
+  dl.gloss dd { margin: 2px 0 0; }
+
+  .foot { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--border-soft); font-size: 13px; color: var(--muted); }
+
+  /* the entry the app sent you to */
+  .cmd:target { border-color: var(--ok); box-shadow: 0 0 0 3px var(--ok-dim); }
+  h3:target { color: var(--ok); }
+  h3:target::before { content: "\25B8  "; }
+
+  figure.shot { margin: 14px 0 22px; max-width: 100%; }
+  figure.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; background: #0e0f0e; }
+  figure.shot figcaption { margin-top: 6px; font-size: 12.5px; color: var(--muted); max-width: 68ch; }
+  .shots-note { font-size: 13px; color: var(--muted); }
+
+  .start-variant { margin: 14px 0; }
+  .start-variant[hidden] { display: none; }
+  .variant-title { margin: 0 0 6px; font-size: 15px; }
+  html[data-start] .variant-title { display: none; }
+
+  .theme-btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--border-soft); border-radius: 6px; padding: 5px 10px; cursor: pointer; margin-bottom: 14px; }
+  .theme-btn:hover { color: var(--bright); border-color: var(--muted); }
+  .theme-btn:focus-visible { outline: 1.5px solid var(--ok); outline-offset: 2px; }
+  .theme-btn svg { width: 14px; height: 14px; }
+  .theme-btn .sun, .theme-btn .to-dark { display: none; }
+  :root[data-theme="light"] .theme-btn .sun, :root[data-theme="light"] .theme-btn .to-dark { display: inline; }
+  :root[data-theme="light"] .theme-btn .moon, :root[data-theme="light"] .theme-btn .to-light { display: none; }
+</style>
+
+<div class="wrap">
+<aside class="side">
+  <div class="brand"><span class="brand-mark">&gt;_</span><div><b>NetDeck</b><small>user manual</small></div></div>
+  <a class="theme-btn" href="index.html" style="text-decoration:none">&larr; back to NetDeck</a>
+  <button class="theme-btn" id="theme-toggle" aria-label="Switch light / dark theme">
+    <svg class="moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5A5.5 5.5 0 1 0 13.5 9.5 4.5 4.5 0 0 1 10.5 2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    <svg class="sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span class="to-light">light mode</span><span class="to-dark">dark mode</span>
+  </button>
+  <details class="toc-mobile" open>
+    <summary>Contents</summary>
+    <ul class="toc">
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#screen">The screen, top to bottom</a></li>
+      <li class="sub"><a href="#s-header">Header &amp; search</a></li>
+      <li class="sub"><a href="#s-context">Network context strip</a></li>
+      <li class="sub"><a href="#s-filters">Views &amp; filters</a></li>
+      <li class="sub"><a href="#s-cards">Command cards</a></li>
+      <li class="sub"><a href="#s-terminal">The terminal drawer</a></li>
+      <li class="sub"><a href="#s-table">Table view</a></li>
+      <li class="sub"><a href="#s-history">History</a></li>
+      <li class="sub"><a href="#s-hosted">Hosted (web) version</a></li>
+      <li><a href="#playbooks">Playbooks</a></li>
+      <li><a href="#commands">Command reference</a></li>
+      <li class="sub"><a href="#c-config">Configuration &amp; interfaces</a></li>
+      <li class="sub"><a href="#c-conn">Connectivity &amp; routing</a></li>
+      <li class="sub"><a href="#c-ports">Connections &amp; ports</a></li>
+      <li class="sub"><a href="#c-arp">Address resolution (ARP)</a></li>
+      <li class="sub"><a href="#c-dns">DNS lookups</a></li>
+      <li class="sub"><a href="#c-win">Windows networking &amp; sharing</a></li>
+      <li class="sub"><a href="#c-tools">Scanning, capture &amp; transfer</a></li>
+      <li class="sub"><a href="#c-sys">System &amp; process info</a></li>
+      <li><a href="#quick">"Something's wrong" quick guide</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+      <li><a href="#keys">Keyboard shortcuts</a></li>
+    </ul>
+  </details>
+</aside>
+
+<main>
+<h1>NetDeck Manual</h1>
+<p class="lede">A plain-English guide to every part of the screen and every command in the reference — what it is, when you'd reach for it, and how to read what comes back.</p>
+
+<!-- ============================================================ -->
+<h2 id="start">Getting started</h2>
+<p>NetDeck is a reference of network and system commands that can also <em>run</em> them for you and show the results live. Everything runs on your own computer — nothing is sent anywhere.</p>
+
+<div class="start-variant" data-mode="desktop">
+  <h3 class="variant-title">Desktop app (installed)</h3>
+  <p>You installed NetDeck with its installer, so there is nothing to set up: open it from the <strong>Start menu</strong> or the <strong>NetDeck icon on your desktop</strong>. The app window is the whole program — no browser, no terminal, no server to start.</p>
+  <ul>
+    <li><strong>Closing the window doesn't quit.</strong> NetDeck keeps running in the system tray (the <code>&gt;_</code> icon near the clock) so long commands carry on. Click the tray icon to bring the window back; right-click it → <em>Quit NetDeck</em> to stop completely.</li>
+    <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
+    <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
+    <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
+  </ul>
+</div>
+
+<div class="start-variant" data-mode="server">
+  <h3 class="variant-title">Running from source</h3>
+  <p>A small server (<code>server.js</code>) sits behind the web page and executes commands on your behalf. Open a terminal in the NetDeck folder and run:</p>
+  <pre>node server.js</pre>
+  <p>Then open <code>http://localhost:4573</code> in a browser, or add <code>--open</code> to have it open one for you. The page and the server only talk to each other over <code>localhost</code>. If you were given a single <code>netdeck.exe</code> built with Node instead, double-clicking it does the same thing and opens the browser.</p>
+</div>
+
+<div class="start-variant" data-mode="hosted">
+  <h3 class="variant-title">Hosted web version</h3>
+  <p>You're reading this on a copy of NetDeck published to a website. A web page can't run commands on your computer, so this copy is a reference — search, playbooks as steps, the cheat sheet, pinning and links all work, but there are no run buttons. To run commands from it, pair it with a NetDeck installed on your own machine: see <a href="#s-hosted">Hosted (web) version</a>.</p>
+</div>
+
+<p>NetDeck runs on Windows, Linux and macOS. The reference is the same everywhere; on Linux or macOS the run button moves to the L/M row and runs that platform's equivalent (<code>ip addr</code> for <code>ipconfig /all</code>, <code>ss -tulpn</code> for <code>netstat -ano</code>, <code>nc -zv</code> for <code>Test-NetConnection</code>). Windows-only commands such as <code>net view</code> are shown for reference there.</p>
+
+<div class="callout ok"><span class="lbl">Safe by design</span><p>Only read-only, "look but don't touch" commands can be run from the page. Commands that change settings (clearing caches, adding routes, ending processes) are shown for reference with a copy button and an orange note explaining why you'd run them yourself in a terminal.</p></div>
+
+<!-- ============================================================ -->
+<h2 id="screen">The screen, top to bottom</h2>
+
+<h3 id="s-header">Header &amp; search</h3>
+<div class="ui">
+  <div>&gt;_ NetDeck</div><div>The app name. Nothing to click.</div>
+  <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
+  <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook; arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
+  <div>&#x263D; / &#x2600;</div><div>Switches between dark and light themes. Your choice is remembered.</div>
+  <div>Cheat sheet</div><div>Opens the whole reference as compact tables — one line per command, grouped by category, with a filter box and a <strong>Print / save PDF</strong> button. The print layout is tuned to fit on a few pages.</div>
+  <div>Manual</div><div>Opens this manual.</div>
+</div>
+
+<h3 id="s-hosted">Hosted (web) version</h3>
+<p>NetDeck can also be published to a web address as a plain reference. A web page can't run commands on your computer — browsers forbid it — so the hosted version has no run buttons, no terminal drawer and no network context. Everything else works: search, filters, playbooks (shown as steps to copy), the manual, the cheat sheet, pinning, links, and custom commands (kept in your browser).</p>
+<div class="ui">
+  <div>reference mode</div><div>The note in the grey bar under the header saying commands can't run from a hosted page.</div>
+  <div><span class="btn">Connect local NetDeck</span></div><div>Turns the hosted page into the full app by pairing it with a NetDeck server running <em>on your own computer</em>. Start that server with the website's address as its allowed origin — the dialog shows the exact command — and it prints a pairing token; enter the address (<code>http://localhost:4573</code>) and the token, click <strong>Test &amp; connect</strong>, and run buttons, the terminal and the health strip appear. The server only ever accepts that one website, only with the token, and still listens on your own machine only. Works in Chrome, Edge and Firefox; Safari blocks web pages from reaching <code>localhost</code>.</div>
+  <div><span class="btn">Disconnect</span></div><div>Forgets the pairing and returns to reference mode.</div>
+</div>
+
+<h3 id="s-context">Network context strip</h3>
+<p>The dark bar under the header shows what NetDeck detected about <em>this</em> computer's connection when the page loaded. It exists so you don't have to remember your own addresses — every host box on the page gets one-click chips built from these values.</p>
+<div class="ui">
+  <div>HOST</div><div>Your computer's name on the network.</div>
+  <div>ADAPTER</div><div>The network connection currently carrying your internet traffic — usually <code>Wi-Fi</code> or <code>Ethernet</code>. If you have several, NetDeck picks the one that actually has a working address.</div>
+  <div>IP</div><div>Your computer's address on the local network, e.g. <code>192.168.7.45</code>. Other devices in your home or office reach you at this address.</div>
+  <div>GATEWAY</div><div>The address of your router — the device that connects your local network to the internet. Almost always ends in <code>.1</code> or <code>.254</code>. If the gateway doesn't answer a ping, nothing beyond your own network will work.</div>
+  <div>DNS</div><div>The servers that turn names like <code>google.com</code> into addresses. Often the router itself, or your internet provider's servers.</div>
+  <div>GATEWAY PING / INTERNET PING</div><div>Two tiny live charts. Every 10 seconds NetDeck pings your router and Cloudflare's <code>1.1.1.1</code> once and plots the reply time, so a problem shows up before you go looking for it. The number beside each is the latest reply: green is normal, amber is slow (over 50 ms to the router, over 100 ms to the internet), red is very slow or no reply at all; a red tick in the chart marks a missed reply. A steady low line is what healthy looks like; a line that climbs when you start a download is congestion; gaps are drop-outs. Hover for the max over the last few minutes.</div>
+  <div>STANDARD USER / ADMIN</div><div>Whether NetDeck was started from an elevated ("Run as administrator") shell. A few command variants only work when elevated — <code>netstat -anob</code>, which lists the program behind each connection, is the main one. Those variants are shown as "admin only (locked)" until NetDeck runs as administrator. Everything else works either way.</div>
+  <div><span class="btn">Run as admin</span></div><div>Appears beside the badge whenever NetDeck is <em>not</em> elevated. In the <strong>desktop app</strong> it restarts NetDeck with administrator rights: NetDeck closes, Windows shows its usual permission prompt, and NetDeck reopens with the badge reading ADMIN. Anything still running stops and open tabs close; your history, pins and custom commands are kept. If you decline the Windows prompt, NetDeck just reopens as it was. It lasts until you quit — the next normal start is un-elevated again. (If Windows asks for another account's password because yours isn't an administrator, NetDeck runs as that account and shows that account's history and pins.) In the <strong>run-from-source</strong> edition the button is labelled <em>How to run as admin</em> and shows the exact commands for that installation's folder, since a web page can't restart its own server.</div>
+  <div>&#x21BB; (refresh)</div><div>Re-detects everything. Use it after switching from Wi-Fi to a cable, connecting a VPN, or fixing a network problem.</div>
+</div>
+<div class="callout warn"><span class="lbl">If the IP starts with 169.254</span><p>That is an "APIPA" address — Windows made it up because no router handed out a real one. It means DHCP failed: check the cable or Wi-Fi connection, then try <code>ipconfig /release</code> followed by <code>ipconfig /renew</code> in a terminal.</p></div>
+
+<h3 id="s-filters">Views &amp; filters</h3>
+<div class="ui">
+  <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
+  <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 44 commands" line tells you how many match.</div>
+  <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
+  <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
+</div>
+
+<h3 id="s-cards">Command cards</h3>
+<p>Each card describes one command. Reading a card from the top:</p>
+<div class="ui">
+  <div>Name <span class="tag star">&#x2605;</span></div><div>The command as you'd type it. A green star marks the six commands the source reference calls "most useful on Windows". A small orange <em>custom</em> tag marks a command you added yourself.</div>
+  <div>&#x1F4D6; manual</div><div>Top-right of every card, the book icon. Opens this manual at the entry for that exact command — what it's for, a sample of its output, and how to read it. Playbook cards have the same button and jump to that playbook's section, screenshot included. The entry you arrive at is outlined in green. In the desktop app the manual opens in <strong>its own window</strong>, so the main window keeps its tabs and anything still running; the header's Manual and Cheat sheet buttons use that same window. (Commands you added yourself have no manual entry, so no button.)</div>
+  <div>&#x1F517; link · &#x2606; pin · &times;</div><div>Also top-right. <em>The link button appears in the web editions only (run-from-source and hosted). The desktop app has no web address anyone else could open, so it doesn't offer links.</em> <strong>Link</strong> copies a web address that opens NetDeck jumped to this card with whatever you've typed in its boxes already filled in — paste it into a chat or a ticket. (Links never run anything by themselves; the reader still presses run.) <strong>Pin</strong> keeps the card at the top of the list and first in the palette; the "★ pinned" filter chip shows only pinned cards. <strong>&times;</strong> appears on custom commands only and deletes them.</div>
+  <div>CATEGORY</div><div>The small uppercase label on the right — which topic the command belongs to.</div>
+  <div>Purpose</div><div>One sentence: what the command tells you or does.</div>
+  <div><span class="tag">WIN</span> row</div><div>The Windows Command Prompt version.</div>
+  <div><span class="tag">PS</span> row</div><div>A PowerShell cmdlet — Windows, but only works in PowerShell, not the classic Command Prompt.</div>
+  <div><span class="tag">L/M</span> rows</div><div>The <strong>L</strong>inux / <strong>m</strong>acOS equivalent(s). Both belong to the Unix family and share the same command-line tools, so one row serves both; where they differ, the command notes say which is which. A card can have several L/M rows when there are several ways to do the same thing. Hover any of these tags to see its meaning spelled out.</div>
+  <div><span class="tag">ALL</span> row</div><div>A cross-platform tool that's the same everywhere (curl, ssh, nmap…).</div>
+  <div>&#x2398; copy</div><div>Copies that row's command text to your clipboard, ready to paste into a terminal. The icon turns into a green check for a second to confirm.</div>
+  <div><span class="btn">?</span> help</div><div>Runs the command's own built-in help (<code>netstat /?</code>, <code>Get-Help Test-NetConnection</code>, or <code>--help</code> on Linux/macOS) and shows it in a terminal tab — the full list of switches, straight from the tool. Available on every card, including copy-only ones.</div>
+  <div><span class="btn run">&#x25B6; run</span></div><div>Runs the command on this computer and opens the terminal drawer with live output. Only appears on read-only commands. On a Linux or macOS machine the button sits on the L/M row instead and runs that platform's equivalent.</div>
+  <div>VARIANT <span class="btn">default — ping &lt;host&gt; ▾</span></div><div>A drop-down of vetted flag combinations for the command — <code>ping -t</code> (continuous, stop with Stop), <code>ping -n 20</code>, <code>tracert -h 15</code>, <code>nslookup -type=MX</code>, <code>netstat -anob</code>, <code>whoami /groups</code>, and so on. Picking one updates the command shown on the row and the input boxes it needs; run works the same. It's still a fixed list — there's no free-form flag entry, on purpose.</div>
+  <div>host — e.g. …</div><div>An input box appears when the command needs a target. Type a computer name (<code>github.com</code>) or an address (<code>192.168.7.1</code>); a red border means the value isn't valid (spaces and special characters aren't allowed). Press <kbd>Enter</kbd> in the box to run.</div>
+  <div>FILL <span class="btn pick">192.168.7.1<small>gateway</small></span></div><div>One-click chips that fill the host box with your router, your DNS server, Cloudflare's <code>1.1.1.1</code>, <code>localhost</code>, or a host you used recently.</div>
+  <div>Orange note</div><div>Explains why a command has no run button — it changes settings, needs admin rights, is interactive, or usually isn't installed.</div>
+</div>
+
+<h3 id="s-terminal">The terminal drawer</h3>
+<p>The dark panel pinned to the bottom of the window. It stays collapsed to a thin bar until you run something, then opens to show the output. Each run gets its own <strong>tab</strong>, so a slow command keeps going while you start another.</p>
+<div class="ui">
+  <div>Tab strip</div><div>One tab per run, named after the command. Click to switch; click <strong>&times;</strong> to close (this also stops the command if it's still running). The active tab has a green underline.</div>
+  <div><span class="dot ok"></span> status dot</div><div><strong>Pulsing green</strong>: running. <strong>Solid green</strong>: finished normally. <span class="dot warn"></span> <strong>Amber</strong>: finished but reported a problem (for example, ping got no replies). <span class="dot err"></span> <strong>Red</strong>: couldn't run at all. <span class="dot"></span> <strong>Grey</strong>: you stopped it.</div>
+  <div>&gt; command · time · duration · exit 0</div><div>The line at the top of each tab: what ran, when it started, how long it has been running (it counts up live), and its <em>exit code</em>. <code>exit 0</code> means "completed without error"; anything else means the program is reporting a failure — for <code>ping</code>, <code>exit 1</code> simply means the host didn't reply.</div>
+  <div>find in output</div><div>On the right of that line. Type to highlight every match in the output and see the count; <kbd>Enter</kbd> jumps to the next match, <kbd>Shift</kbd>+<kbd>Enter</kbd> to the previous, <kbd>Esc</kbd> clears. Works while a command is still running.</div>
+  <div><span class="btn">wrap</span></div><div>Toggles line wrapping. Off shows long lines (like <code>route print</code> or wide PowerShell tables) on one line with a horizontal scroll, which keeps columns aligned. The setting is remembered.</div>
+  <div><span class="btn">save</span></div><div>Downloads the tab's output as a <code>.txt</code> file named after the command and time, with the command line and timestamp at the top — for attaching to a ticket or comparing later.</div>
+  <div><span class="btn">Table</span> / <span class="btn">Raw</span></div><div>Appears only for commands NetDeck knows how to parse. Switches between the plain text output and a sortable table (see <a href="#s-table">Table view</a>).</div>
+  <div><span class="btn">Stop</span></div><div>Ends the running command in the active tab. Use it for long ones like <code>pathping</code> or <code>tracert</code> to a host that isn't answering.</div>
+  <div><span class="btn">Copy</span></div><div>Copies the whole output of the active tab. For a playbook, it copies the step-by-step summary and the verdict.</div>
+  <div><span class="btn">Close all</span></div><div>Closes every tab at once and stops anything still running. Your history is kept.</div>
+  <div><span class="btn">History</span></div><div>Toggles the recent-runs panel on the left side of the drawer (see <a href="#s-history">History</a>).</div>
+  <div><span class="btn">&#x1F514;&#xFE0E;</span> notify</div><div>When switched on (the browser asks permission once), any run or playbook that finishes while you're in another window raises a desktop notification with the result; clicking it brings NetDeck back and shows that tab. Handy for <code>pathping</code> and <code>systeminfo</code>.</div>
+  <div><span class="btn">link</span></div><div>On the right of each tab's top line: copies a link that opens this exact command with its host and variant pre-filled. Web editions only — not in the desktop app.</div>
+  <div><span class="btn">&#x2195;</span></div><div>Switches the drawer between half-height and tall.</div>
+  <div><span class="btn">Expand</span> / <span class="btn">Collapse</span></div><div>Shows or hides the drawer body. Collapsing doesn't stop or discard anything.</div>
+</div>
+
+<h3 id="s-table">Table view</h3>
+<p>Raw command output is designed for the 1990s. For the commands where it matters, NetDeck turns it into a real table:</p>
+<ul>
+  <li><strong>Click a column header</strong> to sort; click again to reverse. Numbers sort as numbers.</li>
+  <li><strong>Filter rows…</strong> keeps only rows containing what you type — type <code>443</code> to see everything on port 443, or <code>LISTENING</code> to see only open ports.</li>
+  <li>The <strong>row count</strong> on the right shows how many rows match.</li>
+  <li>For <code>netstat -ano</code> and <code>Get-NetTCPConnection</code>, NetDeck adds a <strong>Process</strong> column by looking up each PID — so instead of "PID 21920 is on port 80" you see "<code>com.docker.backend.exe</code> is on port 80".</li>
+</ul>
+<p>Commands with a table view: <code>netstat -ano</code>, <code>arp -a</code>, <code>route print</code>, <code>ipconfig /all</code>, <code>ipconfig /displaydns</code>, <code>tasklist</code>, <code>getmac</code>, <code>Get-NetTCPConnection</code>, <code>Resolve-DnsName</code>.</p>
+
+<h3 id="s-history">History</h3>
+<p>Every finished run is remembered — the last 30, output included — in your browser, so it survives closing the page or restarting the server. Open it with the <strong>History</strong> button.</p>
+<div class="ui">
+  <div>Row</div><div>Status dot, the command, and when it ran / how long it took / its result. <strong>Click the row</strong> to reopen the output in a new tab.</div>
+  <div><span class="btn">&#x21BB;</span></div><div>Runs that exact command again, with the same host and port.</div>
+  <div><span class="btn">Clear</span></div><div>Forgets everything in the history. (Close all does <em>not</em> do this.)</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="playbooks">Playbooks</h2>
+<p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
+<p>There are twenty-one, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
+<figure class="shot"><img src="manual-img/playbooks-overview.webp" width="1350" height="1500" alt="The Playbooks view, grouped, with the group chips and search box" loading="lazy"><figcaption>The Playbooks view: group chips under the view switch, a count, then each group with its playbooks. A “?” after a step number marks a step that only runs when an earlier result calls for it.</figcaption></figure>
+
+<p class="shots-note">The screenshots in this chapter are real runs. The computer name, public IP addresses and the second half of MAC addresses have been replaced with placeholders.</p>
+<p>While a playbook runs, each step shows a symbol and a summary:</p>
+<div class="ui">
+  <div>&#x25CB; pending</div><div>Hasn't started yet.</div>
+  <div>&#x25CF; running</div><div>In progress — output is streaming in behind the <strong>output</strong> button.</div>
+  <div>&#x2713; pass</div><div>The check succeeded. The summary shows the key numbers (e.g. "4/4 replies, avg 12 ms").</div>
+  <div>! warn</div><div>It worked, but not cleanly — packet loss, or a service that isn't advertising.</div>
+  <div>&#x2715; fail</div><div>The check failed. The summary says how.</div>
+  <div><em>i</em> info</div><div>Worth reading, but not a fault — for example "Windows network browsing is switched off here", which is normal on Windows 10/11.</div>
+  <div>&#x2013; skipped</div><div>Shown greyed out. <em>not needed</em>: the step only runs when an earlier result calls for it (you gave an IP address, so no name lookup; ping worked, so no TCP fallback). <em>not run</em>: an earlier step failed in a way that makes the rest pointless — no IP address means there's nothing to test — so the playbook stops rather than making you wait through a minute of timeouts. <em>not detected</em>: it needed something NetDeck couldn't find, such as a gateway. Steps marked with a <strong>?</strong> on the playbook card are these conditional ones.</div>
+  <div>output</div><div>Click to see the raw text of that step, exactly as the command printed it. Hover a finished step to see how long it took.</div>
+  <div>table</div><div>Appears on steps whose output NetDeck can parse (the adapter check, the ARP cache). Opens the same sortable, filterable table you get from the Table button on a normal run, right inside the step.</div>
+</div>
+<p>The verdict box at the bottom is green (all clear), amber (attention), or red (problem found), and always says what to do next. When the next thing is obvious it offers <strong>buttons</strong>: run the playbook that narrows the problem down, or copy the fix-it command (such as <code>ipconfig /flushdns</code>) ready to paste into a terminal. Those commands change settings, so NetDeck copies them rather than running them.</p>
+
+<h3 id="pb-internet">Can't reach the internet?</h3>
+<p>The one to start with when "the internet is down". It walks the chain outward from your computer and stops at the first broken link:</p>
+<ol>
+  <li><strong>Check your adapter</strong> — does the adapter you're actually using (the one in the context strip) have a real address and a gateway? It ignores virtual adapters from Docker, Hyper-V or a VPN, which otherwise hide a dead connection. A failure here stops the run (cable / Wi-Fi / DHCP problem). It also warns if a <em>second</em> adapter has a default route but no valid address, which can quietly capture your traffic.</li>
+  <li><strong>Ping the router</strong> — does it answer, and quickly? Over 50 ms or any lost packets is flagged: on Wi-Fi that means weak signal or interference.</li>
+  <li><strong>Ping the internet</strong> at <code>1.1.1.1</code> — does anything past the router answer?</li>
+  <li><strong>TCP to 1.1.1.1</strong> <em>(only if that ping failed)</em> — many office networks block ping, so before blaming your provider it tries a real connection. If this works, you're online and ping is simply blocked.</li>
+  <li><strong>Resolve example.com</strong> — do names still work? (fail → DNS problem; the verdict offers to run the DNS playbook)</li>
+  <li><strong>Look for a sign-in portal</strong> — fetches Microsoft's connectivity test page. A redirect or a different page means hotel/café/guest Wi-Fi is waiting for you to sign in.</li>
+  <li><strong>HTTPS to example.com</strong> — can you actually open a secure connection? (fail → firewall, proxy or security software)</li>
+</ol>
+
+<figure class="shot"><img src="manual-img/pb-internet.webp" width="1350" height="963" alt="Result of the “Can't reach the internet?” playbook" loading="lazy"><figcaption>A healthy run. Step 4 is greyed out as “not needed” because the ping in step 3 worked; it only runs when ping is blocked.</figcaption></figure>
+
+<h3 id="pb-port">Is a port open on a host?</h3>
+<p>Give it a host and a port (say <code>github.com</code> and <code>443</code>). It resolves the name, pings the host, then tries the port. The point is telling apart situations that look identical in a browser:</p>
+<ul>
+  <li><strong>The name doesn't exist</strong> — the run stops there.</li>
+  <li><strong>Refused</strong> — the connection is rejected within a few seconds. The machine is up and said "no": nothing is listening on that port (service stopped, or it's on a different port).</li>
+  <li><strong>Filtered</strong> — no response at all until the ~20-second timeout. A firewall is silently dropping the connection.</li>
+  <li><strong>Nothing answers</strong> — neither ping nor the port. Only then does it run a quick route trace to show <em>where</em> the path stops: inside your own network, in your provider's, or beyond.</li>
+</ul>
+
+<figure class="shot"><img src="manual-img/pb-port.webp" width="1350" height="636" alt="Result of the “Is a port open on a host?” playbook" loading="lazy"><figcaption>Port 9 on this same machine: the connection is rejected in a few seconds, so the verdict is “refused — nothing is listening”, and the route trace is skipped as not needed.</figcaption></figure>
+
+<h3 id="pb-dns">Is DNS healthy?</h3>
+<p>Looks up the same name through your configured DNS server, your <em>second</em> configured server if you have one (a dead backup server causes random multi-second stalls), then Cloudflare (<code>1.1.1.1</code>) and Google (<code>8.8.8.8</code>) — timing each answer. If yours fails and the public ones work, your router or provider's DNS is the culprit and the verdict tells you to switch. If they all fail, it's not DNS at all — you have no connectivity, and the verdict offers the internet playbook.</p>
+<p>The last step asks for a name that cannot exist (it ends in <code>.invalid</code>). An honest resolver says "no such name"; if an address comes back, something — your provider's search page, a captive portal, a filtering product — is rewriting DNS answers. A lookup that succeeds only after a first attempt timed out is reported as <em>slow</em>, not broken.</p>
+
+<figure class="shot"><img src="manual-img/pb-dns.webp" width="1350" height="737" alt="Result of the “Is DNS healthy?” playbook" loading="lazy"><figcaption>Both configured servers and both public resolvers answer, each with its response time, and the made-up name is correctly reported as non-existent.</figcaption></figure>
+
+<h3 id="pb-scan">Scan my network</h3>
+<p>NetDeck's IP scanner: it finds <em>every</em> device on your network, not just the ones this PC has talked to. There is nothing to type — it works out your subnet from your own address, pings all of its addresses <strong>at the same time</strong> (so 254 addresses take about six seconds, not four minutes), then reads the ARP table the sweep has just filled. That second step matters: phones, TVs and smart-home gadgets often ignore ping, but they cannot avoid answering ARP, so they still show up — marked <em>no reply</em> in the Ping column.</p>
+<p>Press <strong>table</strong> for the full list: IP address, name (when the network can supply one — on home networks it usually can't), MAC address, <strong>manufacturer</strong>, whether it answered ping, and a note marking <em>this PC</em> and the <em>router</em>. Sort by Manufacturer to group things: five Wyze cameras, three eero units and so on. Two values in that column deserve explanation:</p>
+<ul>
+  <li><strong>private address (randomised)</strong> — phones, tablets and recent laptops invent a random MAC address for each Wi-Fi network, for privacy. It belongs to no manufacturer, so it can't be identified this way. Usually these are your family's phones.</li>
+  <li><strong>blank</strong> — the manufacturer isn't in NetDeck's built-in list, which covers a few hundred common home and office brands rather than the full multi-megabyte registry. Search the web for the first three pairs of the MAC (e.g. "58-70-C6 MAC vendor").</li>
+</ul>
+<p>Anything you can't account for is worth tracking down; your router's own client list usually shows a name for each address. <strong>What it will not do:</strong> it only ever scans the private subnet this PC is on, never more than 254 addresses, and refuses to run on a public address — it's a "what's on <em>my</em> network" tool, not a general scanner. Reply times aren't shown, because pinging 254 addresses at once makes them meaningless; use <code>ping</code> on one device for that.</p>
+<figure class="shot"><img src="manual-img/pb-scan.webp" width="1350" height="2658" alt="Result of the “Scan my network” playbook" loading="lazy"><figcaption>A home network with the table opened: 39 other devices in six seconds, eleven of which never answer ping. The second half of each MAC address is hidden here.</figcaption></figure>
+
+<h3 id="pb-lan">Who's on my network?</h3>
+<p>Pings your router to freshen the cache, then reads the ARP cache (every device your computer has recently exchanged packets with), counting real devices on your network and ignoring broadcast and multicast entries. Press <strong>table</strong> on that step to see each device's IP and MAC address. The cache only knows devices you've exchanged traffic with, so quiet ones can be missing.</p>
+
+<figure class="shot"><img src="manual-img/pb-lan.webp" width="1350" height="1715" alt="Result of the “Who's on my network?” playbook" loading="lazy"><figcaption>The ARP step with its table opened: one row per device, with interface, IP address, MAC address (last half hidden here) and type.</figcaption></figure>
+
+<h3 id="pb-website">A website won't load</h3>
+<p>The most common complaint, and the hardest to untangle by hand. Give it the site (you can paste a whole address — it keeps just the host). It resolves the name with your DNS <em>and</em> with a public one, connects to port 443, asks for the page headers, times each phase of a real request, and — only if something failed — loads a known-good control site so it can tell "it's them" from "it's you". Possible verdicts:</p>
+<ul>
+  <li><strong>Your DNS can't resolve it but public DNS can</strong> — stale cache, filtering, or a blocked name; offers the DNS playbook and the flush command.</li>
+  <li><strong>The name doesn't exist</strong> — a typo, or the domain lapsed.</li>
+  <li><strong>The site refuses or drops connections while the control site loads</strong> — it's at their end (or they are blocking you).</li>
+  <li><strong>Nothing loads, control included</strong> — it's your connection; offers the internet playbook.</li>
+  <li><strong>The secure connection fails</strong> — certificate or TLS error. Check this PC's clock first, then security software or a proxy.</li>
+  <li><strong>HTTP 5xx</strong> — their server is erroring. <strong>403 / 404</strong> — the site is up; that page or your access is the issue.</li>
+  <li><strong>It loads, slowly</strong> — and says which phase ate the time: looking up the name, reaching the server, setting up encryption, waiting for the server to build the page, or downloading.</li>
+</ul>
+
+<figure class="shot"><img src="manual-img/pb-website.webp" width="1350" height="899" alt="Result of the “A website won't load” playbook" loading="lazy"><figcaption>github.com from a working connection. Step 5 splits the request into phases — here the download itself is the largest part — and the control site is skipped because nothing failed.</figcaption></figure>
+
+<h3 id="pb-slow">Why is everything slow?</h3>
+<p>Twenty pings to your router and twenty to the internet — reporting average, worst case, <em>jitter</em> (how much the delay wobbles) and loss — then a timed DNS lookup and a timed web request, and the Wi-Fi link if you're on wireless. Takes about a minute. The logic is simple: if the numbers to your <strong>router</strong> are bad (a healthy link is 1–5 ms with almost no jitter), the problem is between this PC and the router — Wi-Fi signal, interference, a cable. If the router is clean but the <strong>internet</strong> numbers are bad, it's your provider or a saturated connection, and the verdict offers to trace the path. If both are clean it checks whether DNS or the web server was the slow part.</p>
+<div class="callout warn"><span class="lbl">Windows 11 and Wi-Fi details</span><p>Windows now hides Wi-Fi signal information from programs unless Location services are on (<em>Settings → Privacy &amp; security → Location</em>) or the program runs as administrator. When that happens the Wi-Fi step says so and the rest of the playbook still works.</p></div>
+
+<figure class="shot"><img src="manual-img/pb-slow.webp" width="1350" height="827" alt="Result of the “Why is everything slow?” playbook" loading="lazy"><figcaption>Twenty pings each to the router and to the internet, a timed lookup and a timed request. The verdict quotes average, worst case and jitter for both legs.</figcaption></figure>
+
+<h3 id="pb-path">Where does the path break?</h3>
+<p>Runs a route trace (up to 20 hops) and reads it for you. It reports whether the destination was actually reached — <code>tracert</code> prints "Trace complete" even when the last hops never answered — where replies stop, and where latency <em>steps up and stays up</em> (one router replying slowly is normal and ignored). Each hop is labelled as your network, your provider's access network, or the internet, so "hop 2" becomes "the link to your provider". Press <strong>table</strong> for the hop list. Some hosts never answer traces; if the site works in a browser, a trace that goes quiet near the end means only that.</p>
+
+<figure class="shot"><img src="manual-img/pb-path.webp" width="1350" height="1106" alt="Result of the “Where does the path break?” playbook" loading="lazy"><figcaption>The route to 1.1.1.1 with the hop table opened: each hop’s three round-trip times, its address, and whether it belongs to your network, your provider or the internet.</figcaption></figure>
+
+<h3 id="pb-exposure">What is this PC exposing?</h3>
+<p>Lists every TCP port this machine is listening on with the <em>program</em> behind it, split into <strong>reachable from the network</strong> (listening on all addresses) and <strong>local only</strong> (<code>127.0.0.1</code>, invisible to other machines). It flags remote-access and database services — Remote Desktop, VNC, Telnet, FTP, SQL Server, MySQL, PostgreSQL, Redis, MongoDB, the Docker API — which are the ones worth being sure about, and checks that Windows Firewall is on for every profile. Ports 135, 139 and 445 are standard Windows services, and the block of high ports (49152 and up) are Windows' own; both are summarised rather than listed one by one. "Reachable" means a program is listening; whether the firewall lets outsiders in depends on its rules.</p>
+
+<figure class="shot"><img src="manual-img/pb-exposure.webp" width="1350" height="1445" alt="Result of the “What is this PC exposing?” playbook" loading="lazy"><figcaption>A developer PC: database ports published by Docker are flagged, ordinary Windows services are listed, and the dynamic high ports are summarised in one line.</figcaption></figure>
+
+<h3 id="pb-routing">Routing &amp; adapter sanity</h3>
+<p>For "it works on Wi-Fi until I plug the cable in", half-connected VPNs, and connections that die for no visible reason. It reads the routing table for <em>default routes</em> — the "send everything else this way" rules. One is normal. Several means adapters are competing, and the lowest metric wins; the verdict lists them with the winner marked ▶. The dangerous case is an adapter that holds a default route but has <strong>no valid address</strong> (cable plugged in, DHCP failed): if it wins, your traffic goes nowhere. It also lists which DNS servers each adapter uses — a VPN adapter often takes DNS priority, which is why lookups may go to a server you don't recognise.</p>
+
+<figure class="shot"><img src="manual-img/pb-routing.webp" width="1350" height="596" alt="Result of the “Routing & adapter sanity” playbook" loading="lazy"><figcaption>One default route, marked ▶, on a healthy adapter — and the DNS servers each adapter uses, which shows a VPN adapter supplying its own.</figcaption></figure>
+
+<h3 id="pb-propagation">Did my DNS change propagate?</h3>
+<p>For when you've changed a DNS record and want to know who sees it yet. It finds the domain's <strong>authoritative nameservers</strong> (looking in the parent zone if you gave a host like <code>www.example.com</code>), asks them directly — that's the truth — and compares the answers from your resolver, Cloudflare, Google and Quad9. Resolvers that differ are serving a cached copy that updates when the old record's TTL expires; nothing to fix, just wait (or flush your own cache). If the two authoritative servers disagree with <em>each other</em>, the zone hasn't synchronised at your DNS host, which is worth fixing first.</p>
+<p>Large sites rotate or geo-balance their addresses, so every query gets a different answer. The playbook detects this by asking the same authoritative server twice; when it sees rotation it compares network ranges instead of exact addresses, and says so.</p>
+
+<figure class="shot"><img src="manual-img/pb-propagation.webp" width="1350" height="1322" alt="Result of the “Did my DNS change propagate?” playbook" loading="lazy"><figcaption>The authoritative servers (★) compared with four resolvers for example.com.</figcaption></figure>
+
+<h3 id="pb-wifi">Wi-Fi health</h3>
+<p>Reads your wireless link — signal strength, band (2.4 or 5 GHz), radio mode, link rate — then surveys nearby access points to count how many strong ones share or overlap your channel, and sends twenty pings to the router to see how steady the link really is. Flags weak signal (under 55%), the crowded 2.4 GHz band, old radio modes and low link rates; on 2.4 GHz it suggests the quietest of channels 1, 6 and 11. On Windows 11 the first two steps need Location services on (or an administrator shell); without that the ping test still tells you whether the link is steady.</p>
+
+<figure class="shot"><img src="manual-img/pb-wifi.webp" width="1350" height="629" alt="Result of the “Wi-Fi health” playbook" loading="lazy"><figcaption>On Windows 11 without Location permission the link details are withheld, and the playbook says so; the twenty pings still show whether the link is steady.</figcaption></figure>
+
+<h3 id="pb-services">Can I reach that service?</h3>
+<p>Give it one host. It checks the name and ping, then tries the common service ports in a single run — HTTPS 443, HTTP 80, SSH 22, Remote Desktop 3389, SMB file sharing 445, SQL Server 1433 — and lists each as <strong>open</strong>, <strong>refused</strong> (the machine is up, nothing is listening) or <strong>filtered</strong> (a firewall drops it). If the host answers neither ping nor the web ports it stops early rather than waiting out every timeout. This is a small port sweep: use it on machines you're responsible for.</p>
+
+<figure class="shot"><img src="manual-img/pb-services.webp" width="1350" height="1223" alt="Result of the “Can I reach that service?” playbook" loading="lazy"><figcaption>github.com: web and SSH are open; Remote Desktop, file sharing and SQL get no response. Six ports in about twenty seconds.</figcaption></figure>
+
+<h3 id="pb-mtu">MTU check — "some sites hang"</h3>
+<p>Every network path has a largest packet size (MTU) — normally 1500 bytes; less over PPPoE, VPNs and tunnels. It sends pings marked "don't fragment" at decreasing sizes and stops at the first that gets through; that size plus 28 bytes of headers is your path MTU. A smaller MTU is fine <em>as long as</em> the "packet too big" messages reach you. When a firewall blocks them, small transfers work and large ones silently stall: pages half-load, uploads hang, VPNs feel flaky. The verdict gives the number to set on the adapter or VPN if you have those symptoms.</p>
+
+<figure class="shot"><img src="manual-img/pb-mtu.webp" width="1350" height="935" alt="Result of the “MTU check — some sites hang” playbook" loading="lazy"><figcaption>Full-size packets pass on the first try, so the smaller sizes are skipped.</figcaption></figure>
+
+<h3 id="pb-email">Email delivery check</h3>
+<p>Give it a domain (the part after the @). It looks up the <strong>MX records</strong> (which servers receive its mail), checks for an <strong>SPF</strong> record (which servers may send as this domain) and a <strong>DMARC</strong> record (what receivers should do with forgeries) — missing ones are the usual reason legitimate mail lands in spam — and tries port 25 on the first mail server. Expect that last step to fail on home and most office connections: providers block outbound port 25, and mail programs use 587 or 465 instead. The verdict says so rather than calling it a fault.</p>
+
+<figure class="shot"><img src="manual-img/pb-email.webp" width="1350" height="699" alt="Result of the “Email delivery check” playbook" loading="lazy"><figcaption>google.com: mail servers, SPF and DMARC all present. Port 25 is blocked from this connection, which the verdict explains is normal.</figcaption></figure>
+
+<h3 id="pb-pchealth">PC health snapshot</h3>
+<p>The quick triage for "my computer is slow", no networking involved: days since the last restart (over two weeks is flagged), memory in use (over 90%), free space on each drive (under 10% warns, under 5% fails — Windows slows down and updates fail), programs that are "Not responding", the five biggest memory users with their process counts, and how long ago Windows last installed an update (over 60 days suggests Windows Update is stuck).</p>
+
+<figure class="shot"><img src="manual-img/pb-pchealth.webp" width="1350" height="887" alt="Result of the “PC health snapshot” playbook" loading="lazy"><figcaption>Uptime, memory, disk, hung programs, the biggest memory users and the most recent update, in one pass.</figcaption></figure>
+
+<h3 id="pb-timesync">Clock &amp; time sync</h3>
+<p>Measures your clock against <code>time.windows.com</code>. Within a second is healthy. A clock that is <em>minutes</em> out breaks things that seem unrelated: every HTTPS site shows certificate errors (certificates look expired or not yet valid), and logins to work accounts fail (Kerberos allows five minutes). The second step shows where the clock syncs from; on a home PC the Windows Time service is usually idle between scheduled syncs, which is normal. If the clock keeps drifting back, the motherboard battery may be failing.</p>
+
+<figure class="shot"><img src="manual-img/pb-timesync.webp" width="1350" height="498" alt="Result of the “Clock & time sync” playbook" loading="lazy"><figcaption>The clock is within a fraction of a second; the idle time service is reported as information, not a fault.</figcaption></figure>
+
+<h3 id="pb-outbound">Who is this PC talking to?</h3>
+<p>Every live outbound connection, grouped by program: how many connections each has, and to which ports. Ports 80 and 443 are ordinary web traffic; anything else is listed so you can recognise it. Press <strong>table</strong> for each connection with its remote address. Useful for "what's using my connection right now?" and for noticing a program you don't recognise phoning home.</p>
+
+<figure class="shot"><img src="manual-img/pb-outbound.webp" width="1350" height="909" alt="Result of the “Who is this PC talking to?” playbook" loading="lazy"><figcaption>Live connections grouped by program, with the ports each one uses.</figcaption></figure>
+
+<h3 id="pb-dhcp">DHCP lease &amp; address conflicts</h3>
+<p>Shows whether your address is leased or typed in by hand, which DHCP server issued it and how long is left (Windows renews at the halfway point, so a few hours left is normal), whether that server still answers, and whether Windows has logged another device using your IP address. A recent conflict explains connections that drop at random: two devices with one address knock each other offline. An event from more than a month ago is reported as history, not a fault.</p>
+
+<figure class="shot"><img src="manual-img/pb-dhcp.webp" width="1350" height="597" alt="Result of the “DHCP lease & address conflicts” playbook" loading="lazy"><figcaption>A leased address with time remaining, a DHCP server that answers, and an old conflict reported as history rather than a current problem.</figcaption></figure>
+
+<h3 id="pb-proxy">Proxy &amp; HTTPS inspection</h3>
+<p>Shows any proxy configured system-wide or for your account, then connects to a well-known site and reads the certificate it presents <em>to you</em>. Normally that's signed by a public certificate authority. If it's signed by a security product instead — Zscaler, Fortinet, Sophos, an antivirus "web shield" — your HTTPS traffic is being decrypted and re-signed on the way. On a work PC that's usually policy; on a personal one it's worth knowing about.</p>
+
+<figure class="shot"><img src="manual-img/pb-proxy.webp" width="1350" height="597" alt="Result of the “Proxy & HTTPS inspection” playbook" loading="lazy"><figcaption>No proxy, and example.com’s certificate reaches this PC signed by a public authority — nothing is re-signing the traffic.</figcaption></figure>
+
+<h3 id="pb-ipv6">IPv6 check</h3>
+<p>Most networks are fine either with working IPv6 or with none. The troublesome case is <em>half-working</em> IPv6: you have a global address but nothing is reachable over it, so programs try IPv6 first, wait for it to fail, and only then fall back — sites hesitate for seconds. The playbook checks for a global address (link-local <code>fe80::</code> and private <code>fd…</code> addresses, such as a VPN assigns, don't count), and if there is one, pings and loads an IPv6-only site.</p>
+
+<!-- ============================================================ -->
+<figure class="shot"><img src="manual-img/pb-ipv6.webp" width="1350" height="668" alt="Result of the “IPv6 check” playbook" loading="lazy"><figcaption>A network with no IPv6 route to the internet: the only IPv6 address is a private one from a VPN, so the IPv6 tests are skipped.</figcaption></figure>
+
+<h2 id="commands">Command reference</h2>
+<p>Every card in the app, explained. Each entry says what the command is for in everyday terms, shows a trimmed example of what it prints, and points out the lines worth reading. <span class="tag run">runnable</span> means it has a run button; <span class="tag copy">copy only</span> means you'd run it yourself in a terminal.</p>
+
+<!-- ---------- Configuration ---------- -->
+<h3 id="c-config">Network configuration &amp; interfaces</h3>
+
+<article class="cmd" id="cmd-ipconfig-all">
+  <h4><code>ipconfig /all</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>The "who am I on this network" command. Lists every network adapter in the computer with its IP address, MAC address, gateway, DNS servers, and whether the address came from DHCP. Without <code>/all</code> you get a shorter summary.</p>
+  <div class="lbl">Example</div>
+  <pre>Wireless LAN adapter Wi-Fi:
+
+   Description . . . . . . . . . . . : Intel(R) Wi-Fi 6 AX201
+   Physical Address. . . . . . . . . : A4-6B-B6-12-34-56
+   DHCP Enabled. . . . . . . . . . . : Yes
+   <span class="hl">IPv4 Address. . . . . . . . . . . : 192.168.7.45</span>(Preferred)
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   <span class="hl">Default Gateway . . . . . . . . . : 192.168.7.1</span>
+   DHCP Server . . . . . . . . . . . : 192.168.7.1
+   <span class="hl">DNS Servers . . . . . . . . . . . : 75.75.75.75</span>
+                                       75.75.76.76</pre>
+  <p><strong>How to read it:</strong> find the adapter you're using (Wi-Fi or Ethernet) and check three lines — <em>IPv4 Address</em> (your address; <code>169.254.x.x</code> means DHCP failed), <em>Default Gateway</em> (your router; blank means you can't reach anything), and <em>DNS Servers</em>. "Media disconnected" under an adapter just means nothing is plugged in there.</p>
+  <p><strong>Linux / macOS:</strong> <code>ip addr</code> (Linux) or <code>ifconfig</code> (macOS, older Linux).</p>
+</article>
+
+<article class="cmd" id="cmd-ipconfig-renew">
+  <h4><code>ipconfig /release</code> · <code>ipconfig /renew</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Gives your current IP address back to the router, then asks for a fresh one. This is the "turn it off and on again" of IP addresses — the fix when you have a <code>169.254</code> address, or after moving between networks. Your connection drops for a few seconds while it runs, which is why NetDeck won't run it for you.</p>
+  <pre>ipconfig /release
+ipconfig /renew</pre>
+  <p><strong>Linux / macOS:</strong> <code>dhclient -r</code> then <code>dhclient</code>; on modern desktops, toggling the connection off and on does the same.</p>
+</article>
+
+<article class="cmd" id="cmd-ipconfig-flushdns">
+  <h4><code>ipconfig /flushdns</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Empties the list of name-to-address answers Windows has memorised. Use it when a website moved to a new server and your computer keeps going to the old one, or after changing DNS settings. Harmless, but it changes state, so it's copy-only.</p>
+  <pre>ipconfig /flushdns
+<span class="dim">Successfully flushed the DNS Resolver Cache.</span></pre>
+  <p><strong>Linux / macOS:</strong> <code>resolvectl flush-caches</code> (Linux); <code>sudo dscacheutil -flushcache</code> (macOS).</p>
+</article>
+
+<article class="cmd" id="cmd-ipconfig-displaydns">
+  <h4><code>ipconfig /displaydns</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Shows what's currently in that memorised list — every name your computer has looked up recently and the address it got. Handy for "why does this site go to the wrong place?" and for seeing what a program has been contacting. Table view lists one record per row.</p>
+  <pre>    example.com
+    ----------------------------------------
+    Record Name . . . . . : example.com
+    Record Type . . . . . : 1
+    Time To Live  . . . . : 2841
+    Section . . . . . . . : Answer
+    <span class="hl">A (Host) Record . . . : 93.184.215.14</span></pre>
+  <p><strong>How to read it:</strong> "A (Host) Record" is the address the name currently points to; "Time To Live" is how many seconds until Windows asks again.</p>
+  <p><strong>Linux / macOS:</strong> <code>resolvectl statistics</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-netsh">
+  <h4><code>netsh</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Windows' Swiss-army knife for changing network settings from the command line: interfaces, Wi-Fi profiles, the firewall, port forwarding. It's a whole sub-language rather than one command, so NetDeck lists it for reference. A few useful read-only forms:</p>
+  <pre>netsh wlan show profiles          <span class="dim">saved Wi-Fi networks</span>
+netsh wlan show interfaces        <span class="dim">current Wi-Fi signal and speed</span>
+netsh interface ip show config    <span class="dim">like ipconfig, with more detail</span>
+netsh advfirewall show allprofiles</pre>
+  <p><strong>Linux / macOS:</strong> <code>nmcli</code> (network manager), <code>ip</code>, <code>iw</code> (Wi-Fi).</p>
+</article>
+
+<article class="cmd" id="cmd-getmac">
+  <h4><code>getmac</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists the MAC address of each adapter — the hardware serial number burned into the network card. You need it when a router or a company network only lets known devices connect ("MAC filtering").</p>
+  <pre>Physical Address    Transport Name
+=================== ==========================================================
+<span class="hl">A4-6B-B6-12-34-56</span>   \Device\Tcpip_{8E1F...}
+00-1C-42-00-00-08   Media disconnected</pre>
+  <p><strong>Linux / macOS:</strong> <code>ip link</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-proxy-settings">
+  <h4><code>Proxy settings (user)</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Reads the proxy your Windows account is set to use — the same values as <em>Settings → Network &amp; internet → Proxy</em>. <code>ProxyEnable : 1</code> with a <code>ProxyServer</code> means web traffic goes through that server; <code>AutoConfigURL</code> is a script that decides per site. A forgotten or malicious proxy setting is a classic cause of "the internet works in one browser but not another". The system-wide proxy is a separate setting: see the <code>netsh</code> variant <em>winhttp show proxy</em>.</p>
+  <p><strong>Linux / macOS:</strong> <code>env | grep -i proxy</code>.</p>
+</article>
+
+<!-- ---------- Connectivity ---------- -->
+<h3 id="c-conn">Connectivity &amp; routing</h3>
+
+<article class="cmd" id="cmd-ping">
+  <h4><code>ping &lt;host&gt;</code> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>The most basic question in networking: "are you there?" It sends four small packets to the host and waits for echoes. The reply time (latency) tells you how far away the host is in network terms; missing replies tell you something in between is dropping packets.</p>
+  <pre>Pinging 1.1.1.1 with 32 bytes of data:
+Reply from 1.1.1.1: bytes=32 <span class="hl">time=11ms</span> TTL=57
+Reply from 1.1.1.1: bytes=32 time=12ms TTL=57
+Reply from 1.1.1.1: bytes=32 time=10ms TTL=57
+Reply from 1.1.1.1: bytes=32 time=11ms TTL=57
+
+Ping statistics for 1.1.1.1:
+    <span class="hl">Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)</span>,
+Approximate round trip times in milli-seconds:
+    Minimum = 10ms, Maximum = 12ms, Average = 11ms</pre>
+  <p><strong>How to read it:</strong> under 20 ms is your own network or very close; 20–80 ms is a normal internet hop; hundreds of ms is another continent or a struggling link. "Request timed out" means no reply at all; "Destination host unreachable" means your own computer doesn't know a way to get there (usually no gateway). Some servers ignore pings on purpose, so a failed ping doesn't always mean the host is down.</p>
+  <p><strong>Linux / macOS:</strong> <code>ping &lt;host&gt;</code> — but it runs forever until you press <kbd>Ctrl</kbd>+<kbd>C</kbd>; use <code>ping -c 4</code> for four.</p>
+</article>
+
+<article class="cmd" id="cmd-tracert">
+  <h4><code>tracert &lt;host&gt;</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Shows the route your packets take: every router ("hop") between you and the destination, with the time to reach each. When a site is slow or unreachable, this shows <em>where</em> along the path things go wrong.</p>
+  <pre>Tracing route to one.one.one.one [1.1.1.1]
+over a maximum of 30 hops:
+
+  1     1 ms     1 ms     1 ms  <span class="hl">192.168.7.1</span>          <span class="dim">← your router</span>
+  2    10 ms     9 ms    11 ms  96.120.14.1          <span class="dim">← your provider</span>
+  3    12 ms    11 ms    12 ms  68.85.107.33
+  4     *        *        *     Request timed out.   <span class="dim">← a router that hides itself; fine</span>
+  5    11 ms    12 ms    11 ms  1.1.1.1
+
+Trace complete.</pre>
+  <p><strong>How to read it:</strong> times should grow gradually. A big jump between two hops is where the delay lives. A single line of <code>*</code> is normal (many routers don't answer); <code>*</code> from some hop <em>onward</em> means the path is blocked there. NetDeck runs it with <code>-d</code> (skip name lookups) so it's faster.</p>
+  <p><strong>Linux / macOS:</strong> <code>traceroute &lt;host&gt;</code> or <code>tracepath &lt;host&gt;</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-pathping">
+  <h4><code>pathping &lt;host&gt;</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>A slow, thorough <code>tracert</code>: it finds the route, then pings every hop 100 times and reports how many packets each one lost. This is the tool for intermittent problems — a connection that "mostly works" — because it pins the loss on one specific hop. Expect it to take several minutes; the Stop button is there if you lose patience.</p>
+  <pre>Computing statistics for 125 seconds...
+            Source to Here   This Node/Link
+Hop  RTT    Lost/Sent = Pct  Lost/Sent = Pct  Address
+  0                                           DESKTOP [192.168.7.45]
+                                0/ 100 =  0%   |
+  1    1ms     0/ 100 =  0%     0/ 100 =  0%  192.168.7.1
+                               <span class="hl">12/ 100 = 12%</span>   |          <span class="dim">← the link after the router is losing packets</span>
+  2   14ms    12/ 100 = 12%     0/ 100 =  0%  96.120.14.1</pre>
+  <p><strong>Linux / macOS:</strong> <code>mtr &lt;host&gt;</code> — the same idea, updating live.</p>
+</article>
+
+<article class="cmd" id="cmd-route-print">
+  <h4><code>route print</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Shows the routing table — the rules your computer uses to decide where to send each packet. Most people only need one line from it: the <code>0.0.0.0</code> row, which is the "everything else goes here" rule, i.e. your default gateway. Two of those rows on different adapters explains a lot of "sometimes my VPN / Ethernet takes over" mysteries.</p>
+  <pre>IPv4 Route Table
+===========================================================================
+Active Routes:
+Network Destination        Netmask          Gateway       Interface  Metric
+          <span class="hl">0.0.0.0          0.0.0.0      192.168.7.1    192.168.7.45     35</span>
+        127.0.0.0        255.0.0.0         On-link         127.0.0.1    331
+      192.168.7.0    255.255.255.0         On-link      192.168.7.45    291</pre>
+  <p><strong>How to read it:</strong> "On-link" means "directly reachable, no router needed". Lower <em>Metric</em> wins when two routes match. Table view lets you sort by any column.</p>
+  <p><strong>Linux / macOS:</strong> <code>ip route</code> (Linux), <code>netstat -rn</code> (macOS), <code>route -n</code> (older Linux).</p>
+</article>
+
+<article class="cmd" id="cmd-route-add">
+  <h4><code>route add</code> · <code>route delete</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Adds or removes a rule in that table — for example, "send everything for 10.0.0.0/8 through the VPN's gateway". Needs admin rights and a wrong rule can cut you off, so it's copy-only.</p>
+  <pre>route add 10.0.0.0 mask 255.0.0.0 192.168.7.254
+route delete 10.0.0.0</pre>
+  <p><strong>Linux / macOS:</strong> <code>ip route add …</code> / <code>ip route del …</code>.</p>
+</article>
+
+<!-- ---------- Connections & ports ---------- -->
+<h3 id="c-ports">Connections &amp; ports</h3>
+
+<article class="cmd" id="cmd-netstat-ano">
+  <h4><code>netstat -ano</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists every network connection your computer has open right now, and every port it's listening on, with the ID of the program responsible. The letters: <code>-a</code> all connections, <code>-n</code> numbers instead of names (much faster), <code>-o</code> show the owning process ID. Answers "what's using port 3000?" and "what is this program talking to?".</p>
+  <pre>  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:22             0.0.0.0:0              <span class="hl">LISTENING</span>       5636
+  TCP    0.0.0.0:443            0.0.0.0:0              LISTENING       21920
+  TCP    192.168.7.45:52114     140.82.112.22:443      <span class="hl">ESTABLISHED</span>     8840
+  TCP    192.168.7.45:52120     52.96.166.2:443        TIME_WAIT       0
+  UDP    0.0.0.0:5353           *:*                                    3204</pre>
+  <p><strong>How to read it:</strong> <em>Local Address</em> ends in the port number. <code>LISTENING</code> = a server on your machine waiting for connections; <code>ESTABLISHED</code> = a live connection to the <em>Foreign Address</em>; <code>TIME_WAIT</code> = recently closed, ignore. <code>0.0.0.0</code> means "on every address". Switch to <strong>Table</strong> view: NetDeck adds a <em>Process</em> column so the PID becomes a program name, and you can filter by port or state.</p>
+  <p><strong>Linux / macOS:</strong> <code>ss -tulpn</code> (Linux) or <code>netstat -tulpn</code>; on macOS <code>lsof -i -P</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-get-nettcpconnection">
+  <h4><code>Get-NetTCPConnection</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>PowerShell's version of <code>netstat</code> for TCP. Same information, but as proper columns that are easier to sort and filter — and in PowerShell scripts you can pipe it to other commands. NetDeck sorts it by state; Table view adds the process name.</p>
+  <pre>LocalAddress LocalPort RemoteAddress  RemotePort State       OwningProcess
+------------ --------- -------------  ---------- -----       -------------
+192.168.7.45     52114 140.82.112.22         443 Established          8840
+0.0.0.0             22 0.0.0.0                 0 Listen               5636</pre>
+  <p><strong>Linux / macOS:</strong> <code>lsof -i</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-test-netconnection">
+  <h4><code>Test-NetConnection &lt;host&gt; -Port 443</code> <span class="tag star">&#x2605;</span> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>"Can I reach <em>this port</em> on <em>that machine</em>?" — the question behind almost every "the app can't connect" ticket. It pings the host and then tries to open a real TCP connection on the port. Common ports: 80 (web), 443 (secure web), 22 (SSH), 3389 (Remote Desktop), 445 (file sharing), 25/587 (email), 3306/5432 (databases).</p>
+  <pre>ComputerName     : github.com
+RemoteAddress    : 140.82.112.3
+RemotePort       : 443
+InterfaceAlias   : Wi-Fi
+SourceAddress    : 192.168.7.45
+PingSucceeded    : True
+PingReplyDetails (RTT) : 24 ms
+<span class="hl">TcpTestSucceeded : True</span></pre>
+  <p><strong>How to read it:</strong> <em>TcpTestSucceeded : True</em> is the answer you want. <em>False</em> with <em>PingSucceeded : True</em> means the machine is up but nothing is listening on that port (or a firewall blocks it). Both false: the machine is down or unreachable. A warning about "name resolution" means the host name is wrong or DNS is broken.</p>
+  <p><strong>Linux / macOS:</strong> <code>nc -zv &lt;host&gt; 443</code> or <code>telnet &lt;host&gt; 443</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-tcp-probe">
+  <h4><code>Quick TCP port test</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The same question as <code>Test-NetConnection</code> — is this port open? — but it gives up after 5 seconds instead of 20–60, and states the answer outright rather than leaving you to infer it. The service-sweep and email playbooks use it for that reason.</p>
+  <pre>Target : 192.168.7.1
+Port   : 443
+<span class="hl">Result : refused</span>
+Millis : 1012</pre>
+  <p><strong>How to read it:</strong> <code>open</code> — something is listening. <code>refused</code> — the machine is up and rejected the connection: nothing is listening on that port. <code>timeout</code> — no reply in 5 seconds: a firewall is dropping it, or the host is down. <code>dns-failure</code> — the name didn't resolve.</p>
+  <p><strong>Linux / macOS:</strong> <code>nc -zv -w 5 &lt;host&gt; &lt;port&gt;</code>.</p>
+</article>
+
+<!-- ---------- ARP ---------- -->
+<h3 id="c-arp">Address resolution (ARP)</h3>
+
+<article class="cmd" id="cmd-arp-a">
+  <h4><code>arp -a</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>On your local network, computers find each other by MAC address, not IP. The ARP cache is your computer's memory of "IP → MAC" for every device it has talked to recently. Reading it is the quickest way to see what's on your network, and to spot two devices claiming the same IP.</p>
+  <pre>Interface: 192.168.7.45 --- 0x5
+  Internet Address      Physical Address      Type
+  <span class="hl">192.168.7.1           f8-bb-bf-00-11-22     dynamic</span>    <span class="dim">← router</span>
+  192.168.7.23          e4-c7-67-00-33-44     dynamic
+  192.168.7.26          98-7a-9b-00-55-66     dynamic
+  192.168.7.255         ff-ff-ff-ff-ff-ff     static     <span class="dim">← broadcast; ignore</span>
+  224.0.0.251           01-00-5e-00-00-fb     static     <span class="dim">← multicast; ignore</span></pre>
+  <p><strong>How to read it:</strong> "dynamic" rows are real devices seen in the last few minutes; "static" rows starting with <code>224.</code>, <code>239.</code> or ending in <code>.255</code> are built-in and not devices. The first three pairs of a MAC identify the manufacturer — search "f8-bb-bf OUI" to find out who made it. Table view lets you sort by IP.</p>
+  <p><strong>Linux / macOS:</strong> <code>arp -a</code> works on both; <code>ip neigh</code> on Linux.</p>
+</article>
+
+<article class="cmd" id="cmd-arp-d">
+  <h4><code>arp -d *</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Wipes the ARP cache so it rebuilds from scratch. The fix when a device got a new network card (or you swapped routers) and your computer stubbornly remembers the old MAC. Needs an admin terminal.</p>
+  <p><strong>Linux / macOS:</strong> <code>ip neigh flush all</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-winevent-ipconflict">
+  <h4><code>Get-WinEvent</code> (address conflicts) <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Searches the Windows System log for event 4199 — "the system detected an address conflict" — which Windows writes when another device turns up using this PC's IP address. The one place a duplicate address leaves evidence after the fact.</p>
+  <pre>When    : 2026-07-05 06:56
+Message : The system detected an address conflict for IP address 192.168.7.45
+          with the system having network hardware address 98-7A-9B-00-55-66.</pre>
+  <p><strong>How to read it:</strong> the hardware address in the message is the <em>other</em> device; look it up in <code>arp -a</code> or your router's client list. "No address-conflict events found" is the good answer.</p>
+</article>
+
+<!-- ---------- DNS ---------- -->
+<h3 id="c-dns">DNS lookups</h3>
+
+<article class="cmd" id="cmd-nslookup">
+  <h4><code>nslookup &lt;domain&gt;</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>Asks your DNS server "what address is this name?" — the phone-book lookup that happens invisibly every time you open a website. Use it when a site won't load to find out whether the problem is the name (DNS) or the connection.</p>
+  <pre>Server:  <span class="dim">UnKnown</span>
+Address:  192.168.7.1              <span class="dim">← the DNS server that answered</span>
+
+Non-authoritative answer:
+Name:    example.com
+Addresses:  2606:2800:21f:cb07:6820:80da:af6b:8b2c
+          <span class="hl">93.184.215.14</span></pre>
+  <p><strong>How to read it:</strong> the first two lines are the server you asked; the address you want is after "Name:". "Non-authoritative" just means the answer came from a cache, which is normal. "can't find … Non-existent domain" means the name doesn't exist (typo?); "request timed out" means your DNS server isn't answering at all.</p>
+  <p><strong>Linux / macOS:</strong> <code>nslookup &lt;domain&gt;</code>, or the more detailed <code>dig &lt;domain&gt;</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-nslookup-server">
+  <h4><code>nslookup &lt;domain&gt; &lt;server&gt;</code> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>The same lookup, but you choose which DNS server to ask — for example <code>nslookup example.com 1.1.1.1</code> asks Cloudflare instead of your router. If this works when the plain <code>nslookup</code> doesn't, your normal DNS server is the problem. The "Is DNS healthy?" playbook automates exactly this comparison.</p>
+  <p><strong>Linux / macOS:</strong> <code>dig @1.1.1.1 example.com</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-resolve-dnsname">
+  <h4><code>Resolve-DnsName &lt;domain&gt;</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>PowerShell's more detailed lookup. Where <code>nslookup</code> gives you an address, this gives you every record type: A (IPv4 address), AAAA (IPv6), CNAME (an alias pointing to another name), MX (mail servers), and so on, with each record's time-to-live.</p>
+  <pre>Name                 Type TTL  Section IPAddress
+----                 ---- ---  ------- ---------
+www.github.com       CNAME 3600 Answer  github.com     <span class="dim">← alias</span>
+github.com           A    60   Answer  <span class="hl">140.82.112.3</span></pre>
+  <p><strong>Linux / macOS:</strong> <code>dig &lt;domain&gt;</code> or <code>host &lt;domain&gt;</code>.</p>
+</article>
+
+<!-- ---------- Windows sharing ---------- -->
+<h3 id="c-win">Windows networking &amp; sharing</h3>
+
+<article class="cmd" id="cmd-nbtstat">
+  <h4><code>nbtstat -a &lt;host&gt;</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Asks a Windows computer for its NetBIOS name table — the old-school naming system Windows file sharing still uses. Useful for turning an IP address into a computer name (and the workgroup or domain it belongs to) when DNS doesn't know it.</p>
+  <pre>           NetBIOS Remote Machine Name Table
+       Name               Type         Status
+    ---------------------------------------------
+    <span class="hl">OFFICE-PC      &lt;00&gt;  UNIQUE      Registered</span>    <span class="dim">← computer name</span>
+    WORKGROUP      &lt;00&gt;  GROUP       Registered    <span class="dim">← workgroup</span>
+    MAC Address = 98-7A-9B-00-55-66</pre>
+  <p>"Host not found" usually means the target isn't Windows, or has file sharing turned off.</p>
+</article>
+
+<article class="cmd" id="cmd-net-use">
+  <h4><code>net use</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists your mapped network drives — the <code>Z:</code> that really lives on a server. With arguments it also creates and removes them, which is why the runnable version is the plain listing only.</p>
+  <pre>Status       Local     Remote                    Network
+-------------------------------------------------------------------------------
+OK           Z:        \\fileserver\projects     Microsoft Windows Network
+<span class="dim">The command completed successfully.</span></pre>
+  <p>To map one yourself: <code>net use Z: \\server\share</code>; to remove: <code>net use Z: /delete</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-net-share">
+  <h4><code>net share</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists the folders <em>this</em> computer is sharing with the network. The ones ending in <code>$</code> (<code>C$</code>, <code>ADMIN$</code>, <code>IPC$</code>) are hidden administrative shares Windows always creates — not something you set up.</p>
+  <pre>Share name   Resource                        Remark
+-------------------------------------------------------------------------------
+C$           C:\                             Default share
+IPC$                                         Remote IPC
+<span class="hl">Scans        C:\Users\Public\Scans</span>           <span class="dim">← a share you created</span></pre>
+</article>
+
+<article class="cmd" id="cmd-net-view">
+  <h4><code>net view</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists other computers on the network that are advertising shared folders. <code>net view \\OFFICE-PC</code> then lists that one computer's shares. On modern networks this often returns "System error 6118" — network discovery is off — which is a setting, not a fault.</p>
+  <pre>Server Name            Remark
+-------------------------------------------------------------------------------
+\\OFFICE-PC
+\\NAS                  Synology DiskStation</pre>
+</article>
+
+<article class="cmd" id="cmd-net-user">
+  <h4><code>net user</code> · <code>net localgroup</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Lists the user accounts on this computer (and, with <code>localgroup</code>, the groups such as Administrators). Handy when you need to check whether an account exists or who has admin rights. Adding or changing accounts takes extra arguments and admin rights; the run button only lists.</p>
+  <pre>User accounts for \\OFFICE-PC
+-------------------------------------------------------------------------------
+Administrator            DefaultAccount           Alex
+Guest                    WDAGUtilityAccount</pre>
+  <p><code>net localgroup administrators</code> shows who's an admin.</p>
+</article>
+
+<article class="cmd" id="cmd-hostname">
+  <h4><code>hostname</code> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>Prints the computer's name. That's it — but it's the name other machines use to find you, and the one support will ask for.</p>
+  <pre>OFFICE-PC</pre>
+</article>
+
+<!-- ---------- Tools ---------- -->
+<h3 id="c-tools">Scanning, capture &amp; transfer</h3>
+<p>These are cross-platform tools rather than built-in Windows commands. Most aren't installed by default, and several need a target you're allowed to probe — so they're reference entries.</p>
+
+<article class="cmd" id="cmd-lan-scan">
+  <h4><code>Local network scan</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The command behind the <em>Scan my network</em> playbook: a PowerShell script that pings every address in your own subnet simultaneously, then reads the ARP table (<code>Get-NetNeighbor</code>) to attach MAC addresses and to catch devices that ignore ping. It takes no input — the range comes from your active adapter — scans at most 254 addresses, and refuses to run if the adapter has a public address. Table view adds the <strong>Manufacturer</strong> column.</p>
+  <pre>Scanned 192.168.7.1-254 on Wi-Fi in 6.2 s: 40 devices found
+
+IP            Name MAC               Ping     Note
+--            ---- ---               ----     ----
+192.168.7.1        F8-BB-BF-00-11-22 replied  router
+192.168.7.23       E4-C7-67-00-33-44 <span class="hl">no reply</span>
+192.168.7.45       C4-13-75-0A-1B-2C replied  this PC</pre>
+  <p><strong>How to read it:</strong> every row is a device that exists on your network right now. <em>no reply</em> doesn't mean "off" — it means the device ignores ping but answered ARP, which is normal for phones and smart-home gear.</p>
+  <p><strong>Linux / macOS:</strong> <code>nmap -sn 192.168.1.0/24</code> does the same sweep, if nmap is installed; <code>arp -a</code> afterwards lists the MAC addresses.</p>
+</article>
+
+<article class="cmd" id="cmd-nmap">
+  <h4><code>nmap &lt;target&gt;</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
+  <p>The standard port scanner: it asks a host (or a whole network) which ports are open, and can often guess what service and operating system is behind them. <code>nmap -sn 192.168.7.0/24</code> lists every device on your network; <code>nmap 192.168.7.10</code> shows what that device is running. Only scan networks you own or administer — on someone else's it's treated as hostile.</p>
+</article>
+
+<article class="cmd" id="cmd-pktmon">
+  <h4><code>pktmon</code> / <code>tcpdump</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
+  <p>Packet capture — recording the actual network traffic for later analysis (usually in Wireshark). This is the deep end of troubleshooting: you use it when you need to see exactly what two machines said to each other. Both need admin rights.</p>
+  <pre>pktmon start --capture          <span class="dim">Windows: start recording</span>
+pktmon stop                     <span class="dim">…and stop; writes PktMon.etl</span>
+tcpdump -i any port 53          <span class="dim">Linux/macOS: show DNS traffic live</span></pre>
+</article>
+
+<article class="cmd" id="cmd-curl">
+  <h4><code>curl</code> / <code>wget</code> <span class="tag">ALL</span> <span class="tag run">runnable</span></h4>
+  <p>Fetch a web address from the command line. NetDeck runs <code>curl -I &lt;url&gt;</code>, which asks only for the headers — so you can see whether a site answers, what status it gives, and where it redirects, without downloading the page. <code>curl</code> is built into Windows 10 and 11.</p>
+  <pre>HTTP/1.1 <span class="hl">301 Moved Permanently</span>
+Location: https://www.example.com/
+Server: nginx
+Content-Type: text/html</pre>
+  <p><strong>How to read it:</strong> the first line's number is the status — <code>200</code> OK, <code>301</code>/<code>302</code> redirect (see <em>Location</em>), <code>403</code> forbidden, <code>404</code> not found, <code>5xx</code> the server is broken. A timeout or "Could not resolve host" is a connectivity or DNS problem on your side.</p>
+</article>
+
+<article class="cmd" id="cmd-tls-cert">
+  <h4><code>TLS certificate check</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Connects to a site on port 443 and shows the certificate it presents: who it was issued to, <strong>who issued it</strong>, when it expires, the TLS version, and whether Windows trusts it. Use it when a browser shows a certificate warning, to check how long your own site's certificate has left, or to see whether a security product is re-signing your traffic (its name shows up as the issuer).</p>
+  <pre>Subject          : CN=example.com
+<span class="hl">Issuer           : CN=SSL.com TLS ECC, O=SSL Corporation, C=US</span>
+ValidFrom        : 2026-07-29
+ValidTo          : 2026-10-27
+<span class="hl">DaysLeft         : 39</span>
+Protocol         : Tls13
+TrustedByWindows : True</pre>
+  <p><strong>Linux / macOS:</strong> <code>openssl s_client -connect &lt;host&gt;:443 -servername &lt;host&gt;</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-ssh">
+  <h4><code>ssh</code> · <code>scp</code> · <code>sftp</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
+  <p>Secure remote access. <code>ssh user@host</code> gives you a terminal on another machine; <code>scp file user@host:/path</code> copies a file to it; <code>sftp user@host</code> is an interactive file browser. All three are built into Windows 10/11 now. They need a live keyboard session, so open a terminal for them.</p>
+</article>
+
+<article class="cmd" id="cmd-whois">
+  <h4><code>whois &lt;domain&gt;</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
+  <p>Looks up who registered a domain name (or who owns an IP address block), when it expires, and which name servers it uses. Not included with Windows; Microsoft's Sysinternals suite has one, and any Linux/macOS machine has it built in.</p>
+</article>
+
+<article class="cmd" id="cmd-iperf3">
+  <h4><code>iperf3 -c &lt;server&gt;</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
+  <p>Measures real throughput between two machines — how many megabits per second the link actually carries, rather than what the box says. You run <code>iperf3 -s</code> on one machine and <code>iperf3 -c that-machine</code> on the other. The honest way to test whether it's your Wi-Fi or your provider that's slow.</p>
+</article>
+
+<!-- ---------- System ---------- -->
+<h3 id="c-sys">System &amp; process info</h3>
+
+<article class="cmd" id="cmd-tasklist">
+  <h4><code>tasklist</code> / <code>taskkill</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p><code>tasklist</code> lists every running program with its process ID (PID) and memory use — Task Manager in text form, and the way to turn a PID from <code>netstat</code> into a name (NetDeck's Table view does this for you). <code>taskkill /PID 1234</code> ends a process; that one is copy-only.</p>
+  <pre>Image Name                     PID Session Name        Session#    Mem Usage
+========================= ======== ================ =========== ============
+System Idle Process              0 Services                   0          8 K
+svchost.exe                   2172 Services                   0     24,512 K
+<span class="hl">sshd.exe                      5636 Services                   0      7,880 K</span></pre>
+  <p><strong>Linux / macOS:</strong> <code>ps aux</code> to list, <code>kill &lt;pid&gt;</code> to end.</p>
+</article>
+
+<article class="cmd" id="cmd-systeminfo">
+  <h4><code>systeminfo</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>A full inventory of the machine: Windows version and build, when it was last booted, processor, memory, installed updates, and network adapters. It takes 10–20 seconds because it queries everything. The lines most often needed: <em>OS Version</em>, <em>System Boot Time</em>, <em>Total Physical Memory</em>.</p>
+  <pre>Host Name:                 OFFICE-PC
+OS Name:                   Microsoft Windows 11 Pro
+<span class="hl">OS Version:                10.0.26200 N/A Build 26200</span>
+System Boot Time:          9/18/2026, 7:41:03 AM
+Total Physical Memory:     32,614 MB</pre>
+  <p><strong>Linux / macOS:</strong> <code>uname -a</code> (kernel), <code>lscpu</code> (processor), <code>free -h</code> (memory).</p>
+</article>
+
+<article class="cmd" id="cmd-os-health">
+  <h4><code>Uptime &amp; memory</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The two numbers behind most "my PC is slow" complaints, without wading through <code>systeminfo</code>: how long since the last restart, and how much memory is free. It's <code>Get-CimInstance Win32_OperatingSystem</code> with the arithmetic done for you.</p>
+  <pre>OS            : Microsoft Windows 11 Pro
+Version       : 10.0.26200
+LastBoot      : 2026-09-14 15:12
+<span class="hl">UptimeDays    : 3.8</span>
+MemoryTotalGB : 63.5
+<span class="hl">MemoryFreeGB  : 33.3</span></pre>
+  <p><strong>Linux / macOS:</strong> <code>uptime</code> and <code>free -h</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-disk-free">
+  <h4><code>Disk free space</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Size and free space of each fixed drive, with the percentage worked out. Below about 10% free, Windows slows down, updates fail and programs can't write temporary files. Has a Table view.</p>
+  <pre>Drive Label SizeGB FreeGB FreePct
+----- ----- ------ ------ -------
+C:    OS    1876.3 1407.7      75</pre>
+  <p><strong>Linux / macOS:</strong> <code>df -h</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-get-hotfix">
+  <h4><code>Get-HotFix</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The most recently installed Windows updates, newest first, with how many days ago each went in. If the newest is more than a couple of months old, Windows Update is paused, stuck, or blocked.</p>
+  <pre>HotFixID  Description     Installed  DaysAgo
+--------  -----------     ---------  -------
+KB5129195 Security Update 2026-09-14       4</pre>
+</article>
+
+<article class="cmd" id="cmd-w32tm">
+  <h4><code>w32tm /stripchart</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
+  <p>Compares your clock with an internet time server, three times, and prints the difference. The variant <code>/query /status</code> shows which server the PC syncs from and when it last succeeded (it may need an administrator shell).</p>
+  <pre>Tracking time.windows.com [20.101.57.9:123].
+11:00:00, <span class="hl">+00.0551234s</span>
+11:00:02, +00.0547719s</pre>
+  <p><strong>How to read it:</strong> the signed number is how far your clock is from true time, in seconds. Under a second is fine. "error: 0x800705B4" means the time server didn't answer — NTP uses UDP port 123, which some networks block.</p>
+  <p><strong>Linux / macOS:</strong> <code>timedatectl status</code>; <code>sntp time.apple.com</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-sfc">
+  <h4><code>sfc /scannow</code> · <code>chkdsk</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
+  <p>Repair tools, not network tools, but they live in the same toolbox. <code>sfc /scannow</code> checks Windows' own files and replaces corrupted ones; <code>chkdsk C: /f</code> checks the disk for errors (and usually asks to run at the next reboot). Both need an admin terminal and take a while.</p>
+  <p><strong>Linux / macOS:</strong> <code>fsck</code> for disks.</p>
+</article>
+
+<article class="cmd" id="cmd-whoami">
+  <h4><code>whoami /all</code> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
+  <p>Which account you're running as, which groups it belongs to, and which privileges it holds. The quick way to answer "am I an administrator in this window?" — look for <code>BUILTIN\Administrators</code> in the groups list.</p>
+  <pre>USER INFORMATION
+----------------
+User Name            SID
+==================== =============================================
+<span class="hl">office-pc\alex</span> S-1-5-21-…-1001
+
+GROUP INFORMATION
+-----------------
+BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre>
+  <p>"Group used for deny only" next to Administrators means you <em>are</em> an admin, but this window isn't elevated.</p>
+  <p><strong>Linux / macOS:</strong> <code>whoami</code>, or <code>id</code> for groups.</p>
+</article>
+
+<!-- ============================================================ -->
+<h2 id="quick">"Something's wrong" quick guide</h2>
+<p>Start with the symptom on the left.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Symptom</th><th>Try first</th><th>Then</th></tr>
+  <tr><td>Nothing loads, no internet</td><td>Playbook <strong>Can't reach the internet?</strong></td><td>Follow the verdict — it names the broken link.</td></tr>
+  <tr><td>One website won't load</td><td>Playbook <strong>A website won't load</strong></td><td>It says whether it's DNS, their server, the certificate, or you.</td></tr>
+  <tr><td>Works on Wi-Fi, breaks with a cable or VPN</td><td>Playbook <strong>Routing &amp; adapter sanity</strong></td><td>Disable the adapter it names, or fix its connection.</td></tr>
+  <tr><td>"Is my PC open to the network?"</td><td>Playbook <strong>What is this PC exposing?</strong></td><td>Stop or firewall anything you didn't expect.</td></tr>
+  <tr><td>Changed a DNS record, some people see the old site</td><td>Playbook <strong>Did my DNS change propagate?</strong></td><td>Wait out the TTL; flush your own cache.</td></tr>
+  <tr><td>Some sites work, others "can't be found"</td><td>Playbook <strong>Is DNS healthy?</strong></td><td><code>ipconfig /flushdns</code>, or switch DNS to 1.1.1.1.</td></tr>
+  <tr><td>Everything is slow</td><td>Playbook <strong>Why is everything slow?</strong></td><td>Bad numbers to the router = Wi-Fi/cable; only beyond it = provider. <strong>Where does the path break?</strong> finds the hop.</td></tr>
+  <tr><td>An app "can't connect to the server"</td><td>Playbook <strong>Is a port open on a host?</strong></td><td>Closed port = firewall or service down; no ping = machine unreachable.</td></tr>
+  <tr><td>"Port already in use" when starting a program</td><td><code>netstat -ano</code> → Table → filter by the port</td><td>The Process column names the culprit.</td></tr>
+  <tr><td>"What's on my network?" / unknown device</td><td>Playbook <strong>Scan my network</strong> → table</td><td>Sort by Manufacturer; check anything you can't account for against your router's client list.</td></tr>
+  <tr><td>IP address starts with 169.254</td><td>Check the cable / Wi-Fi</td><td><code>ipconfig /release</code> then <code>/renew</code> in a terminal.</td></tr>
+  <tr><td>Can't see a shared folder</td><td><code>net view</code>, <code>nbtstat -a &lt;host&gt;</code></td><td><code>Test-NetConnection &lt;host&gt; -Port 445</code>.</td></tr>
+</table></div>
+
+<!-- ============================================================ -->
+<h2 id="glossary">Glossary</h2>
+<dl class="gloss">
+  <dt>IP address</dt><dd>A device's number on a network, like <code>192.168.7.45</code>. Addresses starting with <code>10.</code>, <code>172.16–31.</code> or <code>192.168.</code> are private (only meaningful inside your network); anything else is a public internet address.</dd>
+  <dt>MAC address</dt><dd>The hardware serial number of a network card, like <code>a4-6b-b6-12-34-56</code>. Fixed for life; only used within your local network.</dd>
+  <dt>Gateway / router</dt><dd>The device that forwards traffic between your local network and the internet. Its address is the "Default Gateway" in <code>ipconfig</code>.</dd>
+  <dt>DNS</dt><dd>Domain Name System — the service that converts names (<code>github.com</code>) into IP addresses. When DNS is down, "the internet is down" even though the connection is fine.</dd>
+  <dt>DHCP</dt><dd>The service (usually on the router) that hands out IP addresses automatically. A "lease" is the address you were given and how long you may keep it.</dd>
+  <dt>APIPA / 169.254.x.x</dt><dd>The made-up address Windows assigns itself when DHCP doesn't answer. Seeing it means "I'm not really connected".</dd>
+  <dt>Subnet mask</dt><dd>Defines which addresses count as "local". With <code>255.255.255.0</code>, everything sharing your first three numbers is on your network; anything else goes via the gateway.</dd>
+  <dt>Port</dt><dd>A numbered door on a computer, 1–65535, each used by one program. Web is 80/443, SSH 22, Remote Desktop 3389. "Listening" means a program is waiting at that door.</dd>
+  <dt>TCP / UDP</dt><dd>The two ways to send data. TCP checks everything arrived (web, email, file transfer); UDP just sends and hopes (video, DNS lookups, games).</dd>
+  <dt>Latency / ms</dt><dd>How long a packet takes to get there and back, in milliseconds. Lower is better; under 20 ms feels instant.</dd>
+  <dt>Packet loss</dt><dd>Percentage of packets that never arrived. Anything above 1–2% makes calls choppy and pages stall.</dd>
+  <dt>TTL</dt><dd>Time To Live. In <code>ping</code>, roughly how many routers the reply passed through (starts at 64 or 128 and counts down). In DNS, how many seconds an answer may be cached.</dd>
+  <dt>ARP</dt><dd>Address Resolution Protocol — how devices on the same network learn each other's MAC addresses. The "ARP cache" is the resulting IP→MAC list.</dd>
+  <dt>PID</dt><dd>Process ID — the number Windows gives each running program. <code>netstat</code> shows PIDs; <code>tasklist</code> turns them into names.</dd>
+  <dt>Localhost / 127.0.0.1</dt><dd>Your own computer, from its own point of view. Pinging it tests only that networking software is alive, not any connection.</dd>
+  <dt>Exit code</dt><dd>The number a program reports when it finishes. <code>0</code> means success; anything else is a program-specific error. NetDeck shows it at the top of each tab.</dd>
+  <dt>Elevated / admin</dt><dd>A program started with "Run as administrator", after Windows' permission prompt. Some commands (<code>netstat -b</code>, <code>arp -d</code>, <code>sfc</code>) only work that way. Being logged in as an administrator is not the same thing: programs still start un-elevated until you approve that prompt.</dd>
+  <dt>NetBIOS</dt><dd>The old Windows naming system behind file sharing and <code>\\COMPUTER\share</code> paths. <code>nbtstat</code> speaks it.</dd>
+</dl>
+
+<!-- ============================================================ -->
+<h2 id="keys">Keyboard shortcuts</h2>
+<div class="tbl-wrap"><table>
+  <tr><th>Key</th><th>What it does</th></tr>
+  <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>&#x2318;</kbd>+<kbd>K</kbd>)</td><td>Open the command palette; <kbd>↑</kbd> <kbd>↓</kbd> to move, <kbd>Enter</kbd> to jump to the card, <kbd>Esc</kbd> to close.</td></tr>
+  <tr><td><kbd>/</kbd></td><td>Jump to the search box.</td></tr>
+  <tr><td><kbd>j</kbd> / <kbd>k</kbd> or <kbd>↓</kbd> / <kbd>↑</kbd></td><td>Move the highlight from card to card (in whichever view is open).</td></tr>
+  <tr><td><kbd>Enter</kbd> on a highlighted card</td><td>Run it — or, if it needs a host you haven't typed, put the cursor in that box.</td></tr>
+  <tr><td><kbd>c</kbd> · <kbd>p</kbd> · <kbd>h</kbd> · <kbd>m</kbd> · <kbd>l</kbd></td><td>On the highlighted card: copy the command · pin/unpin · run its built-in help · open its manual entry · copy a link (<kbd>l</kbd> does nothing in the desktop app, which has no links).</td></tr>
+  <tr><td><kbd>Esc</kbd></td><td>Clear the highlight, or close the palette / a dialog.</td></tr>
+  <tr><td><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> in "find in output"</td><td>Next / previous match. <kbd>Esc</kbd> clears the search.</td></tr>
+  <tr><td><kbd>Enter</kbd> in a host or port box</td><td>Run that command (or playbook).</td></tr>
+  <tr><td><kbd>Enter</kbd> on a terminal tab</td><td>Switch to it.</td></tr>
+  <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd> on a terminal tab</td><td>Close it.</td></tr>
+  <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd> on a table header</td><td>Sort by that column.</td></tr>
+</table></div>
+
+<p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
+</main>
+</div>
+<script>
+  // Show only the "Getting started" variant that matches where this manual is running.
+  // Without a known host (e.g. the shared copy) all three stay visible under their headings.
+  (function () {
+    var mode = window.__TAURI__ ? 'desktop' : (window.NETDECK_STATIC ? 'hosted' : (location.protocol === 'http:' || location.protocol === 'https:') && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'server' : null);
+    if (!mode) return;
+    document.documentElement.dataset.start = mode;
+    document.querySelectorAll('.start-variant').forEach(function (el) { el.hidden = el.dataset.mode !== mode; });
+  })();
+  // Arriving at an anchor: once everything has loaded, make sure the target is still where we scrolled to.
+  window.addEventListener('load', function () {
+    var target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target) target.scrollIntoView();
+  });
+  // In the desktop app the manual has its own window; "back to NetDeck" would load the app inside it.
+  if (window.__TAURI__) document.querySelectorAll('a[href="index.html"]').forEach(function (a) { a.remove(); });
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('netdeck.theme', next); } catch (e) {}
+  });
+</script>
+</body>
+</html>

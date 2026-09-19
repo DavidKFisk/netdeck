@@ -1,0 +1,2225 @@
+[
+  {
+    "id": "ipconfig-all",
+    "name": "ipconfig /all",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Show IP addresses, MAC addresses and adapters",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "ipconfig /all",
+    "unix": [
+      "ip addr",
+      "ifconfig"
+    ],
+    "help": [
+      "ipconfig",
+      "/?"
+    ],
+    "helpUnix": [
+      "ip",
+      "addr",
+      "help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "ipconfig",
+      "args": [
+        "/all"
+      ],
+      "presets": [
+        {
+          "key": "brief-no-all",
+          "label": "brief (no /all)",
+          "args": []
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ip",
+      "args": [
+        "addr"
+      ],
+      "darwin": {
+        "exe": "ifconfig",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "ipconfig-renew",
+    "name": "ipconfig /release · /renew",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Release or renew a DHCP lease",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": false,
+    "note": "Drops and re-acquires your IP address — run it yourself from a terminal.",
+    "win": "ipconfig /release && ipconfig /renew",
+    "unix": [
+      "dhclient -r",
+      "dhclient"
+    ],
+    "help": [
+      "ipconfig",
+      "/?"
+    ]
+  },
+  {
+    "id": "ipconfig-flushdns",
+    "name": "ipconfig /flushdns",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Clear the DNS cache",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": false,
+    "note": "Changes resolver state — copy and run it yourself.",
+    "win": "ipconfig /flushdns",
+    "unix": [
+      "resolvectl flush-caches"
+    ],
+    "help": [
+      "ipconfig",
+      "/?"
+    ]
+  },
+  {
+    "id": "ipconfig-displaydns",
+    "name": "ipconfig /displaydns",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "View the DNS cache",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "ipconfig /displaydns",
+    "unix": [
+      "resolvectl statistics"
+    ],
+    "help": [
+      "ipconfig",
+      "/?"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "ipconfig",
+      "args": [
+        "/displaydns"
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "resolvectl",
+      "args": [
+        "statistics"
+      ]
+    }
+  },
+  {
+    "id": "netsh",
+    "name": "netsh",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Configure interfaces, Wi-Fi and firewall",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Configuration changes are copy-only; the read-only views below are runnable.",
+    "win": "netsh",
+    "unix": [
+      "nmcli",
+      "ip",
+      "iw"
+    ],
+    "help": [
+      "netsh",
+      "/?"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "netsh",
+      "args": [
+        "wlan",
+        "show",
+        "interfaces"
+      ],
+      "presets": [
+        {
+          "key": "wlan-show-profiles",
+          "label": "wlan show profiles — saved Wi-Fi networks",
+          "args": [
+            "wlan",
+            "show",
+            "profiles"
+          ]
+        },
+        {
+          "key": "interface-ip-show-config",
+          "label": "interface ip show config",
+          "args": [
+            "interface",
+            "ip",
+            "show",
+            "config"
+          ]
+        },
+        {
+          "key": "advfirewall-show-allprofiles",
+          "label": "advfirewall show allprofiles",
+          "args": [
+            "advfirewall",
+            "show",
+            "allprofiles"
+          ]
+        },
+        {
+          "key": "interface-show-interface",
+          "label": "interface show interface",
+          "args": [
+            "interface",
+            "show",
+            "interface"
+          ]
+        },
+        {
+          "key": "wlan-networks",
+          "label": "wlan show networks mode=bssid — nearby access points and channels",
+          "args": [
+            "wlan",
+            "show",
+            "networks",
+            "mode=bssid"
+          ]
+        },
+        {
+          "key": "winhttp-show-proxy",
+          "label": "winhttp show proxy — system-wide proxy",
+          "args": [
+            "winhttp",
+            "show",
+            "proxy"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "nmcli",
+      "args": [
+        "device",
+        "status"
+      ],
+      "darwin": {
+        "exe": "networksetup",
+        "args": [
+          "-listallhardwareports"
+        ]
+      }
+    }
+  },
+  {
+    "id": "getmac",
+    "name": "getmac",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "List MAC addresses",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "getmac",
+    "unix": [
+      "ip link"
+    ],
+    "help": [
+      "getmac",
+      "/?"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "getmac",
+      "args": [],
+      "presets": [
+        {
+          "key": "v-verbose",
+          "label": "/v verbose — adapter names",
+          "args": [
+            "/v"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ip",
+      "args": [
+        "link"
+      ],
+      "darwin": {
+        "exe": "networksetup",
+        "args": [
+          "-listallhardwareports"
+        ]
+      }
+    }
+  },
+  {
+    "id": "proxy-settings",
+    "name": "Proxy settings (user)",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "The proxy and auto-config script your Windows account is set to use",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings'",
+    "unix": [
+      "env | grep -i proxy"
+    ],
+    "help": {
+      "ps": "Get-ItemProperty"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "Get-ItemProperty 'HKCU:\\...\\Internet Settings' | Select-Object Proxy*, AutoConfigURL",
+      "command": "Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings' | Select-Object ProxyEnable, ProxyServer, AutoConfigURL, ProxyOverride | Format-List"
+    }
+  },
+  {
+    "id": "ping",
+    "name": "ping",
+    "category": "Connectivity & Routing",
+    "purpose": "Test whether a host is reachable",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "ping <host>",
+    "unix": [
+      "ping <host>"
+    ],
+    "help": [
+      "ping",
+      "/?"
+    ],
+    "helpUnix": [
+      "ping",
+      "-h"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "ping",
+      "args": [
+        "{host}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. cloudflare.com",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "t-continuous",
+          "label": "-t continuous — press Stop to end",
+          "args": [
+            "-t",
+            "{host}"
+          ]
+        },
+        {
+          "key": "x20",
+          "label": "-n 20 — twenty echoes",
+          "args": [
+            "-n",
+            "20",
+            "{host}"
+          ]
+        },
+        {
+          "key": "force-ipv4",
+          "label": "-4 — force IPv4",
+          "args": [
+            "-4",
+            "{host}"
+          ]
+        },
+        {
+          "key": "l-1472-f",
+          "label": "-l 1472 -f — MTU check (large, don't fragment)",
+          "args": [
+            "-l",
+            "1472",
+            "-f",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1472",
+          "label": "-f -l 1472 — don't fragment, 1472-byte payload (MTU 1500)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1472",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1464",
+          "label": "-f -l 1464 — don't fragment, 1464-byte payload (MTU 1492)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1464",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1452",
+          "label": "-f -l 1452 — don't fragment, 1452-byte payload (MTU 1480)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1452",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1400",
+          "label": "-f -l 1400 — don't fragment, 1400-byte payload (MTU 1428)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1400",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1372",
+          "label": "-f -l 1372 — don't fragment, 1372-byte payload (MTU 1400)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1372",
+            "{host}"
+          ]
+        },
+        {
+          "key": "mtu-1272",
+          "label": "-f -l 1272 — don't fragment, 1272-byte payload (MTU 1300)",
+          "args": [
+            "-n",
+            "2",
+            "-w",
+            "1500",
+            "-f",
+            "-l",
+            "1272",
+            "{host}"
+          ]
+        },
+        {
+          "key": "force-ipv6",
+          "label": "-6 — force IPv6",
+          "args": [
+            "-6",
+            "{host}"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ping",
+      "args": [
+        "-c",
+        "4",
+        "{host}"
+      ],
+      "presets": [
+        {
+          "key": "continuous",
+          "label": "continuous — press Stop to end",
+          "args": [
+            "{host}"
+          ]
+        },
+        {
+          "key": "x20",
+          "label": "-c 20 — twenty echoes",
+          "args": [
+            "-c",
+            "20",
+            "{host}"
+          ]
+        },
+        {
+          "key": "force-ipv6",
+          "label": "-6 — force IPv6",
+          "args": [
+            "-6",
+            "-c",
+            "4",
+            "{host}"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "tracert",
+    "name": "tracert",
+    "category": "Connectivity & Routing",
+    "purpose": "Show the path packets take to a host",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "tracert <host>",
+    "unix": [
+      "traceroute <host>",
+      "tracepath <host>"
+    ],
+    "help": [
+      "tracert",
+      "/?"
+    ],
+    "helpUnix": [
+      "traceroute",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "tracert",
+      "args": [
+        "-d",
+        "{host}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. 1.1.1.1",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "h-15",
+          "label": "-h 15 — stop after 15 hops",
+          "args": [
+            "-d",
+            "-h",
+            "15",
+            "{host}"
+          ]
+        },
+        {
+          "key": "resolve-hop-names-slower",
+          "label": "resolve hop names (slower)",
+          "args": [
+            "{host}"
+          ]
+        },
+        {
+          "key": "w-500",
+          "label": "-w 500 — 0.5 s timeout per hop",
+          "args": [
+            "-d",
+            "-w",
+            "500",
+            "{host}"
+          ]
+        },
+        {
+          "key": "quick",
+          "label": "-h 12 -w 700 — quick trace (playbooks use this)",
+          "args": [
+            "-d",
+            "-h",
+            "12",
+            "-w",
+            "700",
+            "{host}"
+          ]
+        },
+        {
+          "key": "path",
+          "label": "-h 20 -w 900 — path analysis (playbooks use this)",
+          "args": [
+            "-d",
+            "-h",
+            "20",
+            "-w",
+            "900",
+            "{host}"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "traceroute",
+      "args": [
+        "-n",
+        "{host}"
+      ],
+      "presets": [
+        {
+          "key": "quick",
+          "label": "-m 12 -w 1 — quick trace (playbooks use this)",
+          "args": [
+            "-n",
+            "-m",
+            "12",
+            "-w",
+            "1",
+            "{host}"
+          ]
+        },
+        {
+          "key": "path",
+          "label": "-m 20 -w 1 — path analysis (playbooks use this)",
+          "args": [
+            "-n",
+            "-m",
+            "20",
+            "-w",
+            "1",
+            "{host}"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "pathping",
+    "name": "pathping",
+    "category": "Connectivity & Routing",
+    "purpose": "Traceroute plus packet-loss stats (takes a few minutes)",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "pathping <host>",
+    "unix": [
+      "mtr <host>"
+    ],
+    "help": [
+      "pathping",
+      "/?"
+    ],
+    "helpUnix": [
+      "mtr",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "pathping",
+      "args": [
+        "{host}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. 8.8.8.8",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "n-q-50",
+          "label": "-n -q 50 — no names, 50 probes (faster)",
+          "args": [
+            "-n",
+            "-q",
+            "50",
+            "{host}"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "mtr",
+      "args": [
+        "-r",
+        "-n",
+        "-c",
+        "20",
+        "{host}"
+      ]
+    }
+  },
+  {
+    "id": "route-print",
+    "name": "route print",
+    "category": "Connectivity & Routing",
+    "purpose": "Show the routing table",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "route print",
+    "unix": [
+      "ip route",
+      "route -n",
+      "netstat -rn"
+    ],
+    "help": [
+      "route",
+      "/?"
+    ],
+    "helpUnix": [
+      "ip",
+      "route",
+      "help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "route",
+      "args": [
+        "print"
+      ],
+      "presets": [
+        {
+          "key": "ipv4",
+          "label": "-4 — IPv4 only",
+          "args": [
+            "print",
+            "-4"
+          ]
+        },
+        {
+          "key": "ipv6",
+          "label": "-6 — IPv6 only",
+          "args": [
+            "print",
+            "-6"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ip",
+      "args": [
+        "route"
+      ],
+      "darwin": {
+        "exe": "netstat",
+        "args": [
+          "-rn"
+        ]
+      }
+    }
+  },
+  {
+    "id": "route-add",
+    "name": "route add · delete",
+    "category": "Connectivity & Routing",
+    "purpose": "Add or remove routes",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": false,
+    "note": "Alters the routing table — copy and run it yourself.",
+    "win": "route add <dest> mask <mask> <gateway>",
+    "unix": [
+      "ip route add",
+      "ip route del"
+    ],
+    "help": [
+      "route",
+      "/?"
+    ]
+  },
+  {
+    "id": "netstat-ano",
+    "name": "netstat -ano",
+    "category": "Connections & Ports",
+    "purpose": "Active connections, listening ports and owning process IDs",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "netstat -ano",
+    "unix": [
+      "netstat -tulpn",
+      "ss -tulpn"
+    ],
+    "help": [
+      "netstat",
+      "/?"
+    ],
+    "helpUnix": [
+      "ss",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "netstat",
+      "args": [
+        "-ano"
+      ],
+      "presets": [
+        {
+          "key": "anob",
+          "label": "-anob — with program names",
+          "args": [
+            "-anob"
+          ],
+          "admin": true
+        },
+        {
+          "key": "an-p-tcp",
+          "label": "-an -p tcp — TCP only",
+          "args": [
+            "-an",
+            "-p",
+            "tcp"
+          ]
+        },
+        {
+          "key": "e",
+          "label": "-e — interface statistics",
+          "args": [
+            "-e"
+          ]
+        },
+        {
+          "key": "s",
+          "label": "-s — per-protocol statistics",
+          "args": [
+            "-s"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ss",
+      "args": [
+        "-tulpn"
+      ],
+      "darwin": {
+        "exe": "lsof",
+        "args": [
+          "-i",
+          "-P",
+          "-n"
+        ]
+      }
+    }
+  },
+  {
+    "id": "get-nettcpconnection",
+    "name": "Get-NetTCPConnection",
+    "category": "Connections & Ports",
+    "purpose": "List open network connections",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-NetTCPConnection",
+    "unix": [
+      "lsof -i"
+    ],
+    "help": {
+      "ps": "Get-NetTCPConnection"
+    },
+    "helpUnix": [
+      "lsof",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "command": "Get-NetTCPConnection | Sort-Object State | Format-Table -AutoSize | Out-String -Width 4096",
+      "presets": [
+        {
+          "key": "state-listen",
+          "label": "-State Listen — listening ports only",
+          "display": "Get-NetTCPConnection -State Listen",
+          "command": "Get-NetTCPConnection -State Listen | Sort-Object LocalPort | Format-Table -AutoSize | Out-String -Width 4096"
+        },
+        {
+          "key": "state-established",
+          "label": "-State Established — live connections only",
+          "display": "Get-NetTCPConnection -State Established",
+          "command": "Get-NetTCPConnection -State Established | Sort-Object RemoteAddress | Format-Table -AutoSize | Out-String -Width 4096"
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "lsof",
+      "args": [
+        "-i",
+        "-P",
+        "-n"
+      ]
+    }
+  },
+  {
+    "id": "test-netconnection",
+    "name": "Test-NetConnection",
+    "category": "Connections & Ports",
+    "purpose": "Test whether a specific port is open on a host",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "Test-NetConnection <host> -Port 443",
+    "unix": [
+      "nc -zv <host> 443",
+      "telnet <host> 443"
+    ],
+    "help": {
+      "ps": "Test-NetConnection"
+    },
+    "helpUnix": [
+      "nc",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "command": "Test-NetConnection {host} -Port {port}",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. github.com",
+          "type": "host"
+        },
+        {
+          "key": "port",
+          "placeholder": "443",
+          "type": "port"
+        }
+      ],
+      "presets": [
+        {
+          "key": "informationlevel-detailed",
+          "label": "-InformationLevel Detailed",
+          "command": "Test-NetConnection {host} -Port {port} -InformationLevel Detailed"
+        },
+        {
+          "key": "traceroute",
+          "label": "-TraceRoute — ping + route (no port)",
+          "command": "Test-NetConnection {host} -TraceRoute"
+        },
+        {
+          "key": "commontcpport-http",
+          "label": "-CommonTCPPort HTTP",
+          "command": "Test-NetConnection {host} -CommonTCPPort HTTP"
+        }
+      ],
+      "display": "Test-NetConnection {host} -Port {port}"
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "nc",
+      "args": [
+        "-zv",
+        "-w",
+        "5",
+        "{host}",
+        "{port}"
+      ]
+    }
+  },
+  {
+    "id": "tcp-probe",
+    "name": "Quick TCP port test",
+    "category": "Connections & Ports",
+    "purpose": "Test one TCP port with a 5-second limit — answers open, refused or timeout (faster than Test-NetConnection)",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "TcpClient connect to <host>:<port> (PowerShell, 5 s limit)",
+    "unix": [
+      "nc -zv -w 5 <host> <port>"
+    ],
+    "help": {
+      "ps": "Test-NetConnection"
+    },
+    "helpUnix": [
+      "nc",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "TCP connect {host}:{port} (5 s limit)",
+      "command": "$h = '{host}'; $p = {port}; $sw = [Diagnostics.Stopwatch]::StartNew(); $c = New-Object Net.Sockets.TcpClient; try { $t = $c.ConnectAsync($h, $p); if ($t.Wait(5000)) { $r = if ($c.Connected) { 'open' } else { 'refused' } } else { $r = 'timeout' } } catch { $m = $_.Exception.GetBaseException().Message; $r = if ($m -match 'refused') { 'refused' } elseif ($m -match 'No such host|not known') { 'dns-failure' } else { 'error: ' + $m } } finally { $c.Close() }; [pscustomobject]@{ Target = $h; Port = $p; Result = $r; Millis = $sw.ElapsedMilliseconds } | Format-List",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. github.com",
+          "type": "host"
+        },
+        {
+          "key": "port",
+          "placeholder": "443",
+          "type": "port"
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "nc",
+      "args": [
+        "-zv",
+        "-w",
+        "5",
+        "{host}",
+        "{port}"
+      ]
+    }
+  },
+  {
+    "id": "arp-a",
+    "name": "arp -a",
+    "category": "Address Resolution (ARP)",
+    "purpose": "Show the ARP cache — IP-to-MAC mappings on your LAN",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "arp -a",
+    "unix": [
+      "arp -a",
+      "ip neigh"
+    ],
+    "help": [
+      "arp",
+      "/?"
+    ],
+    "helpUnix": [
+      "arp",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "arp",
+      "args": [
+        "-a"
+      ],
+      "presets": [
+        {
+          "key": "a-v",
+          "label": "-a -v — include invalid entries",
+          "args": [
+            "-a",
+            "-v"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "arp",
+      "args": [
+        "-a"
+      ]
+    }
+  },
+  {
+    "id": "arp-d",
+    "name": "arp -d *",
+    "category": "Address Resolution (ARP)",
+    "purpose": "Clear the ARP cache",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": false,
+    "note": "Flushes neighbor state and needs admin rights — run it yourself.",
+    "win": "arp -d *",
+    "unix": [
+      "ip neigh flush all"
+    ],
+    "help": [
+      "arp",
+      "/?"
+    ]
+  },
+  {
+    "id": "winevent-ipconflict",
+    "name": "Get-WinEvent (address conflicts)",
+    "category": "Address Resolution (ARP)",
+    "purpose": "Recent \"IP address conflict\" events from the System log",
+    "platforms": [
+      "powershell"
+    ],
+    "safe": true,
+    "win": "Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Tcpip'; Id=4199}",
+    "help": {
+      "ps": "Get-WinEvent"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Tcpip'; Id=4199} -MaxEvents 5",
+      "command": "$e = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Tcpip'; Id = 4199 } -MaxEvents 5 -ErrorAction SilentlyContinue); if ($e.Count) { $e | Select-Object @{n='When';e={$_.TimeCreated.ToString('yyyy-MM-dd HH:mm')}}, Message | Format-List } else { 'No address-conflict events found.' }"
+    }
+  },
+  {
+    "id": "nslookup",
+    "name": "nslookup",
+    "category": "DNS Lookups",
+    "purpose": "Query DNS records for a domain",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "essential": true,
+    "safe": true,
+    "win": "nslookup <domain>",
+    "unix": [
+      "nslookup <domain>"
+    ],
+    "help": [
+      "nslookup",
+      "/?"
+    ],
+    "helpUnix": [
+      "nslookup",
+      "-help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "nslookup",
+      "args": [
+        "{host}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. anthropic.com",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "type-mx",
+          "label": "-type=MX — mail servers",
+          "args": [
+            "-type=MX",
+            "{host}"
+          ]
+        },
+        {
+          "key": "type-ns",
+          "label": "-type=NS — name servers",
+          "args": [
+            "-type=NS",
+            "{host}"
+          ]
+        },
+        {
+          "key": "type-txt",
+          "label": "-type=TXT — text records (SPF, verification)",
+          "args": [
+            "-type=TXT",
+            "{host}"
+          ]
+        },
+        {
+          "key": "type-aaaa",
+          "label": "-type=AAAA — IPv6 address",
+          "args": [
+            "-type=AAAA",
+            "{host}"
+          ]
+        },
+        {
+          "key": "debug",
+          "label": "-debug — full response",
+          "args": [
+            "-debug",
+            "{host}"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "nslookup",
+      "args": [
+        "{host}"
+      ],
+      "presets": [
+        {
+          "key": "type-mx",
+          "label": "-type=MX — mail servers",
+          "args": [
+            "-type=MX",
+            "{host}"
+          ]
+        },
+        {
+          "key": "type-ns",
+          "label": "-type=NS — name servers",
+          "args": [
+            "-type=NS",
+            "{host}"
+          ]
+        },
+        {
+          "key": "type-txt",
+          "label": "-type=TXT — text records",
+          "args": [
+            "-type=TXT",
+            "{host}"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "nslookup-server",
+    "name": "nslookup <domain> <server>",
+    "category": "DNS Lookups",
+    "purpose": "Query a specific DNS server, bypassing your configured resolver",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "nslookup <domain> <server>",
+    "unix": [
+      "dig @<server> <domain>"
+    ],
+    "help": [
+      "nslookup",
+      "/?"
+    ],
+    "helpUnix": [
+      "nslookup",
+      "-help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "nslookup",
+      "args": [
+        "{host}",
+        "{server}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. anthropic.com",
+          "type": "host"
+        },
+        {
+          "key": "server",
+          "placeholder": "e.g. 1.1.1.1",
+          "type": "host"
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "nslookup",
+      "args": [
+        "{host}",
+        "{server}"
+      ]
+    }
+  },
+  {
+    "id": "resolve-dnsname",
+    "name": "Resolve-DnsName",
+    "category": "DNS Lookups",
+    "purpose": "Detailed DNS queries with record types",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Resolve-DnsName <domain>",
+    "unix": [
+      "dig <domain>",
+      "host <domain>"
+    ],
+    "help": {
+      "ps": "Resolve-DnsName"
+    },
+    "helpUnix": [
+      "dig",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "command": "Resolve-DnsName {host} | Format-Table -AutoSize | Out-String -Width 4096",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. anthropic.com",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "type-mx",
+          "label": "-Type MX — mail servers",
+          "display": "Resolve-DnsName <domain> -Type MX",
+          "command": "Resolve-DnsName {host} -Type MX | Format-Table -AutoSize | Out-String -Width 4096"
+        },
+        {
+          "key": "type-ns",
+          "label": "-Type NS — name servers",
+          "display": "Resolve-DnsName <domain> -Type NS",
+          "command": "Resolve-DnsName {host} -Type NS | Format-Table -AutoSize | Out-String -Width 4096"
+        },
+        {
+          "key": "type-txt",
+          "label": "-Type TXT — text records",
+          "display": "Resolve-DnsName <domain> -Type TXT",
+          "command": "Resolve-DnsName {host} -Type TXT | Format-Table -AutoSize | Out-String -Width 4096"
+        },
+        {
+          "key": "dnsonly",
+          "label": "-DnsOnly — skip the local cache",
+          "display": "Resolve-DnsName <domain> -DnsOnly",
+          "command": "Resolve-DnsName {host} -DnsOnly | Format-Table -AutoSize | Out-String -Width 4096"
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "dig",
+      "args": [
+        "{host}"
+      ]
+    }
+  },
+  {
+    "id": "nbtstat",
+    "name": "nbtstat -a",
+    "category": "Windows Networking & Sharing",
+    "purpose": "NetBIOS name info for a remote host",
+    "platforms": [
+      "windows"
+    ],
+    "safe": true,
+    "win": "nbtstat -a <host>",
+    "help": [
+      "nbtstat",
+      "/?"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "nbtstat",
+      "args": [
+        "-a",
+        "{host}"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "computer name or IP",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "n",
+          "label": "-n — this computer's own names",
+          "args": [
+            "-n"
+          ]
+        },
+        {
+          "key": "c",
+          "label": "-c — cached remote names",
+          "args": [
+            "-c"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "net-use",
+    "name": "net use",
+    "category": "Windows Networking & Sharing",
+    "purpose": "List mapped network drives (also maps/unmaps with arguments)",
+    "platforms": [
+      "windows"
+    ],
+    "safe": true,
+    "win": "net use",
+    "help": [
+      "net",
+      "help",
+      "use"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "net",
+      "args": [
+        "use"
+      ]
+    }
+  },
+  {
+    "id": "net-share",
+    "name": "net share",
+    "category": "Windows Networking & Sharing",
+    "purpose": "List shares on this machine (also creates them with arguments)",
+    "platforms": [
+      "windows"
+    ],
+    "safe": true,
+    "win": "net share",
+    "help": [
+      "net",
+      "help",
+      "share"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "net",
+      "args": [
+        "share"
+      ]
+    }
+  },
+  {
+    "id": "net-view",
+    "name": "net view",
+    "category": "Windows Networking & Sharing",
+    "purpose": "List computers and shares visible on the network",
+    "platforms": [
+      "windows"
+    ],
+    "safe": true,
+    "win": "net view",
+    "help": [
+      "net",
+      "help",
+      "view"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "net",
+      "args": [
+        "view"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "computer name or IP",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "host",
+          "label": "\\\\<host> — shares on one computer",
+          "args": [
+            "view",
+            "\\\\{host}"
+          ]
+        },
+        {
+          "key": "all",
+          "label": "/all — include hidden ($) shares",
+          "args": [
+            "view",
+            "\\\\{host}",
+            "/all"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "net-user",
+    "name": "net user · localgroup",
+    "category": "Windows Networking & Sharing",
+    "purpose": "List local accounts and groups (managing them takes arguments)",
+    "platforms": [
+      "windows"
+    ],
+    "safe": true,
+    "win": "net user",
+    "help": [
+      "net",
+      "help",
+      "user"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "net",
+      "args": [
+        "user"
+      ],
+      "presets": [
+        {
+          "key": "localgroup",
+          "label": "localgroup — list groups",
+          "args": [
+            "localgroup"
+          ]
+        },
+        {
+          "key": "localgroup-administrators",
+          "label": "localgroup administrators — who is an admin",
+          "args": [
+            "localgroup",
+            "administrators"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "hostname",
+    "name": "hostname",
+    "category": "Windows Networking & Sharing",
+    "purpose": "Show the computer name (also works on Linux/macOS)",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "hostname",
+    "unix": [
+      "hostname"
+    ],
+    "help": [
+      "hostname",
+      "/?"
+    ],
+    "helpUnix": [
+      "hostname",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "hostname",
+      "args": []
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "hostname",
+      "args": []
+    }
+  },
+  {
+    "id": "lan-scan",
+    "name": "Local network scan",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Find every device on your own network: pings all addresses in your subnet at once, then adds MAC addresses and names",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Scans only the private subnet this PC is on (at most 254 addresses). There is nothing to type, and it refuses to run on a public address.",
+    "win": "Ping sweep of your local subnet (PowerShell)",
+    "unix": [
+      "nmap -sn 192.168.1.0/24",
+      "arp -a"
+    ],
+    "help": {
+      "ps": "Get-NetNeighbor"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "Ping sweep of your local subnet + ARP table",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'; $sw = [Diagnostics.Stopwatch]::StartNew(); $routes = @(Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric, InterfaceMetric); $me = $null; $gw = $null; foreach ($r in $routes) { $a = @(Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.AddressState -eq 'Preferred' }); if ($a.Count) { $me = $a[0]; $gw = $r.NextHop; break } }; if (-not $me) { 'SCAN-ERROR: no active network adapter with an IPv4 address was found.'; exit 1 }; $o = @($me.IPAddress.Split('.') | ForEach-Object { [int]$_ }); $private = ($o[0] -eq 10) -or ($o[0] -eq 192 -and $o[1] -eq 168) -or ($o[0] -eq 172 -and $o[1] -ge 16 -and $o[1] -le 31); if (-not $private) { 'SCAN-ERROR: this adapter has a public address (' + $me.IPAddress + '). NetDeck only scans private local networks.'; exit 1 }; $prefix = [int]$me.PrefixLength; if ($prefix -lt 24) { $prefix = 24 }; $size = [int][math]::Pow(2, 32 - $prefix); $start = [int]([math]::Floor($o[3] / $size) * $size); $first = $start + 1; $last = $start + $size - 2; if ($last -lt $first) { 'SCAN-ERROR: this subnet is too small to scan.'; exit 1 }; $base = [string]$o[0] + '.' + $o[1] + '.' + $o[2] + '.'; $targets = @($first..$last | ForEach-Object { $base + $_ }); $jobs = foreach ($t in $targets) { $p = New-Object System.Net.NetworkInformation.Ping; [pscustomobject]@{ IP = $t; Task = $p.SendPingAsync($t, 1000) } }; try { [void][System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($jobs | ForEach-Object { $_.Task }), 8000) } catch { }; $alive = @{}; foreach ($j in $jobs) { if ($j.Task.Status -eq 'RanToCompletion' -and $j.Task.Result.Status -eq 'Success') { $alive[$j.IP] = $j.Task.Result.RoundtripTime } }; $macs = @{}; Get-NetNeighbor -AddressFamily IPv4 -InterfaceIndex $me.InterfaceIndex | Where-Object { $_.State -ne 'Unreachable' -and $_.State -ne 'Incomplete' -and $_.LinkLayerAddress -and $_.LinkLayerAddress -notmatch '^(FF-FF|00-00-00-00|01-00-5E)' } | ForEach-Object { $macs[$_.IPAddress] = $_.LinkLayerAddress }; $myMac = (Get-NetAdapter -InterfaceIndex $me.InterfaceIndex).MacAddress; $found = @($targets | Where-Object { $alive.ContainsKey($_) -or $macs.ContainsKey($_) }); if (-not ($found -contains $me.IPAddress)) { $found += $me.IPAddress }; $look = foreach ($f in $found) { [pscustomobject]@{ IP = $f; Task = [System.Net.Dns]::GetHostEntryAsync($f) } }; try { [void][System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($look | ForEach-Object { $_.Task }), 4000) } catch { }; $names = @{}; foreach ($l in $look) { if ($l.Task.Status -eq 'RanToCompletion') { $n = $l.Task.Result.HostName; if ($n -and $n -ne $l.IP -and $n -notmatch 'docker\\.internal$') { $names[$l.IP] = $n } } }; $rows = @(foreach ($f in ($found | Sort-Object { [int]($_.Split('.')[3]) })) { $note = ''; if ($f -eq $me.IPAddress) { $note = 'this PC' } elseif ($f -eq $gw) { $note = 'router' }; $mac = [string]$macs[$f]; if ($f -eq $me.IPAddress) { $mac = [string]$myMac }; $ping = 'no reply'; if ($alive.ContainsKey($f)) { $ping = 'replied' }; [pscustomobject]@{ IP = $f; Name = [string]$names[$f]; MAC = $mac; Ping = $ping; Note = $note } }); 'Scanned ' + $base + $first + '-' + $last + ' on ' + $me.InterfaceAlias + ' in ' + [math]::Round($sw.Elapsed.TotalSeconds, 1) + ' s: ' + $rows.Count + ' devices found'; $rows | Format-Table -AutoSize | Out-String -Width 4096"
+    }
+  },
+  {
+    "id": "nmap",
+    "name": "nmap",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Port and host scanning",
+    "platforms": [
+      "cross"
+    ],
+    "safe": false,
+    "note": "Usually not installed, and only for hosts you're authorized to scan.",
+    "win": "nmap <target>",
+    "unix": [
+      "nmap <target>"
+    ],
+    "help": [
+      "nmap",
+      "--help"
+    ],
+    "helpUnix": [
+      "nmap",
+      "--help"
+    ]
+  },
+  {
+    "id": "pktmon",
+    "name": "pktmon / tcpdump",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Packet capture",
+    "platforms": [
+      "cross"
+    ],
+    "safe": false,
+    "note": "Captures traffic and needs admin rights — run it yourself.",
+    "win": "pktmon start --capture",
+    "unix": [
+      "tcpdump -i any"
+    ],
+    "help": [
+      "pktmon",
+      "help"
+    ],
+    "helpUnix": [
+      "tcpdump",
+      "-h"
+    ]
+  },
+  {
+    "id": "curl",
+    "name": "curl / wget",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "HTTP requests and downloads (curl is built into Windows 10/11)",
+    "platforms": [
+      "cross"
+    ],
+    "safe": true,
+    "win": "curl -I <url>",
+    "unix": [
+      "curl -I <url>",
+      "wget <url>"
+    ],
+    "help": [
+      "curl.exe",
+      "--help"
+    ],
+    "helpUnix": [
+      "curl",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "curl.exe",
+      "args": [
+        "-sSI",
+        "--max-time",
+        "15",
+        "{url}"
+      ],
+      "params": [
+        {
+          "key": "url",
+          "placeholder": "e.g. https://example.com",
+          "type": "url"
+        }
+      ],
+      "presets": [
+        {
+          "key": "il",
+          "label": "-IL — follow redirects",
+          "args": [
+            "-sSIL",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
+        },
+        {
+          "key": "v",
+          "label": "-v — verbose (TLS handshake, request, response)",
+          "args": [
+            "-sSv",
+            "--max-time",
+            "15",
+            "-o",
+            "NUL",
+            "{url}"
+          ]
+        },
+        {
+          "key": "timing",
+          "label": "-w timing — DNS / connect / TLS / total seconds",
+          "args": [
+            "-sS",
+            "--max-time",
+            "15",
+            "-o",
+            "NUL",
+            "-w",
+            "dns %{time_namelookup}s  connect %{time_connect}s  tls %{time_appconnect}s  first byte %{time_starttransfer}s  total %{time_total}s  status %{http_code}\\n",
+            "{url}"
+          ],
+          "display": "curl -s -o NUL -w \"<phase timings>\" {url}"
+        },
+        {
+          "key": "ipv6",
+          "label": "-6 — headers over IPv6 only",
+          "args": [
+            "-6",
+            "-sSI",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "curl",
+      "args": [
+        "-sSI",
+        "--max-time",
+        "15",
+        "{url}"
+      ],
+      "presets": [
+        {
+          "key": "il",
+          "label": "-IL — follow redirects",
+          "args": [
+            "-sSIL",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
+        },
+        {
+          "key": "v",
+          "label": "-v — verbose",
+          "args": [
+            "-sSv",
+            "--max-time",
+            "15",
+            "-o",
+            "/dev/null",
+            "{url}"
+          ]
+        },
+        {
+          "key": "timing",
+          "label": "-w timing — DNS / connect / TLS / total seconds",
+          "args": [
+            "-sS",
+            "--max-time",
+            "15",
+            "-o",
+            "/dev/null",
+            "-w",
+            "dns %{time_namelookup}s  connect %{time_connect}s  tls %{time_appconnect}s  first byte %{time_starttransfer}s  total %{time_total}s  status %{http_code}\\n",
+            "{url}"
+          ],
+          "display": "curl -s -o /dev/null -w \"<phase timings>\" {url}"
+        },
+        {
+          "key": "ipv6",
+          "label": "-6 — headers over IPv6 only",
+          "args": [
+            "-6",
+            "-sSI",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "tls-cert",
+    "name": "TLS certificate check",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Show who issued a site's certificate, when it expires, and whether Windows trusts it",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "SslStream to <host>:443 (PowerShell)",
+    "unix": [
+      "openssl s_client -connect <host>:443 -servername <host>"
+    ],
+    "help": {
+      "ps": "New-Object"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "TLS certificate of {host}:443",
+      "command": "$h = '{host}'; $c = New-Object Net.Sockets.TcpClient; $c.Connect($h, 443); $s = New-Object Net.Security.SslStream($c.GetStream(), $false, { $true }); $s.AuthenticateAsClient($h); $x = New-Object Security.Cryptography.X509Certificates.X509Certificate2($s.RemoteCertificate); [pscustomobject]@{ Subject = $x.Subject; Issuer = $x.Issuer; ValidFrom = $x.NotBefore.ToString('yyyy-MM-dd'); ValidTo = $x.NotAfter.ToString('yyyy-MM-dd'); DaysLeft = [int]($x.NotAfter - (Get-Date)).TotalDays; Protocol = $s.SslProtocol; TrustedByWindows = $x.Verify() } | Format-List; $c.Close()",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. example.com",
+          "type": "host"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ssh",
+    "name": "ssh · scp · sftp",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Remote shell and file copy (built into Windows 10/11)",
+    "platforms": [
+      "cross"
+    ],
+    "safe": false,
+    "note": "Interactive session — open a terminal for this one.",
+    "win": "ssh user@host",
+    "unix": [
+      "ssh user@host",
+      "scp file user@host:",
+      "sftp user@host"
+    ],
+    "help": [
+      "ssh"
+    ],
+    "helpUnix": [
+      "ssh"
+    ]
+  },
+  {
+    "id": "whois",
+    "name": "whois",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Domain registration lookup",
+    "platforms": [
+      "cross"
+    ],
+    "safe": false,
+    "note": "Not installed on Windows by default (Sysinternals has one).",
+    "win": "whois <domain>",
+    "unix": [
+      "whois <domain>"
+    ],
+    "help": [
+      "whois",
+      "-?"
+    ],
+    "helpUnix": [
+      "whois",
+      "--help"
+    ]
+  },
+  {
+    "id": "iperf3",
+    "name": "iperf3",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Bandwidth testing between two hosts",
+    "platforms": [
+      "cross"
+    ],
+    "safe": false,
+    "note": "Needs an iperf3 server on the other end — run it yourself.",
+    "win": "iperf3 -c <server>",
+    "unix": [
+      "iperf3 -c <server>"
+    ],
+    "help": [
+      "iperf3",
+      "--help"
+    ],
+    "helpUnix": [
+      "iperf3",
+      "--help"
+    ]
+  },
+  {
+    "id": "tasklist",
+    "name": "tasklist / taskkill",
+    "category": "System & Process Info",
+    "purpose": "List processes (taskkill ends them — copy only)",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "tasklist",
+    "unix": [
+      "ps aux",
+      "kill <pid>"
+    ],
+    "help": [
+      "tasklist",
+      "/?"
+    ],
+    "helpUnix": [
+      "ps",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "tasklist",
+      "args": [],
+      "presets": [
+        {
+          "key": "svc",
+          "label": "/svc — services hosted by each process",
+          "args": [
+            "/svc"
+          ]
+        },
+        {
+          "key": "v",
+          "label": "/v — verbose (user, CPU time, window title)",
+          "args": [
+            "/v"
+          ]
+        },
+        {
+          "key": "hung",
+          "label": "/fi \"STATUS eq NOT RESPONDING\" — hung programs",
+          "args": [
+            "/fi",
+            "STATUS eq NOT RESPONDING"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ps",
+      "args": [
+        "aux"
+      ]
+    }
+  },
+  {
+    "id": "tasklist-csv",
+    "name": "tasklist /fo csv",
+    "category": "System & Process Info",
+    "purpose": "Process list as CSV (used internally to map PIDs to process names)",
+    "platforms": [
+      "windows"
+    ],
+    "hidden": true,
+    "safe": true,
+    "win": "tasklist /fo csv /nh",
+    "run": {
+      "kind": "exe",
+      "exe": "tasklist",
+      "args": [
+        "/fo",
+        "csv",
+        "/nh"
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "ps",
+      "args": [
+        "-eo",
+        "pid,comm"
+      ]
+    }
+  },
+  {
+    "id": "systeminfo",
+    "name": "systeminfo",
+    "category": "System & Process Info",
+    "purpose": "OS, hardware and patch details (takes ~20s)",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "systeminfo",
+    "unix": [
+      "uname -a",
+      "lscpu",
+      "free -h"
+    ],
+    "help": [
+      "systeminfo",
+      "/?"
+    ],
+    "helpUnix": [
+      "uname",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "systeminfo",
+      "args": []
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "uname",
+      "args": [
+        "-a"
+      ],
+      "darwin": {
+        "exe": "sw_vers",
+        "args": []
+      }
+    }
+  },
+  {
+    "id": "os-health",
+    "name": "Uptime & memory",
+    "category": "System & Process Info",
+    "purpose": "Windows version, days since the last reboot, and how much memory is free",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-CimInstance Win32_OperatingSystem",
+    "unix": [
+      "uptime",
+      "free -h"
+    ],
+    "help": {
+      "ps": "Get-CimInstance"
+    },
+    "helpUnix": [
+      "uptime",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Get-CimInstance Win32_OperatingSystem",
+      "command": "$o = Get-CimInstance Win32_OperatingSystem; [pscustomobject]@{ OS = $o.Caption; Version = $o.Version; LastBoot = $o.LastBootUpTime.ToString('yyyy-MM-dd HH:mm'); UptimeDays = [math]::Round(((Get-Date) - $o.LastBootUpTime).TotalDays, 1); MemoryTotalGB = [math]::Round($o.TotalVisibleMemorySize / 1MB, 1); MemoryFreeGB = [math]::Round($o.FreePhysicalMemory / 1MB, 1) } | Format-List"
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "uptime",
+      "args": []
+    }
+  },
+  {
+    "id": "disk-free",
+    "name": "Disk free space",
+    "category": "System & Process Info",
+    "purpose": "Size and free space of each fixed drive",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-CimInstance Win32_LogicalDisk",
+    "unix": [
+      "df -h"
+    ],
+    "help": {
+      "ps": "Get-CimInstance"
+    },
+    "helpUnix": [
+      "df",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Get-CimInstance Win32_LogicalDisk -Filter \"DriveType=3\"",
+      "command": "Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' | Select-Object @{n='Drive';e={$_.DeviceID}}, @{n='Label';e={$_.VolumeName}}, @{n='SizeGB';e={[math]::Round($_.Size / 1GB, 1)}}, @{n='FreeGB';e={[math]::Round($_.FreeSpace / 1GB, 1)}}, @{n='FreePct';e={[int](100 * $_.FreeSpace / $_.Size)}} | Format-Table -AutoSize | Out-String -Width 4096"
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "df",
+      "args": [
+        "-h"
+      ]
+    }
+  },
+  {
+    "id": "get-hotfix",
+    "name": "Get-HotFix",
+    "category": "System & Process Info",
+    "purpose": "Most recently installed Windows updates",
+    "platforms": [
+      "powershell"
+    ],
+    "safe": true,
+    "win": "Get-HotFix | Sort-Object InstalledOn -Descending",
+    "help": {
+      "ps": "Get-HotFix"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 8",
+      "command": "Get-HotFix | Where-Object InstalledOn | Sort-Object InstalledOn -Descending | Select-Object -First 8 HotFixID, Description, @{n='Installed';e={$_.InstalledOn.ToString('yyyy-MM-dd')}}, @{n='DaysAgo';e={[int]((Get-Date) - $_.InstalledOn).TotalDays}} | Format-Table -AutoSize | Out-String -Width 4096"
+    }
+  },
+  {
+    "id": "sfc",
+    "name": "sfc /scannow · chkdsk",
+    "category": "System & Process Info",
+    "purpose": "Check system files and disks",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": false,
+    "note": "Repairs system state and needs admin rights — run it yourself.",
+    "win": "sfc /scannow",
+    "unix": [
+      "fsck"
+    ],
+    "help": [
+      "sfc",
+      "/?"
+    ]
+  },
+  {
+    "id": "whoami",
+    "name": "whoami",
+    "category": "System & Process Info",
+    "purpose": "Current user and privileges",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "whoami /all",
+    "unix": [
+      "whoami",
+      "id"
+    ],
+    "help": [
+      "whoami",
+      "/?"
+    ],
+    "helpUnix": [
+      "id",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "whoami",
+      "args": [
+        "/all"
+      ],
+      "presets": [
+        {
+          "key": "plain",
+          "label": "plain — just the user name",
+          "args": []
+        },
+        {
+          "key": "groups",
+          "label": "/groups — group memberships",
+          "args": [
+            "/groups"
+          ]
+        },
+        {
+          "key": "priv",
+          "label": "/priv — privileges",
+          "args": [
+            "/priv"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "id",
+      "args": []
+    }
+  },
+  {
+    "id": "w32tm",
+    "name": "w32tm",
+    "category": "System & Process Info",
+    "purpose": "Compare this PC's clock with an internet time server",
+    "platforms": [
+      "windows",
+      "unix"
+    ],
+    "safe": true,
+    "win": "w32tm /stripchart /computer:time.windows.com /samples:3 /dataonly",
+    "unix": [
+      "timedatectl status",
+      "sntp time.apple.com"
+    ],
+    "help": [
+      "w32tm",
+      "/?"
+    ],
+    "helpUnix": [
+      "timedatectl",
+      "--help"
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "w32tm",
+      "args": [
+        "/stripchart",
+        "/computer:time.windows.com",
+        "/samples:3",
+        "/dataonly"
+      ],
+      "presets": [
+        {
+          "key": "status",
+          "label": "/query /status — time source and last successful sync",
+          "args": [
+            "/query",
+            "/status"
+          ]
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "timedatectl",
+      "args": [
+        "status"
+      ],
+      "darwin": {
+        "exe": "sntp",
+        "args": [
+          "time.apple.com"
+        ]
+      }
+    }
+  }
+]

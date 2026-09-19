@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build outputs (regenerate with: npm run build:static, npm run build:exe, cargo tauri build)
+/build/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/schemas/
+
+# Local data
+custom-commands.json
+*.log
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

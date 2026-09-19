@@ -1,0 +1,16 @@
+{
+  "name": "netdeck",
+  "version": "1.10.0",
+  "description": "Searchable network & system command reference with live command execution, playbooks and a hosted reference mode",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "open": "node server.js --open",
+    "build:static": "node build-static.js",
+    "preview:static": "node serve-dist.js",
+    "build:exe": "node build-exe.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

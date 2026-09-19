@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "netdeck",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 4573
+    },
+    {
+      "name": "netdeck-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["serve-dist.js"],
+      "port": 4580
+    }
+  ]
+}
