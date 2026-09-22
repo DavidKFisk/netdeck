@@ -1077,7 +1077,7 @@ window.NetDeckPlaybooks = (() => {
     {
       id: 'mtu',
       name: 'MTU check — "some sites hang"',
-      description: "Sends don't-fragment pings of decreasing size to find the largest packet your path carries. Explains sites that half-load, stalled uploads and flaky VPNs.",
+      description: "Sends don't-fragment pings of decreasing size to find the largest packet your path carries (its MTU, Maximum Transmission Unit). Explains sites that half-load, stalled uploads and flaky VPNs.",
       params: [],
       steps: [
         { id: 'base', cmd: 'ping', label: 'Ordinary ping first', params: { host: '1.1.1.1' }, check: 'ping', stopOnFail: true },

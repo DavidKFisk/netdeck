@@ -459,7 +459,7 @@
 <figure class="shot"><img src="manual-img/pb-services.webp" width="1350" height="1223" alt="Result of the “Can I reach that service?” playbook" loading="lazy"><figcaption>github.com: web and SSH are open; Remote Desktop, file sharing and SQL get no response. Six ports in about twenty seconds.</figcaption></figure>
 
 <h3 id="pb-mtu">MTU check — "some sites hang"</h3>
-<p>Every network path has a largest packet size (MTU) — normally 1500 bytes; less over PPPoE, VPNs and tunnels. It sends pings marked "don't fragment" at decreasing sizes and stops at the first that gets through; that size plus 28 bytes of headers is your path MTU. A smaller MTU is fine <em>as long as</em> the "packet too big" messages reach you. When a firewall blocks them, small transfers work and large ones silently stall: pages half-load, uploads hang, VPNs feel flaky. The verdict gives the number to set on the adapter or VPN if you have those symptoms.</p>
+<p>Every network path has a largest packet size, its MTU (Maximum Transmission Unit) — normally 1500 bytes; less over PPPoE, VPNs and tunnels. It sends pings marked "don't fragment" at decreasing sizes and stops at the first that gets through; that size plus 28 bytes of headers is your path MTU. A smaller MTU is fine <em>as long as</em> the "packet too big" messages reach you. When a firewall blocks them, small transfers work and large ones silently stall: pages half-load, uploads hang, VPNs feel flaky. The verdict gives the number to set on the adapter or VPN if you have those symptoms.</p>
 
 <figure class="shot"><img src="manual-img/pb-mtu.webp" width="1350" height="935" alt="Result of the “MTU check — some sites hang” playbook" loading="lazy"><figcaption>Full-size packets pass on the first try, so the smaller sizes are skipped.</figcaption></figure>
 
@@ -1009,6 +1009,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <dl class="gloss">
   <dt>IP address</dt><dd>A device's number on a network, like <code>192.168.7.45</code>. Addresses starting with <code>10.</code>, <code>172.16–31.</code> or <code>192.168.</code> are private (only meaningful inside your network); anything else is a public internet address.</dd>
   <dt>MAC address</dt><dd>The hardware serial number of a network card, like <code>a4-6b-b6-12-34-56</code>. Fixed for life; only used within your local network.</dd>
+  <dt>MTU</dt><dd>Maximum Transmission Unit — the largest packet, in bytes, a connection carries in one piece. 1500 on ordinary Ethernet and Wi-Fi; smaller over VPNs and PPPoE. When a path's MTU is lower than your PC assumes, big packets vanish and some sites load partway then hang.</dd>
   <dt>Gateway / router</dt><dd>The device that forwards traffic between your local network and the internet. Its address is the "Default Gateway" in <code>ipconfig</code>.</dd>
   <dt>DNS</dt><dd>Domain Name System — the service that converts names (<code>github.com</code>) into IP addresses. When DNS is down, "the internet is down" even though the connection is fine.</dd>
   <dt>DHCP</dt><dd>The service (usually on the router) that hands out IP addresses automatically. A "lease" is the address you were given and how long you may keep it.</dd>
