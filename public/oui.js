@@ -1,7 +1,9 @@
-/* NetDeck manufacturer lookup: the first three bytes of a MAC address identify who made the network chip.
-   This is a deliberately small built-in table of common home / office vendors — a full registry is several
-   megabytes — so an unrecognised prefix simply shows nothing. Locally-administered addresses are detected
-   exactly: phones, tablets and laptops use random "private" MAC addresses on Wi-Fi, which belong to no vendor. */
+/* NetDeck manufacturer lookup: the leading bytes of a MAC address identify who made the network chip.
+   Two layers: a small curated table of friendly names (VMs, containers, single-board computers) that is
+   always available, and the full IEEE registry (oui-data.json, ~54,000 prefixes in 24/28/36-bit blocks,
+   built by tools/build-oui.js) fetched in the background at startup. Locally-administered addresses are
+   detected exactly: phones, tablets and laptops use random "private" MAC addresses on Wi-Fi, which belong
+   to no vendor. */
 window.NetDeckOui = (() => {
   const TABLE = {
     // virtual machines and containers
@@ -84,13 +86,21 @@ window.NetDeckOui = (() => {
     return h.length >= 2 && '26AE'.includes(h[1]);
   }
 
+  // The registry: prefix (6, 7 or 9 hex characters) → manufacturer. Empty until oui-data.json has loaded.
+  const REGISTRY = new Map();
+  let registryError = '';
+  const ready = (typeof fetch === 'function' ? fetch('oui-data.json', { cache: 'force-cache' }).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }) : Promise.reject(new Error('no fetch')))
+    .then((data) => { for (const [name, prefixes] of Object.entries(data)) for (const p of prefixes) REGISTRY.set(p, name); return REGISTRY.size; })
+    .catch((e) => { registryError = String(e && e.message || e); return 0; });
+
   function lookup(mac) {
     const h = hex(mac);
     if (h.length < 6) return '';
     if (h.startsWith('0242')) return 'Docker container';
     if (isLocallyAdministered(h)) return 'private address (randomised)';
-    return TABLE[h.slice(0, 6)] || '';
+    // curated names first (they are friendlier: "Microsoft Hyper-V", not "Microsoft"), then the longest registry block that matches
+    return TABLE[h.slice(0, 6)] || REGISTRY.get(h.slice(0, 9)) || REGISTRY.get(h.slice(0, 7)) || REGISTRY.get(h.slice(0, 6)) || '';
   }
 
-  return { lookup, isLocallyAdministered, size: Object.keys(TABLE).length };
+  return { lookup, isLocallyAdministered, ready, get size() { return REGISTRY.size; }, get curated() { return Object.keys(TABLE).length; }, get error() { return registryError; } };
 })();

@@ -28,7 +28,7 @@ Then open http://localhost:4573 (set `PORT` to change).
   - *Are packets being dropped on this PC?* — pktmon counters on every driver layer for 10 s while pinging the router and 1.1.1.1 and downloading 5 MB; names the layer that drops (firewall/VPN filter vs. adapter) or clears this PC. Needs Run as admin.
   - *Is a port open on a host?* — resolve → ping → TCP test
   - *Is DNS healthy?* — your resolver vs. Cloudflare vs. Google
-  - *Scan my network* — the IP scanner: a parallel ping sweep of your own private subnet (≤ 254 addresses, no input, refuses public addresses), enriched from the ARP table so devices that ignore ping still appear; names where available, and a Manufacturer column from the built-in MAC-prefix table in [public/oui.js](public/oui.js), which also detects randomised private MACs
+  - *Scan my network* — the IP scanner: a parallel ping sweep of your own private subnet (≤ 254 addresses, no input, refuses public addresses), enriched from the ARP table so devices that ignore ping still appear; names where available, and a Manufacturer column from the built-in MAC-prefix table in [public/oui.js](public/oui.js), which also detects randomised private MACs Manufacturer names come from the full IEEE registry (~54,000 prefixes; `node tools/build-oui.js` refreshes it).
   - *Who's on my network?* — the passive version: just the ARP cache, with a table of IP and MAC addresses
   - *A website won't load* — your DNS vs public DNS, TCP 443, headers, per-phase timing, and a control site to separate "them" from "you"
   - *Why is everything slow?* — 20-ping latency / jitter / loss to the router and the internet, timed DNS and web request, Wi-Fi link
