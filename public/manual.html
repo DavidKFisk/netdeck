@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 44 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 45 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -856,9 +856,39 @@ IP            Name MAC               Ping     Note
 <article class="cmd" id="cmd-pktmon">
   <h4><code>pktmon</code> / <code>tcpdump</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
   <p>Packet capture — recording the actual network traffic for later analysis (usually in Wireshark). This is the deep end of troubleshooting: you use it when you need to see exactly what two machines said to each other. Both need admin rights.</p>
+  <p>NetDeck can do a short capture for you — see <a href="#cmd-pktmon-capture">Packet capture (timed)</a> just below. The raw commands, for longer or filtered captures:</p>
   <pre>pktmon start --capture          <span class="dim">Windows: start recording</span>
 pktmon stop                     <span class="dim">…and stop; writes PktMon.etl</span>
 tcpdump -i any port 53          <span class="dim">Linux/macOS: show DNS traffic live</span></pre>
+</article>
+
+<article class="cmd" id="cmd-pktmon-capture">
+  <h4><code>Packet capture (timed)</code> <span class="tag">PS</span> <span class="tag run">runnable</span> <span class="tag">admin</span></h4>
+  <p>Records everything this PC sends and receives for 10 seconds (variants: 30 s, 60 s, or 30 s keeping a <code>.pcapng</code> file on your Desktop for Wireshark), then turns the recording into a plain summary: how much data moved, which protocols, which internet hosts and local devices it talked to, and every DNS name it looked up. It uses Windows' built-in <code>pktmon</code>, so there is nothing to install. It needs administrator rights — press <strong>Run as admin</strong> first, or the run just tells you so.</p>
+  <pre>Captured 30 s on Wi-Fi: 4,812 packets, 3.2 MB (received 2.9 MB, sent 312 KB)
+
+By protocol
+Protocol         Packets Share
+--------         ------- -----
+HTTPS (TCP 443)     3901 81%
+QUIC (UDP 443)       602 13%
+DNS (UDP 53)          88  2%
+mDNS (UDP 5353)       41  1%
+
+Top internet hosts (12 shown)
+Address        Name                              Packets Data   Traffic
+-------        ----                              ------- ----   -------
+140.82.112.22  lb-140-82-112-22-iad.github.com      2210 1.9 MB HTTPS (TCP 443)
+142.250.80.46  lga34s34-in-f14.1e100.net             602 610 KB QUIC (UDP 443)
+
+DNS lookups (14 names)
+Name                 Queries
+----                 -------
+github.com                 4
+api.github.com             2</pre>
+  <p><strong>How to read it:</strong> <em>Top internet hosts</em> is the "what is my PC talking to?" list — the Name column resolves the address where it can, and the Traffic column says over which protocol. A host you don't recognise moving a lot of data is worth looking up. <em>DNS lookups</em> shows what your programs asked for by name, which is often clearer than the addresses. <em>Local network peers</em> is traffic that stayed inside your own network.</p>
+  <p><strong>What it doesn't do:</strong> it keeps only the first 256 bytes of each packet — enough for the addresses and protocol, not the content — and the recording is deleted after the summary unless you chose the keep variant. It can't see other devices' traffic, only this PC's. If you press <strong>Stop</strong> during a capture, the recording keeps running in the background until the next capture cleans it up (it is capped at 200 MB).</p>
+  <p><strong>Linux / macOS:</strong> <code>sudo tcpdump -i any -c 2000 -w capture.pcap</code>, then open the file in Wireshark.</p>
 </article>
 
 <article class="cmd" id="cmd-curl">
