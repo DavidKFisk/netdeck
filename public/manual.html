@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 47 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 48 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -343,7 +343,7 @@
 <!-- ============================================================ -->
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
-<p>There are twenty-two, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
+<p>There are twenty-three, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
 <figure class="shot"><img src="manual-img/playbooks-overview.webp" width="1350" height="1500" alt="The Playbooks view, grouped, with the group chips and search box" loading="lazy"><figcaption>The Playbooks view: group chips under the view switch, a count, then each group with its playbooks. A “?” after a step number marks a step that only runs when an earlier result calls for it.</figcaption></figure>
 
 <p class="shots-note">The screenshots in this chapter are real runs. The computer name, public IP addresses and the second half of MAC addresses have been replaced with placeholders.</p>
@@ -426,6 +426,9 @@
 <div class="callout warn"><span class="lbl">Windows 11 and Wi-Fi details</span><p>Windows now hides Wi-Fi signal information from programs unless Location services are on (<em>Settings → Privacy &amp; security → Location</em>) or the program runs as administrator. When that happens the Wi-Fi step says so and the rest of the playbook still works.</p></div>
 
 <figure class="shot"><img src="manual-img/pb-slow.webp" width="1350" height="827" alt="Result of the “Why is everything slow?” playbook" loading="lazy"><figcaption>Twenty pings each to the router and to the internet, a timed lookup and a timed request. The verdict quotes average, worst case and jitter for both legs.</figcaption></figure>
+
+<h3 id="pb-dropouts">Does my connection drop out?</h3>
+<p>The three-minute version of the <a href="#cmd-stability-monitor">stability monitor</a>, with a verdict: one ping a second to your router and to the internet, a line every ten seconds, runs of loss called out as they happen. Start it when the problem tends to happen and keep working; it needs no input and no admin rights. The verdict says whether dropouts are on the <em>local link</em> (router pings lost — Wi-Fi, cable, adapter, router), <em>beyond the router</em> (only internet pings lost — the ISP), or whether there is no loss but the delay wobbles (jitter, which calls and games feel). If three minutes is not enough to catch it, run the monitor command's 10-minute variant instead.</p>
 
 <h3 id="pb-drops">Are packets being dropped on this PC?</h3>
 <p>The playbook behind the <a href="#cmd-pktmon-counters">packet counters</a>: for ten seconds it counts packets on every layer of this PC's network stack — the adapter, and the firewall, VPN and other filter drivers stacked on it — while it pings your router and the internet once a second and downloads a 5 MB test file from Cloudflare. Everything is measured in the same ten seconds, so the verdict can line the two up. It needs administrator rights (press <strong>Run as admin</strong> first; otherwise it just tells you so).</p>
@@ -670,6 +673,26 @@ Upload (up to 8 s)
   <p><strong>What it doesn't tell you:</strong> a single run is a snapshot — run it again at a busy hour, and over Ethernet if you can, before blaming the ISP. Cloudflare sees your public address, as any website does; nothing else about you is sent.</p>
   <p><strong>Linux / macOS:</strong> <code>curl -o /dev/null -w '%{speed_download}
 ' 'https://speed.cloudflare.com/__down?bytes=100000000'</code> prints bytes per second.</p>
+</article>
+
+<article class="cmd" id="cmd-stability-monitor">
+  <h4><code>Connection stability monitor</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>For "it drops every few minutes" — a problem no ten-second test will catch. It pings your router and the internet (<code>1.1.1.1</code>) once a second for 1, 3, 5 or 10 minutes, prints a line every ten seconds with a small bar chart of the delay (a <code>×</code> marks a lost ping), calls out runs of consecutive loss as they happen, and ends with a table and a plain verdict. Start it, leave it in its tab, and carry on working; the point is to have it running when the dropout happens.</p>
+  <pre>  0:10  router      1 ms  max    2  ▁▁▁▁▁▁▁▁▁▁   |   internet   18 ms  max   24  ▁▁▂▂▁▁▁▁▁▁
+  0:20  router      2 ms  max    3  ▁▁▁▂▁▁▁▁▁▁   |   internet   19 ms  max   31  ▁▂▁▁▁▂▁▁▁▁
+  0:30  router      1 ms  max  212  ▁▁▁<span class="hl">×××</span>█▁▁▁  3 lost   |   internet   20 ms  max  240  ▁▁▁<span class="hl">×××</span>█▁▁▁  3 lost
+  <span class="hl">⚠ 0:24  router: 3 pings lost in a row</span>
+  ⚠ 0:24  internet: 3 pings lost in a row
+
+Summary over 3 min
+Target               Sent Lost Loss % Avg ms Max ms Jitter ms Bursts Longest burst
+------               ---- ---- ------ ------ ------ --------- ------ -------------
+router (192.168.7.1)  180    3    1.7      1    212         2      1             3
+internet (1.1.1.1)    180    3    1.7     19    240         3      1             3
+
+<span class="hl">Dropouts on the local link: the router itself failed to answer 3 of 180 pings (1.7%, 1 run of loss, longest 3 s).</span> That is between this PC and the router…</pre>
+  <p><strong>How to read it:</strong> the two targets split the problem in half. If the <em>router</em> loses pings, the fault is on your side of it — Wi-Fi signal or interference, a cable, the adapter's power saving, a router that reboots — and the internet loses the same pings at the same moments because they never got out. If only the <em>internet</em> loses pings while the router answers every one, the local link is fine and the loss is on the ISP's side or further; that table is the evidence to show them. Jitter is how much the delay wobbles: under ~10 ms to the router and ~30 ms to the internet is fine; more than that makes calls and games stutter even when pages load. A stray lost ping or two over several minutes is normal; runs of loss (the ⚠ lines) are not.</p>
+  <p><strong>Linux / macOS:</strong> <code>ping -i 1 1.1.1.1</code> and read the summary when you stop it; <code>mtr --report --report-cycles 60 1.1.1.1</code> does the per-hop version.</p>
 </article>
 
 <article class="cmd" id="cmd-route-print">

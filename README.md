@@ -21,8 +21,10 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **Packet capture (timed)** — 10/30/60 s `pktmon` recording of this PC's own traffic, summarised into protocols, top internet hosts, LAN peers and DNS names looked up; a variant keeps a `.pcapng` on the Desktop for Wireshark. Needs Run as admin.
 - **Packet counters (live)** — packets in/out/dropped per second on every adapter for 10/30/60 s, then a per-layer table (adapter, firewall, VPN and other filter drivers) with drop reasons, to locate where packets die. Needs Run as admin.
 - **Speed test** — download/upload against Cloudflare's public test server with a line per second, idle latency, and latency under load with a bufferbloat grade. No account, nothing to install.
-- **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-two of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
+- **Connection stability monitor** — a ping a second to the router and 1.1.1.1 for 1/3/5/10 minutes, a line every 10 s with a delay bar chart, loss runs called out, and a verdict on whether dropouts are local or beyond the router.
+- **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-three of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
+  - *Does my connection drop out?* — the 3-minute stability monitor with a verdict: local link vs. beyond the router vs. jitter.
   - *Are packets being dropped on this PC?* — pktmon counters on every driver layer for 10 s while pinging the router and 1.1.1.1 and downloading 5 MB; names the layer that drops (firewall/VPN filter vs. adapter) or clears this PC. Needs Run as admin.
   - *Is a port open on a host?* — resolve → ping → TCP test
   - *Is DNS healthy?* — your resolver vs. Cloudflare vs. Google

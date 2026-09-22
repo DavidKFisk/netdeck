@@ -1012,6 +1012,18 @@ window.NetDeckPlaybooks = (() => {
       const status = (d.drops || lossGw > 0 || lossInet > 0 || !d.dlOk) ? 'warn' : 'pass';
       return { status, summary: bits.join(' — '), data: { ...d, lossGw, lossInet } };
     },
+    stability(out) {
+      const m = out.match(/^SUMMARY (\{.*\})\s*$/m);
+      if (!m) return { status: 'fail', summary: 'The monitor did not finish (no summary line)' };
+      let d; try { d = JSON.parse(m[1]); } catch (e) { return { status: 'fail', summary: 'The summary line could not be read' }; }
+      const r = d.router, n = d.internet;
+      const bad = (x) => x && (x.bursts >= 1 || (x.lost >= 3 && x.pct >= 1));
+      const bits = [];
+      if (r) bits.push(`router ${r.sent - r.lost}/${r.sent} answered, ${r.avg} ms, jitter ${r.jitter} ms${r.bursts ? `, ${r.bursts} loss run${r.bursts === 1 ? '' : 's'}` : ''}`);
+      bits.push(`internet ${n.sent - n.lost}/${n.sent} answered, ${n.avg} ms, jitter ${n.jitter} ms${n.bursts ? `, ${n.bursts} loss run${n.bursts === 1 ? '' : 's'}` : ''}`);
+      const status = bad(r) ? 'fail' : bad(n) ? 'warn' : ((r && r.jitter >= 10) || n.jitter >= 30) ? 'warn' : 'pass';
+      return { status, summary: bits.join(' — '), data: { ...d, badRouter: bad(r), badInternet: bad(n) } };
+    },
     lanScan(out) {
       const err = out.match(/SCAN-ERROR:\s*([^\r\n]+)/);
       if (err) return { status: 'fail', summary: err[1] };
@@ -1315,9 +1327,29 @@ window.NetDeckPlaybooks = (() => {
     },
   });
 
+  PLAYBOOKS.push({
+    id: 'dropouts',
+    name: 'Does my connection drop out?',
+    description: 'For three minutes it pings your router and the internet once a second, printing a line every ten seconds with a small bar chart of the delay and any lost pings, and calls out runs of loss as they happen. Then it says whether the dropouts are on the local link (Wi-Fi, cable, router) or beyond it. Start it when the problem tends to happen, and carry on working.',
+    params: [],
+    steps: [
+      { id: 'mon', cmd: 'stability-monitor', preset: 'min-3', label: 'Ping the router and the internet every second for 3 minutes', check: 'stability', warnMs: 200000, what: 'one ping a second to the router and to 1.1.1.1, summarised every 10 s' },
+    ],
+    verdict(r, p, ctx, R) {
+      const h = R.mon;
+      if (failed(h) && !h?.data) return { tone: 'fail', text: h?.summary || 'The monitor did not run.' };
+      const d = h.data; const rt = d.router, n = d.internet;
+      const mins = Math.round(d.secs / 60);
+      if (d.badRouter) return { tone: 'fail', text: `Dropouts on the local link. Over ${mins} minutes the router itself failed to answer ${rt.lost} of ${rt.sent} pings (${rt.pct}%${rt.bursts ? `, ${rt.bursts} run${rt.bursts === 1 ? '' : 's'} of consecutive loss, the longest ${rt.longest} s` : ''}). Packets are being lost between this PC and the router, before the internet is involved: Wi-Fi signal or interference, a flaky cable, the adapter's power saving, or the router rebooting. On Wi-Fi, try the same run next to the router or over a cable to split the two.`, actions: [{ label: 'Check the Wi-Fi link', playbook: 'wifi' }, { label: 'Look for packet drops inside this PC', playbook: 'drops' }] };
+      if (d.badInternet) return { tone: 'warn', text: `Loss beyond the router. The router answered every ping (${rt ? `${rt.avg} ms, jitter ${rt.jitter} ms` : 'steady'}) but the internet lost ${n.lost} of ${n.sent} (${n.pct}%${n.bursts ? `, longest run ${n.longest} s` : ''}) over ${mins} minutes. The local link is fine; the loss is on the ISP side or further. That is the evidence to show the ISP — run "Where does the path break?" during a bad spell to see which hop.`, actions: [{ label: 'Find where the path breaks', playbook: 'path' }] };
+      if ((rt && rt.jitter >= 10) || n.jitter >= 30) return { tone: 'warn', text: `No dropouts in ${mins} minutes, but the delay wobbles: jitter ${rt ? `${rt.jitter} ms to the router, ` : ''}${n.jitter} ms to the internet (average ${n.avg} ms, worst ${n.max} ms). Pages load fine with that; calls and games do not.${rt && rt.jitter >= 10 ? ' It starts on the local link, which almost always means Wi-Fi — interference or a weak signal.' : ' The router leg is steady, so the wobble is beyond it.'}`, actions: rt && rt.jitter >= 10 ? [{ label: 'Check the Wi-Fi link', playbook: 'wifi' }] : [] };
+      return { tone: 'pass', text: `Stable for ${mins} minutes: ${rt ? `router ${rt.sent - rt.lost}/${rt.sent} answered at ${rt.avg} ms, ` : ''}internet ${n.sent - n.lost}/${n.sent} at ${n.avg} ms, jitter ${n.jitter} ms, no runs of loss. If the connection still drops, it did not happen in this window — run the 10-minute variant of the monitor command when it is misbehaving, and leave it in its tab.` };
+    },
+  });
+
   /* ================= groups (order here is the order on the page) ================= */
   const GROUPS = [
-    ['Connectivity', ['internet', 'website', 'slow', 'drops', 'path', 'port', 'services', 'mtu', 'wifi']],
+    ['Connectivity', ['internet', 'website', 'slow', 'dropouts', 'drops', 'path', 'port', 'services', 'mtu', 'wifi']],
     ['DNS & email', ['dns', 'propagation', 'email']],
     ['Security & exposure', ['exposure', 'outbound', 'proxy']],
     ['This PC & local network', ['scan', 'lan', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],

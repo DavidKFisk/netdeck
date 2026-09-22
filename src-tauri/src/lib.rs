@@ -297,9 +297,10 @@ struct RunResult {
     exit_code: Option<i32>,
 }
 
-fn build_invocation(cmd: &Value, payload: &RunPayload, state: &AppState) -> Result<(String, Vec<String>), String> {
+fn build_invocation(cmd: &Value, payload: &RunPayload, state: &AppState) -> Result<(String, Vec<String>, Duration), String> {
     if payload.help {
-        return help_spec_for(cmd).ok_or_else(|| "No built-in help is available for this command on this system.".to_string());
+        let (exe, args) = help_spec_for(cmd).ok_or_else(|| "No built-in help is available for this command on this system.".to_string())?;
+        return Ok((exe, args, RUN_TIMEOUT));
     }
     let base = run_spec_for(cmd).ok_or_else(|| {
         if cfg!(windows) {
@@ -332,11 +333,20 @@ fn build_invocation(cmd: &Value, payload: &RunPayload, state: &AppState) -> Resu
         if let Some(c) = preset.get("command") {
             spec["command"] = c.clone();
         }
+        if let Some(t) = preset.get("timeoutSec") {
+            spec["timeoutSec"] = t.clone();
+        }
     }
+    // long-running commands (the stability monitor) declare their own limit; never more than 15 minutes
+    let timeout = match spec["timeoutSec"].as_f64() {
+        Some(s) if s > 0.0 => Duration::from_secs_f64(s.min(900.0)),
+        _ => RUN_TIMEOUT,
+    };
     let specs = base["params"].as_array().cloned().unwrap_or_default();
     if spec["kind"] == "ps" {
         let script = fill_params(spec["command"].as_str().unwrap_or(""), &payload.params, &specs)?;
-        return Ok(ps_invocation(&script));
+        let (exe, args) = ps_invocation(&script);
+        return Ok((exe, args, timeout));
     }
     let exe = spec["exe"].as_str().unwrap_or("").to_string();
     let args = spec["args"]
@@ -346,7 +356,7 @@ fn build_invocation(cmd: &Value, payload: &RunPayload, state: &AppState) -> Resu
         .iter()
         .map(|a| fill_params(a.as_str().unwrap_or(""), &payload.params, &specs))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok((exe, args))
+    Ok((exe, args, timeout))
 }
 
 fn pump<R: Read>(mut reader: R, channel: Channel<RunEvent>) {
@@ -366,7 +376,7 @@ async fn run_command(state: State<'_, Arc<AppState>>, payload: RunPayload, on_ev
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let cmd = st.find(&payload.id).ok_or_else(|| "Unknown command.".to_string())?;
-        let (exe, args) = build_invocation(&cmd, &payload, &st)?;
+        let (exe, args, timeout) = build_invocation(&cmd, &payload, &st)?;
         let mut child = command(&exe, &args)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -391,10 +401,10 @@ async fn run_command(state: State<'_, Arc<AppState>>, payload: RunPayload, on_ev
         let watchdog_state = st.clone();
         let run_id = payload.run_id;
         thread::spawn(move || {
-            thread::sleep(RUN_TIMEOUT);
+            thread::sleep(timeout);
             if watchdog_state.runs.lock().unwrap().contains_key(&run_id) {
                 kill_pid(pid);
-                let _ = c3.send(RunEvent::Chunk { data: "\n[timed out after 3 minutes]\n".into() });
+                let _ = c3.send(RunEvent::Chunk { data: format!("\n[timed out after {} minutes]\n", (timeout.as_secs() + 30) / 60) });
             }
         });
 

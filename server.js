@@ -312,14 +312,16 @@ function buildInvocation(cmd, payload) {
       if (p.admin && !contextCache?.admin) {
         throw Object.assign(new Error('This variant needs administrator rights — see the "How to run as admin" button next to the STANDARD USER badge.'), { status: 403 });
       }
-      spec = { ...base, args: p.args ?? base.args, command: p.command ?? base.command };
+      spec = { ...base, args: p.args ?? base.args, command: p.command ?? base.command, timeoutSec: p.timeoutSec ?? base.timeoutSec };
     }
   }
   const paramSpecs = (runSpecFor(cmd) || {}).params || [];
+  // long-running commands (the stability monitor) declare their own limit; never more than 15 minutes
+  const timeoutMs = Math.min(Math.max(Number(spec.timeoutSec) || 0, 0), 900) * 1000 || RUN_TIMEOUT_MS;
   if (spec.kind === 'ps') {
-    return { exe: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', fillParams(spec.command, payload.params, paramSpecs)] };
+    return { exe: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', fillParams(spec.command, payload.params, paramSpecs)], timeoutMs };
   }
-  return { exe: spec.exe, args: (spec.args || []).map((a) => fillParams(a, payload.params, paramSpecs)) };
+  return { exe: spec.exe, args: (spec.args || []).map((a) => fillParams(a, payload.params, paramSpecs)), timeoutMs };
 }
 
 function readBody(req, limit = 16384) {
@@ -348,9 +350,9 @@ async function handleRun(req, res) {
     return;
   }
 
-  let exe, cmdArgs;
+  let exe, cmdArgs, timeoutMs;
   try {
-    ({ exe, args: cmdArgs } = buildInvocation(cmd, payload));
+    ({ exe, args: cmdArgs, timeoutMs } = buildInvocation(cmd, payload));
   } catch (e) {
     res.writeHead(e.status || 400).end(e.message);
     return;
@@ -365,8 +367,8 @@ async function handleRun(req, res) {
   const child = spawn(exe, cmdArgs, { windowsHide: true, shell: false });
   const timer = setTimeout(() => {
     child.kill();
-    res.write('\n[timed out after 3 minutes]\n');
-  }, RUN_TIMEOUT_MS);
+    res.write(`\n[timed out after ${Math.round(timeoutMs / 60000)} minutes]\n`);
+  }, timeoutMs);
 
   child.stdout.on('data', (d) => res.write(d));
   child.stderr.on('data', (d) => res.write(d));
