@@ -993,6 +993,25 @@ window.NetDeckPlaybooks = (() => {
     },
 
     /* Local network scan: count what was found and sort it into recognisable groups. */
+    dropHunt(out) {
+      const err = out.match(/HUNT-ERROR:\s*([^\r\n]+)/);
+      if (err) {
+        if (/administrator rights/.test(err[1])) return { status: 'info', summary: 'Counting dropped packets needs administrator rights — press "Run as admin" at the top of the window, then run this again', data: { needsAdmin: true } };
+        return { status: 'fail', summary: err[1] };
+      }
+      const m = out.match(/^SUMMARY (\{.*\})\s*$/m);
+      if (!m) return { status: 'fail', summary: 'The run did not finish (no summary line)' };
+      let d; try { d = JSON.parse(m[1]); } catch (e) { return { status: 'fail', summary: 'The summary line could not be read' }; }
+      const lossGw = d.gwSent ? d.gwLost / d.gwSent : 0;
+      const lossInet = d.inetSent ? d.inetLost / d.inetSent : 0;
+      const bits = [];
+      bits.push(d.drops ? `${d.drops} packet${d.drops === 1 ? '' : 's'} dropped, most by "${d.dropLayer}"` : 'no drops on any layer');
+      if (d.gwSent) bits.push(`router ${d.gwSent - d.gwLost}/${d.gwSent}${d.gwAvg ? ` (${d.gwAvg} ms)` : ''}`);
+      bits.push(`internet ${d.inetSent - d.inetLost}/${d.inetSent}${d.inetAvg ? ` (${d.inetAvg} ms)` : ''}`);
+      bits.push(d.dlOk ? `download ${(d.dlBytes / 1048576).toFixed(1)} MB in ${d.dlSecs} s` : 'download did not finish');
+      const status = (d.drops || lossGw > 0 || lossInet > 0 || !d.dlOk) ? 'warn' : 'pass';
+      return { status, summary: bits.join(' — '), data: { ...d, lossGw, lossInet } };
+    },
     lanScan(out) {
       const err = out.match(/SCAN-ERROR:\s*([^\r\n]+)/);
       if (err) return { status: 'fail', summary: err[1] };
@@ -1266,9 +1285,39 @@ window.NetDeckPlaybooks = (() => {
     },
   });
 
+  PLAYBOOKS.push({
+    id: 'drops',
+    name: 'Are packets being dropped on this PC?',
+    description: 'For ten seconds it counts packets on every layer of this PC\'s network stack — the adapter and the firewall, VPN and other filter drivers stacked on it — while pinging your router and the internet once a second and downloading a 5 MB test file. Says whether packets are lost on this PC (and by which layer) or somewhere beyond it. Needs administrator rights.',
+    params: [],
+    steps: [
+      { id: 'hunt', cmd: 'drop-hunt', label: 'Count packets on every layer while pinging and downloading', check: 'dropHunt', warnMs: 20000, what: 'pktmon counters, ping to the router and 1.1.1.1, 5 MB download from speed.cloudflare.com' },
+    ],
+    verdict(r, p, ctx, R) {
+      const h = R.hunt;
+      if (h?.data?.needsAdmin) return { tone: 'info', text: 'This playbook counts packets inside Windows\' network drivers, which needs administrator rights. Press "Run as admin" next to the STANDARD USER badge, accept the prompt, and run it again.' };
+      if (failed(h)) return { tone: 'fail', text: h.summary };
+      const d = h.data;
+      const where = d.dropType && /NIC|Adapter|Miniport/i.test(d.dropType) ? 'adapter' : 'filter';
+      const dropText = d.drops
+        ? (where === 'adapter'
+          ? `${d.drops} packets were dropped by the network adapter itself ("${d.dropLayer}"${d.dropReason ? `, reason ${d.dropReason}` : ''}). That points at the link: Wi-Fi signal, a cable, or the adapter driver.`
+          : `${d.drops} packets were discarded in software by "${d.dropLayer}"${d.dropReason ? ` (reason ${d.dropReason})` : ''}. WFP is the Windows Filtering Platform — the firewall or a security product; a VPN's own filter shows under its name. Something on this PC decided to throw those packets away.`)
+        : '';
+      const lossText = d.gwSent && d.gwLost ? `The router answered only ${d.gwSent - d.gwLost} of ${d.gwSent} pings` : d.inetLost ? `The router answered every ping but the internet lost ${d.inetLost} of ${d.inetSent}` : '';
+      const dl = d.dlOk ? `The 5 MB download finished in ${d.dlSecs} s (${(d.dlBytes * 8 / 1048576 / Math.max(d.dlSecs, 0.1)).toFixed(1)} Mbit/s).` : 'The 5 MB download did not finish in the time allowed.';
+      if (!d.drops && !d.gwLost && !d.inetLost && d.dlOk) return { tone: 'pass', text: `Nothing was dropped anywhere in this PC's stack (${d.layers} layers watched), every ping was answered (router ${d.gwAvg} ms, internet ${d.inetAvg} ms) and the download ran clean. ${dl} If something still feels wrong, it is not packet loss on this PC — try "Why is it slow?" or "Where does the path break?".` };
+      if (d.drops && d.gwLost === 0 && d.inetLost === 0) return { tone: 'warn', text: `${dropText} Even so, every ping was answered and ${dl.charAt(0).toLowerCase() + dl.slice(1)} Those drops may be traffic a firewall is meant to block (unsolicited inbound, discovery chatter) rather than your own connections — a small count is normal; a large count during a stalled transfer is not.` };
+      if (d.drops) return { tone: 'fail', text: `${dropText} ${lossText}. ${dl} The loss and the drops line up: fix the layer named above first.`, actions: where === 'adapter' ? [{ label: 'Check the Wi-Fi link', playbook: 'wifi' }] : [] };
+      if (d.gwLost) return { tone: 'fail', text: `${lossText} while nothing was dropped inside this PC — the packets left cleanly and the router did not answer. That is the link between you and the router: Wi-Fi signal, a cable, or the router itself. ${dl}`, actions: [{ label: 'Check the Wi-Fi link', playbook: 'wifi' }, { label: 'Check the router and LAN', playbook: 'lan' }] };
+      if (d.inetLost) return { tone: 'warn', text: `${lossText}, and nothing was dropped on this PC. The loss is beyond your router — the ISP link or further. ${dl}`, actions: [{ label: 'Find where the path breaks', playbook: 'path' }, { label: 'Check the internet connection', playbook: 'internet' }] };
+      return { tone: 'warn', text: `No drops and no ping loss, but ${dl.charAt(0).toLowerCase() + dl.slice(1)} That is a speed problem rather than packet loss.`, actions: [{ label: 'Why is it slow?', playbook: 'slow' }] };
+    },
+  });
+
   /* ================= groups (order here is the order on the page) ================= */
   const GROUPS = [
-    ['Connectivity', ['internet', 'website', 'slow', 'path', 'port', 'services', 'mtu', 'wifi']],
+    ['Connectivity', ['internet', 'website', 'slow', 'drops', 'path', 'port', 'services', 'mtu', 'wifi']],
     ['DNS & email', ['dns', 'propagation', 'email']],
     ['Security & exposure', ['exposure', 'outbound', 'proxy']],
     ['This PC & local network', ['scan', 'lan', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],

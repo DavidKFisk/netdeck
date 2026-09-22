@@ -343,7 +343,7 @@
 <!-- ============================================================ -->
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
-<p>There are twenty-one, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
+<p>There are twenty-two, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
 <figure class="shot"><img src="manual-img/playbooks-overview.webp" width="1350" height="1500" alt="The Playbooks view, grouped, with the group chips and search box" loading="lazy"><figcaption>The Playbooks view: group chips under the view switch, a count, then each group with its playbooks. A “?” after a step number marks a step that only runs when an earlier result calls for it.</figcaption></figure>
 
 <p class="shots-note">The screenshots in this chapter are real runs. The computer name, public IP addresses and the second half of MAC addresses have been replaced with placeholders.</p>
@@ -426,6 +426,23 @@
 <div class="callout warn"><span class="lbl">Windows 11 and Wi-Fi details</span><p>Windows now hides Wi-Fi signal information from programs unless Location services are on (<em>Settings → Privacy &amp; security → Location</em>) or the program runs as administrator. When that happens the Wi-Fi step says so and the rest of the playbook still works.</p></div>
 
 <figure class="shot"><img src="manual-img/pb-slow.webp" width="1350" height="827" alt="Result of the “Why is everything slow?” playbook" loading="lazy"><figcaption>Twenty pings each to the router and to the internet, a timed lookup and a timed request. The verdict quotes average, worst case and jitter for both legs.</figcaption></figure>
+
+<h3 id="pb-drops">Are packets being dropped on this PC?</h3>
+<p>The playbook behind the <a href="#cmd-pktmon-counters">packet counters</a>: for ten seconds it counts packets on every layer of this PC's network stack — the adapter, and the firewall, VPN and other filter drivers stacked on it — while it pings your router and the internet once a second and downloads a 5 MB test file from Cloudflare. Everything is measured in the same ten seconds, so the verdict can line the two up. It needs administrator rights (press <strong>Run as admin</strong> first; otherwise it just tells you so).</p>
+<p><strong>How to read the verdict:</strong></p>
+<ul>
+  <li><em>Nothing dropped, every ping answered, download clean</em> — there is no packet loss on this PC. If something still feels wrong, it's speed or something further away: try <a href="#pb-slow">Why is everything slow?</a> or <a href="#pb-path">Where does the path break?</a>.</li>
+  <li><em>Drops on a Filter layer</em> — software on this PC threw packets away. "WFP" is the Windows Filtering Platform, i.e. the firewall or a security product; a VPN's own driver shows under its name. A handful is normal (unsolicited inbound traffic and discovery chatter that the firewall is meant to block); hundreds during a stalled transfer are not.</li>
+  <li><em>Drops on the NIC row</em> — the adapter or the link itself: Wi-Fi signal, a cable, a driver.</li>
+  <li><em>Router pings lost, nothing dropped here</em> — packets left this PC cleanly and the router didn't answer: the problem is the link to the router.</li>
+  <li><em>Only internet pings lost</em> — the loss is beyond your router.</li>
+</ul>
+<pre>  1 s  Wi-Fi: in 1290  out 301     ping: router 2 ms, internet 21 ms
+  2 s  Wi-Fi: in 1180  out 288  <span class="hl">DROPS 3</span>     ping: router 1 ms, internet 22 ms
+…
+Ping: router 10/10 answered, avg 1 ms - internet 10/10 answered, avg 21 ms
+Download: 5.0 MB in 3.1 s (12.9 Mbit/s)
+Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP_DROP</pre>
 
 <h3 id="pb-path">Where does the path break?</h3>
 <p>Runs a route trace (up to 20 hops) and reads it for you. It reports whether the destination was actually reached — <code>tracert</code> prints "Trace complete" even when the last hops never answered — where replies stop, and where latency <em>steps up and stays up</em> (one router replying slowly is normal and ignored). Each hop is labelled as your network, your provider's access network, or the internet, so "hop 2" becomes "the link to your provider". Press <strong>table</strong> for the hop list. Some hosts never answer traces; if the site works in a browser, a trace that goes quiet near the end means only that.</p>
