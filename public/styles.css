@@ -181,6 +181,8 @@ body.terminal-open.terminal-tall { padding-bottom: calc(78vh + 60px); }
 }
 
 .theme-btn + .manual-link { margin-left: 0; }
+.theme-btn + .site-btn { margin-left: -14px; }
+.site-btn { text-decoration: none; }
 
 .palette-btn {
   display: inline-flex;

@@ -36,6 +36,12 @@ const PLATFORM: &str = if cfg!(windows) {
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+/// NUL-terminated UTF-16, as the Win32 W-functions expect.
+#[cfg(windows)]
+fn wide(s: &str) -> Vec<u16> {
+    s.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
 struct AppState {
     builtin: Vec<Value>,
     custom: Mutex<Vec<Value>>,
@@ -706,27 +712,43 @@ async fn open_doc(app: AppHandle, page: String, anchor: Option<String>) -> Resul
     Ok(())
 }
 
+/// Open the author's website in the user's default browser. The address is fixed here, so the page
+/// cannot use this command to open anything else.
+#[tauri::command]
+fn open_site() -> Result<(), String> {
+    const SITE: &str = "https://davidkfisk.com";
+    let (exe, args): (&str, Vec<String>) = if cfg!(windows) {
+        ("rundll32.exe", vec!["url.dll,FileProtocolHandler".into(), SITE.into()])
+    } else if cfg!(target_os = "macos") {
+        ("open", vec![SITE.into()])
+    } else {
+        ("xdg-open", vec![SITE.into()])
+    };
+    command(exe, &args).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 /// Restart NetDeck elevated. Windows shows its own UAC prompt; nothing is elevated without the user's consent.
-/// This instance has to exit first (single-instance lock), so a helper waits, then asks Windows for an
-/// elevated copy — and if the prompt is declined, starts a normal copy so the app does not just vanish.
+/// The single-instance lock is released first so the elevated copy can take it; if the prompt is declined,
+/// a normal copy is started instead so the app does not just vanish. Asks Windows directly (ShellExecute,
+/// the documented way) rather than through a helper process.
 #[tauri::command]
 fn restart_elevated(app: AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     {
+        #[link(name = "shell32")]
+        extern "system" {
+            fn ShellExecuteW(hwnd: isize, verb: *const u16, file: *const u16, params: *const u16, dir: *const u16, show: i32) -> isize;
+        }
+        const SW_SHOWNORMAL: i32 = 1;
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-        let exe = exe.to_string_lossy().replace('\'', "''");
-        let script = format!(
-            "Start-Sleep -Milliseconds 900; try {{ Start-Process -FilePath '{exe}' -Verb RunAs -ErrorAction Stop }} catch {{ Start-Process -FilePath '{exe}' }}"
-        );
-        command(
-            "powershell.exe",
-            &["-NoProfile".into(), "-NonInteractive".into(), "-WindowStyle".into(), "Hidden".into(), "-Command".into(), script],
-        )
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|e| format!("Could not start the elevation helper: {e}"))?;
+        let exe = wide(&exe.to_string_lossy());
+        let launch = |verb: &str| unsafe {
+            ShellExecuteW(0, wide(verb).as_ptr(), exe.as_ptr(), std::ptr::null(), std::ptr::null(), SW_SHOWNORMAL) > 32
+        };
+        tauri_plugin_single_instance::destroy(&app);
+        if !launch("runas") && !launch("open") {
+            return Err("Could not restart NetDeck.".into());
+        }
         app.exit(0);
         Ok(())
     }
@@ -752,6 +774,31 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// When NetDeck runs elevated (Run as admin), Windows' UIPI silently drops messages from normal
+/// processes. The single-instance plugin signals the running copy with WM_COPYDATA, so clicking the
+/// desktop or Start-menu icon (a normal launch) reached nothing: the second copy exited and the hidden
+/// or minimised window stayed where it was. Allow that one message through to the plugin's own
+/// message-only window. All it can trigger is `show_main`; the payload (argv, cwd) is ignored.
+#[cfg(windows)]
+fn allow_second_launch_signal(identifier: &str) {
+    #[link(name = "user32")]
+    extern "system" {
+        fn FindWindowW(class: *const u16, title: *const u16) -> isize;
+        fn ChangeWindowMessageFilterEx(hwnd: isize, msg: u32, action: u32, info: *mut std::ffi::c_void) -> i32;
+    }
+    const WM_COPYDATA: u32 = 0x004A;
+    const MSGFLT_ALLOW: u32 = 1;
+    // Names as created by tauri-plugin-single-instance.
+    let class = wide(&format!("{identifier}-sic"));
+    let title = wide(&format!("{identifier}-siw"));
+    unsafe {
+        let hwnd = FindWindowW(class.as_ptr(), title.as_ptr());
+        if hwnd != 0 {
+            ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, std::ptr::null_mut());
+        }
+    }
+}
+
 pub fn run() {
     let builtin: Vec<Value> = serde_json::from_str(BUILTIN).expect("commands.json is valid JSON");
 
@@ -762,6 +809,9 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
+            #[cfg(windows)]
+            allow_second_launch_signal(&app.config().identifier);
+
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
             let custom_file = data_dir.join("custom-commands.json");
             // One-time migration from the pre-1.4.1 identifier (com.netdeck.app).
@@ -838,7 +888,8 @@ pub fn run() {
             save_text,
             notify,
             restart_elevated,
-            open_doc
+            open_doc,
+            open_site
         ])
         .run(tauri::generate_context!())
         .expect("error while running NetDeck");

@@ -1903,6 +1903,8 @@
       document.querySelectorAll('a.manual-link').forEach((a) => {
         a.addEventListener('click', (e) => { e.preventDefault(); BACKEND.openDoc(a.getAttribute('href')).catch(() => {}); });
       });
+      // A webview has no tabs: hand the author's site to the default browser instead.
+      $('site-link').addEventListener('click', (e) => { e.preventDefault(); BACKEND.openSite().catch(() => {}); });
     }
     if (STATIC && !API) setAgentStatus('none');
     buildCategoryChips();

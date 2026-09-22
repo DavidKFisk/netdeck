@@ -55,6 +55,7 @@ window.NetDeckAPI = (() => {
       elevate: () => invoke('restart_elevated'),
       // Manual / cheat sheet open in their own window so the main one keeps its tabs.
       openDoc: (page, anchor) => invoke('open_doc', { page, anchor: anchor || null }),
+      openSite: () => invoke('open_site'),
     };
   }
 
