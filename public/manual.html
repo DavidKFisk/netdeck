@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 46 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 47 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -646,6 +646,30 @@ Hop  RTT    Lost/Sent = Pct  Lost/Sent = Pct  Address
                                <span class="hl">12/ 100 = 12%</span>   |          <span class="dim">← the link after the router is losing packets</span>
   2   14ms    12/ 100 = 12%     0/ 100 =  0%  96.120.14.1</pre>
   <p><strong>Linux / macOS:</strong> <code>mtr &lt;host&gt;</code> — the same idea, updating live.</p>
+</article>
+
+<article class="cmd" id="cmd-speed-test">
+  <h4><code>Speed test</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>A proper speed test without a website or an app: it downloads from and uploads to Cloudflare's public test server (<code>speed.cloudflare.com</code>, the same one behind their speed-test page) for about eight seconds each, printing a line per second, and pings <code>1.1.1.1</code> the whole time. That last part is the bit most speed tests skip: <em>latency under load</em>. A connection can be fast and still make video calls stutter whenever someone downloads, because the router queues packets instead of dropping them — "bufferbloat". Variants: download only, upload only. It moves up to ~300 MB, so think twice on a metered connection.</p>
+  <pre>Speed test via Cloudflare (server IAD), your public address 203.0.113.5
+Idle latency: 20 ms to 1.1.1.1 (jitter 7 ms), 53 ms server round trip
+
+Download (8 s)
+  1 s     33.2 MB    265.3 Mbit/s   ping 21 ms
+  2 s     56.5 MB    186.7 Mbit/s   ping 28 ms
+  …
+<span class="hl">Download: 268.3 Mbit/s  (275 MB in 8.2 s)</span>
+
+Upload (up to 8 s)
+      2 MB in  0.71 s  =    22.5 Mbit/s
+     25 MB in  5.13 s  =      39 Mbit/s
+<span class="hl">Upload: 39 Mbit/s  (best of the sizes tried)</span>
+
+<span class="hl">Latency under load: download 26 ms, upload 30 ms vs 20 ms idle (+10 ms)  ->  bufferbloat grade A - none</span></pre>
+  <p><strong>How to read it:</strong> compare Download and Upload with what you pay for (an ISP's "300 Mbit/s" is a ceiling; 80–90% of it over Ethernet is normal, less over Wi-Fi). The upload figure is the best of several sizes, because the small first upload is dominated by connection setup. The bufferbloat grade is the increase in ping while transferring: A (under 30 ms) is fine; C or D means calls and games will suffer whenever anything else is transferring — fixed by turning on "Smart Queue Management" / "QoS" on the router, or a router that has it.</p>
+  <p><strong>What it doesn't tell you:</strong> a single run is a snapshot — run it again at a busy hour, and over Ethernet if you can, before blaming the ISP. Cloudflare sees your public address, as any website does; nothing else about you is sent.</p>
+  <p><strong>Linux / macOS:</strong> <code>curl -o /dev/null -w '%{speed_download}
+' 'https://speed.cloudflare.com/__down?bytes=100000000'</code> prints bytes per second.</p>
 </article>
 
 <article class="cmd" id="cmd-route-print">
