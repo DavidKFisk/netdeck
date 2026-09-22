@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 45 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 46 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -889,6 +889,27 @@ api.github.com             2</pre>
   <p><strong>How to read it:</strong> <em>Top internet hosts</em> is the "what is my PC talking to?" list — the Name column resolves the address where it can, and the Traffic column says over which protocol. A host you don't recognise moving a lot of data is worth looking up. <em>DNS lookups</em> shows what your programs asked for by name, which is often clearer than the addresses. <em>Local network peers</em> is traffic that stayed inside your own network.</p>
   <p><strong>What it doesn't do:</strong> it keeps only the first 256 bytes of each packet — enough for the addresses and protocol, not the content — and the recording is deleted after the summary unless you chose the keep variant. It can't see other devices' traffic, only this PC's. If you press <strong>Stop</strong> during a capture, the recording keeps running in the background until the next capture cleans it up (it is capped at 200 MB).</p>
   <p><strong>Linux / macOS:</strong> <code>sudo tcpdump -i any -c 2000 -w capture.pcap</code>, then open the file in Wireshark.</p>
+</article>
+
+<article class="cmd" id="cmd-pktmon-counters">
+  <h4><code>Packet counters (live)</code> <span class="tag">PS</span> <span class="tag run">runnable</span> <span class="tag">admin</span></h4>
+  <p>Counts packets instead of recording them: for 10 seconds (variants: 30 s, 60 s) it prints one line per second with packets in, out and dropped on each adapter, then a table of <em>every</em> layer the packets pass through — the adapter, and the filter drivers stacked on it (Windows Firewall, VPN clients, antivirus, Hyper-V/Docker switches) — with total drops and the last reason each layer gave. Run it while the problem is happening: a download that stalls, a ping that fails. Needs administrator rights — press <strong>Run as admin</strong> first.</p>
+  <pre>Counting packets for 10 s on 9 components (2 adapters + the driver layers between them and your programs).
+
+  1 s  Wi-Fi: in 412  out 188
+  2 s  Wi-Fi: in 1,290  out 301  <span class="hl">DROPS 14</span>
+  3 s  Wi-Fi: in 980  out 244
+
+Totals over 10 s, every layer (drops first)
+Component                                Type    In    Out  Drops  Last drop reason
+---------                                ----    --    ---  -----  ----------------
+<span class="hl">WFP Native MAC Layer LightWeight Filter  Filter  8,911 2,204   41  WFP_DROP</span>
+Wi-Fi                                    NIC     8,952 2,204    0
+vEthernet (WSL)                          NIC        12    12    0
+
+Dropped in total: 41. The Type and reason columns say which layer dropped them.</pre>
+  <p><strong>How to read it:</strong> if drops sit on the <em>NIC</em> row, the adapter or the link itself is losing packets (cable, Wi-Fi signal, driver). If they sit on a <em>Filter</em> row, something in software decided to discard them — "WFP" is the Windows Filtering Platform, i.e. the firewall or a security product; a VPN's own filter shows under its name. Zero drops with a problem still happening means the packets are leaving fine and the fault is beyond this PC.</p>
+  <p><strong>Linux / macOS:</strong> <code>ip -s link</code> shows per-adapter packet and drop counters; <code>watch -n1 cat /proc/net/dev</code> updates them live.</p>
 </article>
 
 <article class="cmd" id="cmd-curl">

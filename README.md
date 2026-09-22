@@ -19,6 +19,7 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **▶ run** executes safe, read-only commands locally and streams output live. Each run opens its own **terminal tab**, so a slow `pathping` can keep going while you fire off quick lookups. Stop kills the process.
 - **Table view** — for `netstat`, `arp`, `route print`, `ipconfig`, `tasklist`, `getmac`, `Get-NetTCPConnection`, `Resolve-DnsName` and the DNS cache, the raw text parses into a sortable, filterable table. Anything with a PID column is joined to process names, so `netstat -ano` shows *which program* owns each port.
 - **Packet capture (timed)** — 10/30/60 s `pktmon` recording of this PC's own traffic, summarised into protocols, top internet hosts, LAN peers and DNS names looked up; a variant keeps a `.pcapng` on the Desktop for Wireshark. Needs Run as admin.
+- **Packet counters (live)** — packets in/out/dropped per second on every adapter for 10/30/60 s, then a per-layer table (adapter, firewall, VPN and other filter drivers) with drop reasons, to locate where packets die. Needs Run as admin.
 - **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
   - *Is a port open on a host?* — resolve → ping → TCP test
