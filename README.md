@@ -28,6 +28,9 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **Device port probe** — 26 common device ports on one address in 2.5 s with a plain-English guess at what it is; a "probe" button sits on every scan row.
 - **Scan log** — each scan is remembered locally: the table shows when a device was first seen, and the verdict lists what is new, gone or moved since the last scan.
 - **Wi-Fi survey** — every access point in range with band/channel/signal/security, channel-load table, and a suggested quieter channel.
+- **Adapter throughput (live)** — bytes in/out per second on every adapter for 15 s / 60 s / 3 min, a bar per second, and a verdict (idle vs. busy, % of link speed).
+- **Per-process network activity** — connections and remote hosts per program (no admin); the "with traffic" variant attributes a 10 s pktmon capture to programs through their ports for bytes sent/received per program.
+- **iperf3** — runnable when installed: client, reverse, 4 parallel streams, or one-shot server.
 - **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-three of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
   - *Does my connection drop out?* — the 3-minute stability monitor with a verdict: local link vs. beyond the router vs. jitter.

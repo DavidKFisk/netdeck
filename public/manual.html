@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 53 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 55 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -714,6 +714,22 @@ internet (1.1.1.1)    180    3    1.7     19    240         3      1            
   <p><strong>Linux / macOS:</strong> <code>ping -i 1 1.1.1.1</code> and read the summary when you stop it; <code>mtr --report --report-cycles 60 1.1.1.1</code> does the per-hop version.</p>
 </article>
 
+<article class="cmd" id="cmd-throughput">
+  <h4><code>Adapter throughput (live)</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>"Is anything using my connection right now?" It reads every adapter's byte counters once a second for 15 seconds (variants: 60 s, 3 min) and prints the rate in and out, with a bar per second, then a summary table with averages, peaks, totals and a bar chart of the whole run. Nothing is captured and no admin is needed.</p>
+  <pre>  1 s  Ethernet in    0.12 out    0.04 Mbit/s ▂
+  2 s  Ethernet in   48.30 out    1.10 Mbit/s ▆
+  3 s  Ethernet in   52.11 out    1.02 Mbit/s ▇
+…
+Adapter  Link   Avg in Avg out Peak in Peak out Received Sent   Activity
+-------  ----   ------ ------- ------- -------- -------- ----   --------
+Ethernet 1 Gbps  31.40    0.72   52.11     1.10  58.9 MB 1.3 MB ▂▆▇▇▇▆▅▁▁▁▁▁▁▁▁
+
+<span class="hl">Busy: Ethernet averaged 31.4 Mbit/s in and 0.7 Mbit/s out, peaking at 52.1 in / 1.1 out - 5% of the 1 Gbps link at the peak.</span> That is real traffic from this PC. "Per-process network activity" names the program…</pre>
+  <p><strong>How to read it:</strong> a steady rate with nothing open is the interesting case — backups, cloud sync, updates, or something you did not install. "Idle" means under 0.2 Mbit/s throughout, so a slow internet is not this PC's doing. Virtual adapters (Hyper-V, WSL, VPN) only appear when they carry traffic.</p>
+  <p><strong>Linux / macOS:</strong> <code>ifstat 1</code>, <code>nload</code>, or <code>watch -n1 cat /proc/net/dev</code>.</p>
+</article>
+
 <article class="cmd" id="cmd-route-print">
   <h4><code>route print</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
   <p>Shows the routing table — the rules your computer uses to decide where to send each packet. Most people only need one line from it: the <code>0.0.0.0</code> row, which is the "everything else goes here" rule, i.e. your default gateway. Two of those rows on different adapters explains a lot of "sometimes my VPN / Ethernet takes over" mysteries.</p>
@@ -775,6 +791,22 @@ PingReplyDetails (RTT) : 24 ms
 <span class="hl">TcpTestSucceeded : True</span></pre>
   <p><strong>How to read it:</strong> <em>TcpTestSucceeded : True</em> is the answer you want. <em>False</em> with <em>PingSucceeded : True</em> means the machine is up but nothing is listening on that port (or a firewall blocks it). Both false: the machine is down or unreachable. A warning about "name resolution" means the host name is wrong or DNS is broken.</p>
   <p><strong>Linux / macOS:</strong> <code>nc -zv &lt;host&gt; 443</code> or <code>telnet &lt;host&gt; 443</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-procnet">
+  <h4><code>Per-process network activity</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Which programs are on the network. The default is a snapshot: every program with a socket, how many established connections and listening ports it has, and the remote addresses it talks to most. The <strong>with traffic</strong> variant (admin) goes further: it records 10 seconds with pktmon and attributes every packet to a program through the port it was using, so you get bytes sent and received per program and its busiest remote host.</p>
+  <pre>Over 10 s this PC moved 61.2 MB in 48,930 packets
+
+Process   PID   Received Sent    Packets Share Top remote
+-------   ---   -------- ----    ------- ----- ----------
+chrome    15396  58.4 MB  1.1 MB   44120  97%  142.250.80.46:HTTPS
+OneDrive   8120 402 KB   1.2 MB    2210    3%  13.107.42.12:HTTPS
+svchost    3320  61 KB    18 KB     190    0%  20.190.160.5:HTTPS
+
+<span class="hl">Busiest program: chrome (97% of the traffic, mostly with 142.250.80.46:HTTPS).</span></pre>
+  <p><strong>How to read it:</strong> <em>svchost</em> is Windows itself (updates, time sync, the Store); <em>System</em> (PID 4) is the kernel, mostly file sharing. In the snapshot, many connections to one address means syncing or streaming. In the traffic view, a program you do not recognise moving data is the thing to look up; the unmatched row collects traffic from connections that opened and closed within the sample, ICMP, and other devices' broadcasts.</p>
+  <p><strong>Linux / macOS:</strong> <code>ss -tunap</code> for the snapshot; <code>sudo nethogs</code> for bytes per program.</p>
 </article>
 
 <article class="cmd" id="cmd-tcp-probe">
@@ -1095,8 +1127,14 @@ TrustedByWindows : True</pre>
 </article>
 
 <article class="cmd" id="cmd-iperf3">
-  <h4><code>iperf3 -c &lt;server&gt;</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
-  <p>Measures real throughput between two machines — how many megabits per second the link actually carries, rather than what the box says. You run <code>iperf3 -s</code> on one machine and <code>iperf3 -c that-machine</code> on the other. The honest way to test whether it's your Wi-Fi or your provider that's slow.</p>
+  <h4><code>iperf3</code> <span class="tag">ALL</span> <span class="tag run">runnable</span></h4>
+  <p>The definitive throughput test between two machines you control — it measures the raw speed of the network path with no website or disk in the way, which is how you find out whether "the Wi-Fi is slow" or "the internet is slow". One machine runs <code>iperf3 -s</code> (the server); this PC connects to it and pushes data for 10 seconds. Variants: <strong>reverse</strong> (the server sends, this PC receives — the download direction), <strong>4 parallel streams</strong> (a single stream cannot always fill a fast link), and <strong>be the server</strong> for one test from another machine. iperf3 must be installed on both ends; NetDeck says so plainly if it is missing here.</p>
+  <pre>[ ID] Interval           Transfer     Bitrate
+[  5]   0.00-1.00   sec  112 MBytes   940 Mbits/sec
+…
+[  5]   0.00-10.00  sec  1.09 GBytes   938 Mbits/sec   sender
+[  5]   0.00-10.00  sec  1.09 GBytes   937 Mbits/sec   receiver</pre>
+  <p><strong>How to read it:</strong> the last two lines are the answer. Gigabit Ethernet should show 900+ Mbit/s; Wi-Fi 6 in the same room 400–800; through a wall or on 2.4 GHz, far less. A LAN result far above your internet speed test means the internet link is the limit, not your network. Windows builds: <code>github.com/ar51an/iperf3-win-builds</code> — put <code>iperf3.exe</code> in a folder on your PATH. Windows Firewall will ask once when this PC acts as the server.</p>
 </article>
 
 <!-- ---------- System ---------- -->

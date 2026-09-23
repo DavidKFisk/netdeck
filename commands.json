@@ -818,6 +818,51 @@
     }
   },
   {
+    "id": "throughput",
+    "name": "Adapter throughput (live)",
+    "category": "Connectivity & Routing",
+    "purpose": "\"Is anything using my connection right now?\" — bytes in and out per second on every adapter, with a bar per second and a verdict",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Reads the adapter counters once a second; nothing is captured and no admin is needed. If it shows traffic you cannot account for, \"Per-process network activity\" names the program.",
+    "win": "Get-NetAdapterStatistics every second, differenced",
+    "unix": [
+      "watch -n1 cat /proc/net/dev",
+      "ifstat 1",
+      "nload"
+    ],
+    "help": {
+      "ps": "Get-NetAdapterStatistics"
+    },
+    "helpUnix": [
+      "ifstat",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Get-NetAdapterStatistics every second for 15 s → rates and a summary",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$secs = 15\n$ads = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch 'Loopback' })\nif (-not $ads.Count) { 'THROUGHPUT-ERROR: no network adapter is up.'; exit 1 }\n$physical = @{}; $speed = @{}; foreach ($a in $ads) { $physical[$a.Name] = -not $a.Virtual; $speed[$a.Name] = [string]$a.LinkSpeed }\nfunction Stats { $h = @{}; foreach ($s in (Get-NetAdapterStatistics)) { $h[$s.Name] = @([double]$s.ReceivedBytes, [double]$s.SentBytes) }; return $h }\nfunction Mbps($bytes, $sec) { return [math]::Round($bytes * 8 / 1000000 / [math]::Max($sec, 0.001), 2) }\nfunction Fmt-Bytes($b) { if ($b -ge 1GB) { return ('{0:n2} GB' -f ($b / 1GB)) }; if ($b -ge 1MB) { return ('{0:n1} MB' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:n0} KB' -f ($b / 1KB)) }; return ([int]$b).ToString() + ' B' }\n$bars = [char[]]@(0x2581, 0x2582, 0x2583, 0x2584, 0x2585, 0x2586, 0x2587, 0x2588); $scale = @(0.1, 0.5, 2, 5, 20, 50, 200)\nfunction Bar($m) { $i = 0; foreach ($t in $scale) { if ($m -gt $t) { $i++ } }; return $bars[$i] }\n$hist = @{}; foreach ($a in $ads) { $hist[$a.Name] = @{ In = New-Object Collections.Generic.List[double]; Out = New-Object Collections.Generic.List[double]; Spark = '' } }\n'Watching ' + (($ads | ForEach-Object { $_.Name }) -join ', ') + ' for ' + $secs + ' s: bytes in and out per second from the adapter counters. Nothing is captured; use the network normally.'\n''\n$prev = Stats; $sw = [Diagnostics.Stopwatch]::StartNew(); $lastT = 0.0\nfor ($i = 1; $i -le $secs; $i++) {\n  Start-Sleep -Seconds 1\n  $cur = Stats; $t = $sw.Elapsed.TotalSeconds; $dt = $t - $lastT; $lastT = $t\n  $parts = foreach ($a in $ads) {\n    $n = $a.Name; if (-not $cur.ContainsKey($n) -or -not $prev.ContainsKey($n)) { continue }\n    $din = [math]::Max($cur[$n][0] - $prev[$n][0], 0); $dout = [math]::Max($cur[$n][1] - $prev[$n][1], 0)\n    $mi = Mbps $din $dt; $mo = Mbps $dout $dt\n    $hist[$n].In.Add($mi); $hist[$n].Out.Add($mo); $hist[$n].Spark += (Bar ($mi + $mo))\n    if ($physical[$n] -or ($din + $dout) -gt 2048) { ('{0,-1} in {1,7} out {2,7} Mbit/s {3,-1}' -f $n, $mi, $mo, (Bar ($mi + $mo))) }\n  }\n  $prev = $cur\n  ('{0,3} s  ' -f $i) + (& { if ($parts) { $parts -join '   |   ' } else { '(quiet)' } })\n}\n''\n'Summary over ' + $secs + ' s'\n$rows = foreach ($a in $ads) {\n  $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }\n  $avgIn = ($h.In | Measure-Object -Average).Average; $avgOut = ($h.Out | Measure-Object -Average).Average\n  $totIn = ($h.In | Measure-Object -Sum).Sum * 1000000 / 8; $totOut = ($h.Out | Measure-Object -Sum).Sum * 1000000 / 8\n  if (-not $physical[$a.Name] -and ($totIn + $totOut) -lt 10240) { continue }\n  [pscustomobject]@{ Adapter = $a.Name; Link = $speed[$a.Name]; 'Avg in' = ('{0:n2}' -f $avgIn); 'Avg out' = ('{0:n2}' -f $avgOut); 'Peak in' = ('{0:n2}' -f ($h.In | Measure-Object -Maximum).Maximum); 'Peak out' = ('{0:n2}' -f ($h.Out | Measure-Object -Maximum).Maximum); Received = (Fmt-Bytes $totIn); Sent = (Fmt-Bytes $totOut); Activity = $h.Spark }\n}\nif ($rows) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd(); 'Rates are Mbit/s; Activity is one bar per second of in+out (' + ($scale -join '/') + ' Mbit/s steps).' } else { '  no traffic on any adapter' }\n''\n$busy = $null; $busyRate = 0\nforeach ($a in $ads) { $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }; $r = ($h.In | Measure-Object -Average).Average + ($h.Out | Measure-Object -Average).Average; if ($r -gt $busyRate) { $busyRate = $r; $busy = $a } }\nif (-not $busy -or $busyRate -lt 0.2) { 'Idle: under 0.2 Mbit/s on every adapter for the whole run. Nothing on this PC is using the connection right now; if the internet still feels slow, the cause is outside this PC (try \"Why is everything slow?\").' }\nelse {\n  $h = $hist[$busy.Name]; $pi = ($h.In | Measure-Object -Maximum).Maximum; $po = ($h.Out | Measure-Object -Maximum).Maximum\n  $link = 0; if ($speed[$busy.Name] -match '([\\d.]+) (Gbps|Mbps)') { $link = [double]$Matches[1] * (& { if ($Matches[2] -eq 'Gbps') { 1000 } else { 1 } }) }\n  $pct = ''; if ($link -gt 0) { $pct = ' - ' + [math]::Round(100 * [math]::Max($pi, $po) / $link) + '% of the ' + $speed[$busy.Name] + ' link at the peak' }\n  'Busy: ' + $busy.Name + ' averaged ' + ('{0:n1}' -f (($h.In | Measure-Object -Average).Average)) + ' Mbit/s in and ' + ('{0:n1}' -f (($h.Out | Measure-Object -Average).Average)) + ' Mbit/s out, peaking at ' + ('{0:n1}' -f $pi) + ' in / ' + ('{0:n1}' -f $po) + ' out' + $pct + '. That is real traffic from this PC. \"Per-process network activity\" names the program; a steady upload with nothing running is worth a look (backups, cloud sync, or something you did not install).'\n}",
+      "presets": [
+        {
+          "key": "sec-60",
+          "label": "60 seconds",
+          "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$secs = 60\n$ads = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch 'Loopback' })\nif (-not $ads.Count) { 'THROUGHPUT-ERROR: no network adapter is up.'; exit 1 }\n$physical = @{}; $speed = @{}; foreach ($a in $ads) { $physical[$a.Name] = -not $a.Virtual; $speed[$a.Name] = [string]$a.LinkSpeed }\nfunction Stats { $h = @{}; foreach ($s in (Get-NetAdapterStatistics)) { $h[$s.Name] = @([double]$s.ReceivedBytes, [double]$s.SentBytes) }; return $h }\nfunction Mbps($bytes, $sec) { return [math]::Round($bytes * 8 / 1000000 / [math]::Max($sec, 0.001), 2) }\nfunction Fmt-Bytes($b) { if ($b -ge 1GB) { return ('{0:n2} GB' -f ($b / 1GB)) }; if ($b -ge 1MB) { return ('{0:n1} MB' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:n0} KB' -f ($b / 1KB)) }; return ([int]$b).ToString() + ' B' }\n$bars = [char[]]@(0x2581, 0x2582, 0x2583, 0x2584, 0x2585, 0x2586, 0x2587, 0x2588); $scale = @(0.1, 0.5, 2, 5, 20, 50, 200)\nfunction Bar($m) { $i = 0; foreach ($t in $scale) { if ($m -gt $t) { $i++ } }; return $bars[$i] }\n$hist = @{}; foreach ($a in $ads) { $hist[$a.Name] = @{ In = New-Object Collections.Generic.List[double]; Out = New-Object Collections.Generic.List[double]; Spark = '' } }\n'Watching ' + (($ads | ForEach-Object { $_.Name }) -join ', ') + ' for ' + $secs + ' s: bytes in and out per second from the adapter counters. Nothing is captured; use the network normally.'\n''\n$prev = Stats; $sw = [Diagnostics.Stopwatch]::StartNew(); $lastT = 0.0\nfor ($i = 1; $i -le $secs; $i++) {\n  Start-Sleep -Seconds 1\n  $cur = Stats; $t = $sw.Elapsed.TotalSeconds; $dt = $t - $lastT; $lastT = $t\n  $parts = foreach ($a in $ads) {\n    $n = $a.Name; if (-not $cur.ContainsKey($n) -or -not $prev.ContainsKey($n)) { continue }\n    $din = [math]::Max($cur[$n][0] - $prev[$n][0], 0); $dout = [math]::Max($cur[$n][1] - $prev[$n][1], 0)\n    $mi = Mbps $din $dt; $mo = Mbps $dout $dt\n    $hist[$n].In.Add($mi); $hist[$n].Out.Add($mo); $hist[$n].Spark += (Bar ($mi + $mo))\n    if ($physical[$n] -or ($din + $dout) -gt 2048) { ('{0,-1} in {1,7} out {2,7} Mbit/s {3,-1}' -f $n, $mi, $mo, (Bar ($mi + $mo))) }\n  }\n  $prev = $cur\n  ('{0,3} s  ' -f $i) + (& { if ($parts) { $parts -join '   |   ' } else { '(quiet)' } })\n}\n''\n'Summary over ' + $secs + ' s'\n$rows = foreach ($a in $ads) {\n  $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }\n  $avgIn = ($h.In | Measure-Object -Average).Average; $avgOut = ($h.Out | Measure-Object -Average).Average\n  $totIn = ($h.In | Measure-Object -Sum).Sum * 1000000 / 8; $totOut = ($h.Out | Measure-Object -Sum).Sum * 1000000 / 8\n  if (-not $physical[$a.Name] -and ($totIn + $totOut) -lt 10240) { continue }\n  [pscustomobject]@{ Adapter = $a.Name; Link = $speed[$a.Name]; 'Avg in' = ('{0:n2}' -f $avgIn); 'Avg out' = ('{0:n2}' -f $avgOut); 'Peak in' = ('{0:n2}' -f ($h.In | Measure-Object -Maximum).Maximum); 'Peak out' = ('{0:n2}' -f ($h.Out | Measure-Object -Maximum).Maximum); Received = (Fmt-Bytes $totIn); Sent = (Fmt-Bytes $totOut); Activity = $h.Spark }\n}\nif ($rows) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd(); 'Rates are Mbit/s; Activity is one bar per second of in+out (' + ($scale -join '/') + ' Mbit/s steps).' } else { '  no traffic on any adapter' }\n''\n$busy = $null; $busyRate = 0\nforeach ($a in $ads) { $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }; $r = ($h.In | Measure-Object -Average).Average + ($h.Out | Measure-Object -Average).Average; if ($r -gt $busyRate) { $busyRate = $r; $busy = $a } }\nif (-not $busy -or $busyRate -lt 0.2) { 'Idle: under 0.2 Mbit/s on every adapter for the whole run. Nothing on this PC is using the connection right now; if the internet still feels slow, the cause is outside this PC (try \"Why is everything slow?\").' }\nelse {\n  $h = $hist[$busy.Name]; $pi = ($h.In | Measure-Object -Maximum).Maximum; $po = ($h.Out | Measure-Object -Maximum).Maximum\n  $link = 0; if ($speed[$busy.Name] -match '([\\d.]+) (Gbps|Mbps)') { $link = [double]$Matches[1] * (& { if ($Matches[2] -eq 'Gbps') { 1000 } else { 1 } }) }\n  $pct = ''; if ($link -gt 0) { $pct = ' - ' + [math]::Round(100 * [math]::Max($pi, $po) / $link) + '% of the ' + $speed[$busy.Name] + ' link at the peak' }\n  'Busy: ' + $busy.Name + ' averaged ' + ('{0:n1}' -f (($h.In | Measure-Object -Average).Average)) + ' Mbit/s in and ' + ('{0:n1}' -f (($h.Out | Measure-Object -Average).Average)) + ' Mbit/s out, peaking at ' + ('{0:n1}' -f $pi) + ' in / ' + ('{0:n1}' -f $po) + ' out' + $pct + '. That is real traffic from this PC. \"Per-process network activity\" names the program; a steady upload with nothing running is worth a look (backups, cloud sync, or something you did not install).'\n}",
+          "display": "Get-NetAdapterStatistics every second for 60 s → rates and a summary"
+        },
+        {
+          "key": "sec-180",
+          "label": "3 minutes",
+          "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$secs = 180\n$ads = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.InterfaceDescription -notmatch 'Loopback' })\nif (-not $ads.Count) { 'THROUGHPUT-ERROR: no network adapter is up.'; exit 1 }\n$physical = @{}; $speed = @{}; foreach ($a in $ads) { $physical[$a.Name] = -not $a.Virtual; $speed[$a.Name] = [string]$a.LinkSpeed }\nfunction Stats { $h = @{}; foreach ($s in (Get-NetAdapterStatistics)) { $h[$s.Name] = @([double]$s.ReceivedBytes, [double]$s.SentBytes) }; return $h }\nfunction Mbps($bytes, $sec) { return [math]::Round($bytes * 8 / 1000000 / [math]::Max($sec, 0.001), 2) }\nfunction Fmt-Bytes($b) { if ($b -ge 1GB) { return ('{0:n2} GB' -f ($b / 1GB)) }; if ($b -ge 1MB) { return ('{0:n1} MB' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:n0} KB' -f ($b / 1KB)) }; return ([int]$b).ToString() + ' B' }\n$bars = [char[]]@(0x2581, 0x2582, 0x2583, 0x2584, 0x2585, 0x2586, 0x2587, 0x2588); $scale = @(0.1, 0.5, 2, 5, 20, 50, 200)\nfunction Bar($m) { $i = 0; foreach ($t in $scale) { if ($m -gt $t) { $i++ } }; return $bars[$i] }\n$hist = @{}; foreach ($a in $ads) { $hist[$a.Name] = @{ In = New-Object Collections.Generic.List[double]; Out = New-Object Collections.Generic.List[double]; Spark = '' } }\n'Watching ' + (($ads | ForEach-Object { $_.Name }) -join ', ') + ' for ' + $secs + ' s: bytes in and out per second from the adapter counters. Nothing is captured; use the network normally.'\n''\n$prev = Stats; $sw = [Diagnostics.Stopwatch]::StartNew(); $lastT = 0.0\nfor ($i = 1; $i -le $secs; $i++) {\n  Start-Sleep -Seconds 1\n  $cur = Stats; $t = $sw.Elapsed.TotalSeconds; $dt = $t - $lastT; $lastT = $t\n  $parts = foreach ($a in $ads) {\n    $n = $a.Name; if (-not $cur.ContainsKey($n) -or -not $prev.ContainsKey($n)) { continue }\n    $din = [math]::Max($cur[$n][0] - $prev[$n][0], 0); $dout = [math]::Max($cur[$n][1] - $prev[$n][1], 0)\n    $mi = Mbps $din $dt; $mo = Mbps $dout $dt\n    $hist[$n].In.Add($mi); $hist[$n].Out.Add($mo); $hist[$n].Spark += (Bar ($mi + $mo))\n    if ($physical[$n] -or ($din + $dout) -gt 2048) { ('{0,-1} in {1,7} out {2,7} Mbit/s {3,-1}' -f $n, $mi, $mo, (Bar ($mi + $mo))) }\n  }\n  $prev = $cur\n  ('{0,3} s  ' -f $i) + (& { if ($parts) { $parts -join '   |   ' } else { '(quiet)' } })\n}\n''\n'Summary over ' + $secs + ' s'\n$rows = foreach ($a in $ads) {\n  $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }\n  $avgIn = ($h.In | Measure-Object -Average).Average; $avgOut = ($h.Out | Measure-Object -Average).Average\n  $totIn = ($h.In | Measure-Object -Sum).Sum * 1000000 / 8; $totOut = ($h.Out | Measure-Object -Sum).Sum * 1000000 / 8\n  if (-not $physical[$a.Name] -and ($totIn + $totOut) -lt 10240) { continue }\n  [pscustomobject]@{ Adapter = $a.Name; Link = $speed[$a.Name]; 'Avg in' = ('{0:n2}' -f $avgIn); 'Avg out' = ('{0:n2}' -f $avgOut); 'Peak in' = ('{0:n2}' -f ($h.In | Measure-Object -Maximum).Maximum); 'Peak out' = ('{0:n2}' -f ($h.Out | Measure-Object -Maximum).Maximum); Received = (Fmt-Bytes $totIn); Sent = (Fmt-Bytes $totOut); Activity = $h.Spark }\n}\nif ($rows) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd(); 'Rates are Mbit/s; Activity is one bar per second of in+out (' + ($scale -join '/') + ' Mbit/s steps).' } else { '  no traffic on any adapter' }\n''\n$busy = $null; $busyRate = 0\nforeach ($a in $ads) { $h = $hist[$a.Name]; if (-not $h.In.Count) { continue }; $r = ($h.In | Measure-Object -Average).Average + ($h.Out | Measure-Object -Average).Average; if ($r -gt $busyRate) { $busyRate = $r; $busy = $a } }\nif (-not $busy -or $busyRate -lt 0.2) { 'Idle: under 0.2 Mbit/s on every adapter for the whole run. Nothing on this PC is using the connection right now; if the internet still feels slow, the cause is outside this PC (try \"Why is everything slow?\").' }\nelse {\n  $h = $hist[$busy.Name]; $pi = ($h.In | Measure-Object -Maximum).Maximum; $po = ($h.Out | Measure-Object -Maximum).Maximum\n  $link = 0; if ($speed[$busy.Name] -match '([\\d.]+) (Gbps|Mbps)') { $link = [double]$Matches[1] * (& { if ($Matches[2] -eq 'Gbps') { 1000 } else { 1 } }) }\n  $pct = ''; if ($link -gt 0) { $pct = ' - ' + [math]::Round(100 * [math]::Max($pi, $po) / $link) + '% of the ' + $speed[$busy.Name] + ' link at the peak' }\n  'Busy: ' + $busy.Name + ' averaged ' + ('{0:n1}' -f (($h.In | Measure-Object -Average).Average)) + ' Mbit/s in and ' + ('{0:n1}' -f (($h.Out | Measure-Object -Average).Average)) + ' Mbit/s out, peaking at ' + ('{0:n1}' -f $pi) + ' in / ' + ('{0:n1}' -f $po) + ' out' + $pct + '. That is real traffic from this PC. \"Per-process network activity\" names the program; a steady upload with nothing running is worth a look (backups, cloud sync, or something you did not install).'\n}",
+          "display": "Get-NetAdapterStatistics every second for 3 min → rates and a summary",
+          "timeoutSec": 240
+        }
+      ]
+    }
+  },
+  {
     "id": "route-print",
     "name": "route print",
     "category": "Connectivity & Routing",
@@ -1147,6 +1192,45 @@
         "5",
         "{host}",
         "{port}"
+      ]
+    }
+  },
+  {
+    "id": "procnet",
+    "name": "Per-process network activity",
+    "category": "Connections & Ports",
+    "purpose": "Which programs are on the network: connections per program and who they talk to — and, with admin, how much each one sent and received in 10 s",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "The default lists connections per program (no admin). The \"with traffic\" variant captures 10 s with pktmon (admin) and attributes bytes to programs through the ports they were using.",
+    "win": "Get-NetTCPConnection + Get-NetUDPEndpoint grouped by owning process (+ pktmon for bytes)",
+    "unix": [
+      "ss -tunap",
+      "sudo nethogs",
+      "sudo iftop"
+    ],
+    "help": {
+      "ps": "Get-NetTCPConnection"
+    },
+    "helpUnix": [
+      "ss",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Get-NetTCPConnection + Get-NetUDPEndpoint → per-program table",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$mode = 'snapshot'; $secs = 10\n$svc = @{ 53 = 'DNS'; 80 = 'HTTP'; 443 = 'HTTPS'; 22 = 'SSH'; 25 = 'SMTP'; 587 = 'SMTP'; 993 = 'IMAPS'; 123 = 'NTP'; 445 = 'SMB'; 3389 = 'RDP'; 5353 = 'mDNS'; 1900 = 'SSDP'; 8080 = 'HTTP-alt'; 5432 = 'PostgreSQL'; 3306 = 'MySQL'; 6379 = 'Redis'; 1433 = 'MSSQL'; 3478 = 'STUN'; 8443 = 'HTTPS-alt'; 1883 = 'MQTT'; 5900 = 'VNC'; 5060 = 'SIP' }\nfunction Svc($port) { if ($svc.ContainsKey([int]$port)) { return $svc[[int]$port] }; if ([int]$port -eq 0) { return '' }; return [string]$port }\n$procs = @{}; foreach ($p in (Get-Process)) { $procs[[int]$p.Id] = $p.ProcessName }\n$procs[0] = 'System Idle'; if (-not $procs[4]) { $procs[4] = 'System' }\nfunction Conn-Map {\n  # local port -> pid, and per-pid connection facts\n  $ports = @{}; $by = @{}\n  $tcp = @(Get-NetTCPConnection); $udp = @(Get-NetUDPEndpoint)\n  foreach ($c in $tcp) {\n    $id = [int]$c.OwningProcess; $ports[[int]$c.LocalPort] = $id\n    if (-not $by.ContainsKey($id)) { $by[$id] = @{ Est = 0; Listen = 0; Udp = 0; Remotes = @{} } }\n    if ($c.State -eq 'Established') { $by[$id].Est++; $k = $c.RemoteAddress + ':' + (Svc $c.RemotePort); $by[$id].Remotes[$k] = [int]$by[$id].Remotes[$k] + 1 }\n    elseif ($c.State -eq 'Listen') { $by[$id].Listen++ }\n  }\n  foreach ($u in $udp) { $id = [int]$u.OwningProcess; $ports[[int]$u.LocalPort] = $id; if (-not $by.ContainsKey($id)) { $by[$id] = @{ Est = 0; Listen = 0; Udp = 0; Remotes = @{} } }; $by[$id].Udp++ }\n  return @{ Ports = $ports; By = $by }\n}\nfunction PName($id) { $n = $procs[[int]$id]; if (-not $n) { $n = 'pid ' + $id }; return $n }\nif ($mode -eq 'snapshot') {\n  $m = Conn-Map\n  $rows = foreach ($id in $m.By.Keys) {\n    $b = $m.By[$id]; if (($b.Est + $b.Listen + $b.Udp) -eq 0) { continue }\n    $top = (($b.Remotes.GetEnumerator() | Sort-Object { $_.Value } -Descending | Select-Object -First 3 | ForEach-Object { $_.Key }) -join ', ')\n    [pscustomobject]@{ Process = (PName $id); PID = $id; Established = $b.Est; Listening = $b.Listen; UDP = $b.Udp; 'Talking to' = $top }\n  }\n  $rows = @($rows | Sort-Object Established, Listening -Descending)\n  $est = ($rows | Measure-Object Established -Sum).Sum; $lis = ($rows | Measure-Object Listening -Sum).Sum\n  $rows.Count.ToString() + ' programs have network sockets right now: ' + $est + ' established connections, ' + $lis + ' listening ports. Snapshot only - the \"with traffic\" variant measures how much each one moves.'\n  ''\n  ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd()\n  ''\n  '\"Talking to\" lists the remote addresses with the most connections (address:service). svchost is Windows itself (updates, time, store); System (PID 4) is the kernel, mostly file sharing. A program with many connections to one address is usually syncing or streaming.'\n  exit 0\n}\n# ---------- capture mode: 10 s of pktmon, attributed to programs through their local ports ----------\n$pr = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())\nif (-not $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'PROCNET-ERROR: measuring traffic per program needs administrator rights. Use \"Run as admin\" at the top of the window, or pick the default variant, which lists connections without admin.'; exit 1 }\n$work = Join-Path $env:TEMP 'netdeck-capture'; New-Item -ItemType Directory -Force -Path $work | Out-Null\n$etl = Join-Path $work 'procnet.etl'; $txt = Join-Path $work 'procnet.txt'\n$local = @{}; Get-NetIPAddress | ForEach-Object { $local[$_.IPAddress.Split('%')[0]] = $true }\npktmon stop 2>&1 | Out-Null; pktmon filter remove 2>&1 | Out-Null\nRemove-Item -LiteralPath $etl, $txt -Force\n$m0 = Conn-Map\n$started = pktmon start --capture --comp nics --pkt-size 128 --file-name $etl --file-size 200 2>&1\nif ($LASTEXITCODE -ne 0) { 'PROCNET-ERROR: pktmon could not start. ' + (($started | Out-String).Trim()); exit 1 }\n'Measuring for ' + $secs + ' s which programs send and receive (pktmon, attributed through each program''s ports)...'\nStart-Sleep -Seconds $secs\n$m1 = Conn-Map\npktmon stop 2>&1 | Out-Null\npktmon etl2txt $etl --out $txt 2>&1 | Out-Null\n$ports = @{}; foreach ($k in $m0.Ports.Keys) { $ports[$k] = $m0.Ports[$k] }; foreach ($k in $m1.Ports.Keys) { $ports[$k] = $m1.Ports[$k] }\nfunction Split-Endpoint($s) { if ($s -match '^(\\d+\\.\\d+\\.\\d+\\.\\d+)\\.(\\d+)$') { return @($Matches[1], [int]$Matches[2]) }; if ($s -match '^([0-9A-Fa-f:]+)\\.(\\d+)$') { return @($Matches[1], [int]$Matches[2]) }; return @($s, 0) }\n$acc = @{}; $pk = 0; $unattributed = 0; $other = 0\nfunction Bump($id, $dir, $size, $remote) { if (-not $script:acc.ContainsKey($id)) { $script:acc[$id] = @{ In = 0.0; Out = 0.0; Pk = 0; Rem = @{} } }; $a = $script:acc[$id]; $a.Pk++; if ($dir -eq 'Rx') { $a.In += $size } else { $a.Out += $size }; if ($remote) { $a.Rem[$remote] = [double]$a.Rem[$remote] + $size } }\n$rd = New-Object IO.StreamReader($txt); $dir = ''; $size = 0\nfunction Handle($t) {\n  $script:pk++\n  if ($t -match 'ethertype ARP') { $script:other++; return }\n  $body = $t; if ($t -match 'length \\d+: (.*)$') { $body = $Matches[1] }\n  if ($body -notmatch '^(\\S+) > (\\S+?):? (.*)$') { $script:other++; return }\n  $sp = Split-Endpoint $Matches[1]; $dp = Split-Endpoint $Matches[2]\n  $lp = 0; $remote = ''\n  if ($local[$sp[0]]) { $lp = $sp[1]; $remote = $dp[0] + (& { if ($dp[1]) { ':' + (Svc $dp[1]) } else { '' } }) } elseif ($local[$dp[0]]) { $lp = $dp[1]; $remote = $sp[0] + (& { if ($sp[1]) { ':' + (Svc $sp[1]) } else { '' } }) } else { $script:other++; return }\n  if ($lp -and $ports.ContainsKey($lp)) { Bump $ports[$lp] $script:dir $script:size $remote } else { $script:unattributed++; Bump -1 $script:dir $script:size $remote }\n}\nwhile (($line = $rd.ReadLine()) -ne $null) {\n  if ($line -match 'Direction (Rx|Tx).*OriginalSize (\\d+)') { $dir = $Matches[1]; $size = [int]$Matches[2]; if ($line -match 'LoggedSize \\d+[,\\s]+(\\S.* > .*)$') { Handle $Matches[1].Trim(); $dir = '' }; continue }\n  if (-not $dir) { continue }\n  Handle $line.Trim(); $dir = ''\n}\n$rd.Close()\nRemove-Item -LiteralPath $etl, $txt -Force\nfunction Fmt-Bytes($b) { if ($b -ge 1MB) { return ('{0:n1} MB' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:n0} KB' -f ($b / 1KB)) }; return ([int]$b).ToString() + ' B' }\n$total = 0.0; foreach ($a in $acc.Values) { $total += $a.In + $a.Out }\n$rows = foreach ($id in $acc.Keys) {\n  $a = $acc[$id]; $name = (& { if ($id -eq -1) { '(unmatched)' } else { PName $id } })\n  $top = ($a.Rem.GetEnumerator() | Sort-Object { $_.Value } -Descending | Select-Object -First 1 | ForEach-Object { $_.Key })\n  [pscustomobject]@{ Process = $name; PID = (& { if ($id -eq -1) { '' } else { $id } }); Received = (Fmt-Bytes $a.In); Sent = (Fmt-Bytes $a.Out); Packets = $a.Pk; Share = ('{0:p0}' -f (($a.In + $a.Out) / [math]::Max($total, 1))); 'Top remote' = $top; bytes = ($a.In + $a.Out) }\n}\n$rows = @($rows | Sort-Object bytes -Descending | Select-Object -First 25 Process, PID, Received, Sent, Packets, Share, 'Top remote')\n'Over ' + $secs + ' s this PC moved ' + (Fmt-Bytes $total) + ' in ' + $pk.ToString('n0') + ' packets' + (& { if ($other) { ' (plus ' + $other + ' that were not this PC''s: broadcast, ARP, other devices)' } else { '' } })\n''\nif ($rows.Count) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '  nothing was sent or received' }\n''\n$topRow = $rows | Where-Object { $_.PID -ne '' } | Select-Object -First 1\nif ($topRow) { 'Busiest program: ' + $topRow.Process + ' (' + $topRow.Share + ' of the traffic, mostly with ' + $topRow.'Top remote' + '). Traffic is matched to a program through the port it was using during the sample; \"(unmatched)\" is what could not be: connections that opened and closed inside the 10 s, ICMP, and packets that were not this PC''s.' }",
+      "presets": [
+        {
+          "key": "with-traffic",
+          "label": "with traffic — 10 s capture attributed per program",
+          "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$mode = 'capture'; $secs = 10\n$svc = @{ 53 = 'DNS'; 80 = 'HTTP'; 443 = 'HTTPS'; 22 = 'SSH'; 25 = 'SMTP'; 587 = 'SMTP'; 993 = 'IMAPS'; 123 = 'NTP'; 445 = 'SMB'; 3389 = 'RDP'; 5353 = 'mDNS'; 1900 = 'SSDP'; 8080 = 'HTTP-alt'; 5432 = 'PostgreSQL'; 3306 = 'MySQL'; 6379 = 'Redis'; 1433 = 'MSSQL'; 3478 = 'STUN'; 8443 = 'HTTPS-alt'; 1883 = 'MQTT'; 5900 = 'VNC'; 5060 = 'SIP' }\nfunction Svc($port) { if ($svc.ContainsKey([int]$port)) { return $svc[[int]$port] }; if ([int]$port -eq 0) { return '' }; return [string]$port }\n$procs = @{}; foreach ($p in (Get-Process)) { $procs[[int]$p.Id] = $p.ProcessName }\n$procs[0] = 'System Idle'; if (-not $procs[4]) { $procs[4] = 'System' }\nfunction Conn-Map {\n  # local port -> pid, and per-pid connection facts\n  $ports = @{}; $by = @{}\n  $tcp = @(Get-NetTCPConnection); $udp = @(Get-NetUDPEndpoint)\n  foreach ($c in $tcp) {\n    $id = [int]$c.OwningProcess; $ports[[int]$c.LocalPort] = $id\n    if (-not $by.ContainsKey($id)) { $by[$id] = @{ Est = 0; Listen = 0; Udp = 0; Remotes = @{} } }\n    if ($c.State -eq 'Established') { $by[$id].Est++; $k = $c.RemoteAddress + ':' + (Svc $c.RemotePort); $by[$id].Remotes[$k] = [int]$by[$id].Remotes[$k] + 1 }\n    elseif ($c.State -eq 'Listen') { $by[$id].Listen++ }\n  }\n  foreach ($u in $udp) { $id = [int]$u.OwningProcess; $ports[[int]$u.LocalPort] = $id; if (-not $by.ContainsKey($id)) { $by[$id] = @{ Est = 0; Listen = 0; Udp = 0; Remotes = @{} } }; $by[$id].Udp++ }\n  return @{ Ports = $ports; By = $by }\n}\nfunction PName($id) { $n = $procs[[int]$id]; if (-not $n) { $n = 'pid ' + $id }; return $n }\nif ($mode -eq 'snapshot') {\n  $m = Conn-Map\n  $rows = foreach ($id in $m.By.Keys) {\n    $b = $m.By[$id]; if (($b.Est + $b.Listen + $b.Udp) -eq 0) { continue }\n    $top = (($b.Remotes.GetEnumerator() | Sort-Object { $_.Value } -Descending | Select-Object -First 3 | ForEach-Object { $_.Key }) -join ', ')\n    [pscustomobject]@{ Process = (PName $id); PID = $id; Established = $b.Est; Listening = $b.Listen; UDP = $b.Udp; 'Talking to' = $top }\n  }\n  $rows = @($rows | Sort-Object Established, Listening -Descending)\n  $est = ($rows | Measure-Object Established -Sum).Sum; $lis = ($rows | Measure-Object Listening -Sum).Sum\n  $rows.Count.ToString() + ' programs have network sockets right now: ' + $est + ' established connections, ' + $lis + ' listening ports. Snapshot only - the \"with traffic\" variant measures how much each one moves.'\n  ''\n  ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd()\n  ''\n  '\"Talking to\" lists the remote addresses with the most connections (address:service). svchost is Windows itself (updates, time, store); System (PID 4) is the kernel, mostly file sharing. A program with many connections to one address is usually syncing or streaming.'\n  exit 0\n}\n# ---------- capture mode: 10 s of pktmon, attributed to programs through their local ports ----------\n$pr = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())\nif (-not $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'PROCNET-ERROR: measuring traffic per program needs administrator rights. Use \"Run as admin\" at the top of the window, or pick the default variant, which lists connections without admin.'; exit 1 }\n$work = Join-Path $env:TEMP 'netdeck-capture'; New-Item -ItemType Directory -Force -Path $work | Out-Null\n$etl = Join-Path $work 'procnet.etl'; $txt = Join-Path $work 'procnet.txt'\n$local = @{}; Get-NetIPAddress | ForEach-Object { $local[$_.IPAddress.Split('%')[0]] = $true }\npktmon stop 2>&1 | Out-Null; pktmon filter remove 2>&1 | Out-Null\nRemove-Item -LiteralPath $etl, $txt -Force\n$m0 = Conn-Map\n$started = pktmon start --capture --comp nics --pkt-size 128 --file-name $etl --file-size 200 2>&1\nif ($LASTEXITCODE -ne 0) { 'PROCNET-ERROR: pktmon could not start. ' + (($started | Out-String).Trim()); exit 1 }\n'Measuring for ' + $secs + ' s which programs send and receive (pktmon, attributed through each program''s ports)...'\nStart-Sleep -Seconds $secs\n$m1 = Conn-Map\npktmon stop 2>&1 | Out-Null\npktmon etl2txt $etl --out $txt 2>&1 | Out-Null\n$ports = @{}; foreach ($k in $m0.Ports.Keys) { $ports[$k] = $m0.Ports[$k] }; foreach ($k in $m1.Ports.Keys) { $ports[$k] = $m1.Ports[$k] }\nfunction Split-Endpoint($s) { if ($s -match '^(\\d+\\.\\d+\\.\\d+\\.\\d+)\\.(\\d+)$') { return @($Matches[1], [int]$Matches[2]) }; if ($s -match '^([0-9A-Fa-f:]+)\\.(\\d+)$') { return @($Matches[1], [int]$Matches[2]) }; return @($s, 0) }\n$acc = @{}; $pk = 0; $unattributed = 0; $other = 0\nfunction Bump($id, $dir, $size, $remote) { if (-not $script:acc.ContainsKey($id)) { $script:acc[$id] = @{ In = 0.0; Out = 0.0; Pk = 0; Rem = @{} } }; $a = $script:acc[$id]; $a.Pk++; if ($dir -eq 'Rx') { $a.In += $size } else { $a.Out += $size }; if ($remote) { $a.Rem[$remote] = [double]$a.Rem[$remote] + $size } }\n$rd = New-Object IO.StreamReader($txt); $dir = ''; $size = 0\nfunction Handle($t) {\n  $script:pk++\n  if ($t -match 'ethertype ARP') { $script:other++; return }\n  $body = $t; if ($t -match 'length \\d+: (.*)$') { $body = $Matches[1] }\n  if ($body -notmatch '^(\\S+) > (\\S+?):? (.*)$') { $script:other++; return }\n  $sp = Split-Endpoint $Matches[1]; $dp = Split-Endpoint $Matches[2]\n  $lp = 0; $remote = ''\n  if ($local[$sp[0]]) { $lp = $sp[1]; $remote = $dp[0] + (& { if ($dp[1]) { ':' + (Svc $dp[1]) } else { '' } }) } elseif ($local[$dp[0]]) { $lp = $dp[1]; $remote = $sp[0] + (& { if ($sp[1]) { ':' + (Svc $sp[1]) } else { '' } }) } else { $script:other++; return }\n  if ($lp -and $ports.ContainsKey($lp)) { Bump $ports[$lp] $script:dir $script:size $remote } else { $script:unattributed++; Bump -1 $script:dir $script:size $remote }\n}\nwhile (($line = $rd.ReadLine()) -ne $null) {\n  if ($line -match 'Direction (Rx|Tx).*OriginalSize (\\d+)') { $dir = $Matches[1]; $size = [int]$Matches[2]; if ($line -match 'LoggedSize \\d+[,\\s]+(\\S.* > .*)$') { Handle $Matches[1].Trim(); $dir = '' }; continue }\n  if (-not $dir) { continue }\n  Handle $line.Trim(); $dir = ''\n}\n$rd.Close()\nRemove-Item -LiteralPath $etl, $txt -Force\nfunction Fmt-Bytes($b) { if ($b -ge 1MB) { return ('{0:n1} MB' -f ($b / 1MB)) }; if ($b -ge 1KB) { return ('{0:n0} KB' -f ($b / 1KB)) }; return ([int]$b).ToString() + ' B' }\n$total = 0.0; foreach ($a in $acc.Values) { $total += $a.In + $a.Out }\n$rows = foreach ($id in $acc.Keys) {\n  $a = $acc[$id]; $name = (& { if ($id -eq -1) { '(unmatched)' } else { PName $id } })\n  $top = ($a.Rem.GetEnumerator() | Sort-Object { $_.Value } -Descending | Select-Object -First 1 | ForEach-Object { $_.Key })\n  [pscustomobject]@{ Process = $name; PID = (& { if ($id -eq -1) { '' } else { $id } }); Received = (Fmt-Bytes $a.In); Sent = (Fmt-Bytes $a.Out); Packets = $a.Pk; Share = ('{0:p0}' -f (($a.In + $a.Out) / [math]::Max($total, 1))); 'Top remote' = $top; bytes = ($a.In + $a.Out) }\n}\n$rows = @($rows | Sort-Object bytes -Descending | Select-Object -First 25 Process, PID, Received, Sent, Packets, Share, 'Top remote')\n'Over ' + $secs + ' s this PC moved ' + (Fmt-Bytes $total) + ' in ' + $pk.ToString('n0') + ' packets' + (& { if ($other) { ' (plus ' + $other + ' that were not this PC''s: broadcast, ARP, other devices)' } else { '' } })\n''\nif ($rows.Count) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '  nothing was sent or received' }\n''\n$topRow = $rows | Where-Object { $_.PID -ne '' } | Select-Object -First 1\nif ($topRow) { 'Busiest program: ' + $topRow.Process + ' (' + $topRow.Share + ' of the traffic, mostly with ' + $topRow.'Top remote' + '). Traffic is matched to a program through the port it was using during the sample; \"(unmatched)\" is what could not be: connections that opened and closed inside the 10 s, ICMP, and packets that were not this PC''s.' }",
+          "display": "port→program map + pktmon 10 s → bytes per program",
+          "admin": true
+        }
       ]
     }
   },
@@ -2284,12 +2368,12 @@
     "id": "iperf3",
     "name": "iperf3",
     "category": "Scanning, Capture & Transfer",
-    "purpose": "Bandwidth testing between two hosts",
+    "purpose": "Raw throughput between two machines you control — the definitive LAN speed test (needs iperf3 on both ends)",
     "platforms": [
       "cross"
     ],
-    "safe": false,
-    "note": "Needs an iperf3 server on the other end — run it yourself.",
+    "safe": true,
+    "note": "Runs iperf3 if it is installed (put iperf3.exe in a folder on your PATH; Windows builds at github.com/ar51an/iperf3-win-builds). The other machine runs \"iperf3 -s\". Windows Firewall will ask once when this PC acts as the server.",
     "win": "iperf3 -c <server>",
     "unix": [
       "iperf3 -c <server>"
@@ -2301,7 +2385,89 @@
     "helpUnix": [
       "iperf3",
       "--help"
-    ]
+    ],
+    "run": {
+      "kind": "exe",
+      "exe": "iperf3",
+      "args": [
+        "-c",
+        "{host}",
+        "-t",
+        "10",
+        "-f",
+        "m"
+      ],
+      "display": "iperf3 -c {host} -t 10 (upload to the server)",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "the machine running iperf3 -s",
+          "type": "host"
+        }
+      ],
+      "presets": [
+        {
+          "key": "reverse",
+          "label": "reverse — the server sends, this PC receives",
+          "args": [
+            "-c",
+            "{host}",
+            "-t",
+            "10",
+            "-f",
+            "m",
+            "-R"
+          ],
+          "display": "iperf3 -c {host} -t 10 -R (download)"
+        },
+        {
+          "key": "parallel",
+          "label": "4 parallel streams — fills a fast link",
+          "args": [
+            "-c",
+            "{host}",
+            "-t",
+            "10",
+            "-f",
+            "m",
+            "-P",
+            "4"
+          ],
+          "display": "iperf3 -c {host} -t 10 -P 4"
+        },
+        {
+          "key": "server",
+          "label": "be the server for one test (waits up to 90 s)",
+          "args": [
+            "-s",
+            "-1",
+            "-f",
+            "m"
+          ],
+          "display": "iperf3 -s -1 (one client, then exit)",
+          "timeoutSec": 90
+        }
+      ]
+    },
+    "runUnix": {
+      "kind": "exe",
+      "exe": "iperf3",
+      "args": [
+        "-c",
+        "{host}",
+        "-t",
+        "10",
+        "-f",
+        "m"
+      ],
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "the machine running iperf3 -s",
+          "type": "host"
+        }
+      ]
+    }
   },
   {
     "id": "tasklist",
