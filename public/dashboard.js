@@ -54,6 +54,7 @@ window.NetDeckDashboard = (() => {
     els.refresh.addEventListener('click', () => refresh());
     els.view.addEventListener('click', onClick);
     document.addEventListener('visibilitychange', () => { if (!document.hidden && shown) pollTraffic(); });
+    try { localStorage.removeItem('netdeck.dashboard.collapsed'); } catch (e) { /* 1.25.1 remembered folded cards; they now start folded every time */ }
     // snapshot: a small dialog for the anonymise choice, then one HTML file
     const modal = D.$('snapshot-modal'), snapBtn = D.$('dash-snapshot');
     if (modal && snapBtn) {
@@ -511,12 +512,12 @@ window.NetDeckDashboard = (() => {
     return `<div class="dash-chart">${c.svg}</div><div class="dash-stats">${line('router', c.g, 'l-g')}${line('internet', c.n, 'l-n')}<span class="dash-stat dim">${c.samples} samples</span></div>${mons ? `<p class="dash-sub">Longer monitors (one ping a second):</p><ul class="dash-checks">${mons}</ul>` : ''}`;
   }
 
-  /* The two chart cards can be folded to their header, with a one-line summary; the choice is remembered. */
-  let collapsed = new Set((() => { try { const j = JSON.parse(localStorage.getItem('netdeck.dashboard.collapsed') || '[]'); return Array.isArray(j) ? j : []; } catch (e) { return []; } })());
+  /* The two chart cards start folded to their header with a one-line summary, every time NetDeck opens;
+     unfolding one lasts for the session. */
+  const collapsed = new Set(['latency', 'traffic']);
   const collapseBtn = (key) => `<button type="button" class="dash-collapse" data-collapse="${key}" aria-expanded="${!collapsed.has(key)}" title="${collapsed.has(key) ? 'Expand' : 'Collapse'} this card">${collapsed.has(key) ? '&#x25B8;' : '&#x25BE;'}</button>`;
   function toggleCollapse(key) {
     if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
-    try { localStorage.setItem('netdeck.dashboard.collapsed', JSON.stringify([...collapsed])); } catch (e) { /* fine */ }
     const el = els.grid.querySelector(`#dash-${key}`);
     if (el) el.outerHTML = key === 'latency' ? latencyCard() : trafficCard();
     if (key === 'traffic') { if (collapsed.has(key)) stopTraffic(); else if (shown && D.canRun()) startTraffic(); }
