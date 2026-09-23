@@ -1,6 +1,6 @@
 {
   "name": "netdeck",
-  "version": "1.17.1",
+  "version": "1.18.0",
   "description": "Searchable network & system command reference with live command execution, playbooks and a hosted reference mode",
   "main": "server.js",
   "scripts": {

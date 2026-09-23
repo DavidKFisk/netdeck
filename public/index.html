@@ -20,7 +20,7 @@
       <span class="brand-mark" aria-hidden="true">&gt;_</span>
       <div class="brand-text">
         <h1>NetDeck</h1>
-        <p>network &amp; system command reference</p>
+        <p>network &amp; system command reference<span class="ver" id="app-version" title="NetDeck version"></span></p>
       </div>
     </div>
     <div class="search-wrap">
@@ -200,6 +200,7 @@
       if (el) el.textContent = (navigator.platform.indexOf('Win') === 0 ? 'set NETDECK_ORIGIN=' : 'NETDECK_ORIGIN=') + location.origin + (navigator.platform.indexOf('Win') === 0 ? ' && node server.js' : ' node server.js');
     });
   </script>
+  <script src="version.js"></script>
   <script src="api.js"></script>
   <script src="oui.js"></script>
   <script src="scanlog.js"></script>

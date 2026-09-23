@@ -108,6 +108,11 @@ body.terminal-open.terminal-tall { padding-bottom: calc(78vh + 60px); }
   color: var(--muted);
 }
 
+/* the version, from version.js (tools/bump.js keeps it in step with the installer) */
+.brand-text .ver { margin-left: 10px; font-family: var(--mono); text-transform: none; letter-spacing: 0; color: var(--muted); opacity: 0.85; }
+.brand-text .ver::before { content: "·"; margin-right: 10px; opacity: 0.6; }
+.brand-text .ver:empty { display: none; }
+
 .search-wrap {
   position: relative;
   flex: 1;

@@ -1918,6 +1918,12 @@
     canRun = data.live;
     document.body.dataset.mode = canRun ? 'live' : 'static';
     document.body.dataset.backend = BACKEND.kind;
+    // the version comes from version.js, written by tools/bump.js; the tooltip says which edition this is
+    const verEl = $('app-version');
+    if (verEl && window.NETDECK_VERSION) {
+      verEl.textContent = 'v' + window.NETDECK_VERSION;
+      verEl.title = `NetDeck ${window.NETDECK_VERSION} — ${TAURI ? 'desktop app' : STATIC ? 'hosted reference' : 'local server'}`;
+    }
     if (TAURI && !document.body.dataset.docLinks) {
       // In the desktop app the Manual and Cheat sheet open in their own window, so this one keeps its tabs.
       document.body.dataset.docLinks = '1';
