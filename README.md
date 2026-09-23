@@ -150,3 +150,7 @@ produces `build/netdeck.exe` (or `build/netdeck` on Linux/macOS) — Node and th
 - [public/app.js](public/app.js) — UI: cards, tabs, table view, history, context
 - [public/parsers.js](public/parsers.js) — output parsers for the table view
 - [public/playbooks.js](public/playbooks.js) — playbook definitions, step checks and verdicts
+
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, change it, ship it; keep the copyright notice.
