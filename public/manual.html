@@ -191,6 +191,7 @@
       <li class="sub"><a href="#s-table">Table view</a></li>
       <li class="sub"><a href="#s-history">History</a></li>
       <li class="sub"><a href="#s-hosted">Hosted (web) version</a></li>
+      <li><a href="#dashboard">Dashboard</a></li>
       <li><a href="#playbooks">Playbooks</a></li>
       <li><a href="#commands">Command reference</a></li>
       <li class="sub"><a href="#c-config">Configuration &amp; interfaces</a></li>
@@ -249,7 +250,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.22.3</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.23.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook; arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>&#x263D; / &#x2600;</div><div>Switches between dark and light themes. Your choice is remembered.</div>
@@ -283,7 +284,7 @@
 
 <h3 id="s-filters">Views &amp; filters</h3>
 <div class="ui">
-  <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
+  <div>Commands / Playbooks / Dashboard</div><div>Three views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>). <strong>Dashboard</strong> is one screen that says how the network is right now (see <a href="#dashboard">Dashboard</a>). Typing in the search box while on the dashboard switches to Commands.</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
   <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 60 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
@@ -358,6 +359,18 @@
   <div>Report</div><div>Saves the run in front of you as a single HTML file: title, time, your note, the output and its table for a command, the steps (with their full output in collapsible sections) and the verdict for a playbook. It opens in any browser and has a <em>Print / save as PDF</em> button. <strong>Anonymise</strong> is on by default: your computer's name becomes OFFICE-PC, every address is replaced consistently (private ones with 192.0.2.x, public with 203.0.113.x — so the same device keeps the same fake address throughout), and the device half of MAC addresses becomes xx-xx-xx. Well-known addresses such as 1.1.1.1 are left alone. Turn it off for a report you keep yourself.</div>
   <div>Schedule</div><div>Runs a playbook every 5 minutes to 3 hours while NetDeck is open — <em>Scan my network</em> every 15 minutes, say, or <em>Does my connection drop out?</em> every hour. Each run opens a tab; an unchanged run replaces the previous one so tabs do not pile up. A run whose result changed — a new device, a verdict that flipped, a step that started failing — is kept, marked with "!" in its tab, counted on the ⏱ badge in the context strip, and (if you tick "notify on change") announced with a desktop notification. Schedules are remembered and resume when NetDeck is reopened; they never run while it is closed. Playbooks that need input appear in the list once you have run them, with the input you used last.</div>
 </div>
+
+<h2 id="dashboard">Dashboard</h2>
+<p>The third view: one screen that says how the network is right now. Everything on it comes from the same commands and checks as the rest of NetDeck — the dashboard runs the quick ones itself and shows the latest result of the slow ones — and every figure can be traced back to real output: click any tile, or the <span class="btn">run</span> beside any row, and that command or playbook runs in the terminal drawer.</p>
+<figure class="shot"><img src="manual-img/dashboard.webp" width="1860" height="984" alt="The Dashboard view: eight status tiles and the This computer, Connection and Network cards" loading="lazy"><figcaption>A healthy office network. Green tiles across the top, then this computer's addresses, the connection checks with their one-line verdict, and the network as the last scan saw it.</figcaption></figure>
+<div class="ui">
+  <div>Status tiles</div><div>Eight tiles, each with a coloured left edge — green is fine, amber is slow or worth a look, red is broken, grey is not checked yet. <strong>Router</strong> and <strong>Internet</strong> show the live ping from the context strip, so they update every 10 seconds on their own. <strong>DNS</strong>, <strong>HTTPS</strong> and <strong>Wi-Fi</strong> come from the quick checks below. <strong>DNS honesty</strong>, <strong>Router check-up</strong> and <strong>Devices</strong> take a minute each, so the dashboard does not run them itself: they show the most recent run of that playbook and how old it is, and clicking one runs it again.</div>
+  <div><span class="btn">Refresh</span></div><div>Runs the quick checks again, all at once — <code>ipconfig /all</code>, four pings to the router and four to <code>1.1.1.1</code>, a lookup of example.com, a timed HTTPS request to example.com, the Wi-Fi link, and uptime and memory — in about three seconds. The dashboard refreshes by itself when you open it if its last snapshot is more than two minutes old. The snapshot is kept in this browser, so the dashboard always opens with something to show, and the line above the tiles says when it was taken.</div>
+  <div>This computer</div><div>Your adapter as <code>ipconfig /all</code> reports it: name and description, IP address and mask, gateway, DNS servers, the DHCP server and how much of the lease is left, the MAC address with its manufacturer, the Wi-Fi signal, band, channel and link rate when you are on Wi-Fi, the IPv6 address, then Windows version, uptime and memory in use.</div>
+  <div>Connection</div><div>The quick checks as rows, with a verdict line above them that says what they add up to: router unreachable; router fine but no internet; internet fine but names do not resolve; ping and DNS fine but HTTPS fails (a sign-in portal, proxy or firewall); everything answers but slowly; or all good. The buttons at the bottom open the matching playbooks.</div>
+  <div>Network</div><div>Built from the scan log — the record that <a href="#pb-scan">Scan my network</a> keeps: how many other devices share your subnet, the router and its last check-up, what changed since the previous scan (hover <em>new</em>, <em>gone</em> or <em>moved</em> for the addresses), and a bar per manufacturer. <span class="btn">Scan now</span> runs the scan; the card updates when it finishes.</div>
+</div>
+<div class="callout"><span class="lbl">Hosted version</span><p>A web page cannot read your network, so the hosted dashboard shows a note instead — until a local NetDeck is connected, when it works like the desktop app's.</p></div>
 
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
@@ -1409,7 +1422,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.22.3</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.23.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this licence text go with it — and it comes with no warranty of any kind. The full text:</p>

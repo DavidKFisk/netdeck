@@ -65,6 +65,7 @@
     <div class="view-switch" role="tablist" aria-label="View">
       <button class="vtab is-active" role="tab" aria-selected="true" data-view="commands">Commands</button>
       <button class="vtab" role="tab" aria-selected="false" data-view="playbooks">Playbooks</button>
+      <button class="vtab" role="tab" aria-selected="false" data-view="dashboard">Dashboard</button>
     </div>
     <div class="filter-row" id="platform-filters" role="group" aria-label="Platform">
       <button class="chip is-active" data-platform="all">All platforms</button>
@@ -89,6 +90,15 @@
       <p class="result-count" id="pb-count" role="status"></p>
       <section id="playbook-grid" aria-label="Playbooks"></section>
       <p class="empty" id="pb-empty" hidden>No playbooks match — try a shorter search.</p>
+    </div>
+    <div id="view-dashboard" hidden>
+      <div class="result-row">
+        <p class="result-count" id="dash-status" role="status"></p>
+        <button class="tbtn" id="dash-refresh" title="Run the quick checks again: adapter, router and internet pings, DNS, HTTPS, Wi-Fi link, uptime">Refresh</button>
+      </div>
+      <p class="empty" id="dash-static" hidden>The dashboard reads this computer's live network, which a hosted page cannot do. Use the desktop app or the local server — or connect a local NetDeck above.</p>
+      <section class="dash-strip" id="dash-strip" aria-label="Status"></section>
+      <section class="grid grid-wide dash-grid" id="dash-grid" aria-label="Dashboard"></section>
     </div>
   </main>
 
@@ -255,6 +265,7 @@
   <script src="scanlog.js"></script>
   <script src="parsers.js"></script>
   <script src="playbooks.js"></script>
+  <script src="dashboard.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

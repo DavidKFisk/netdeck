@@ -53,7 +53,7 @@ const SCRUB = `(() => {
     if (!t || !t.trim()) continue;
     const before = t;
     if (host) t = t.split(host).join('OFFICE-PC').split(host.toLowerCase()).join('office-pc');
-    t = t.replace(/\\b(DESKTOP|LAPTOP|WIN)-[A-Z0-9]{5,}\\b/g, 'OFFICE-PC').replace(/\\b[A-Z][A-Z0-9]{2,}-PC\\b/g, 'device-x.lan');
+    t = t.replace(/\\b(DESKTOP|LAPTOP|WIN)-[A-Z0-9]{5,}\\b/g, 'OFFICE-PC').replace(/\\b(?!OFFICE-PC)[A-Z][A-Z0-9]{2,}-PC\\b/g, 'device-x.lan');
     window.__nameMap.forEach((alias, name) => { const re = new RegExp('(^|[^A-Za-z0-9])' + name.replace(/[.*+?^$()|[\\]{}\\\\]/g, '\\\\$&') + '(?![A-Za-z0-9])', 'g'); t = t.replace(re, '$1' + alias); });
     t = t.replace(/\\b(\\d{1,3}(?:\\.\\d{1,3}){3})\\b/g, (m) => mapIp(m));
     t = t.replace(/\\b([0-9a-f]{2}[-:][0-9a-f]{2}[-:][0-9a-f]{2})[-:][0-9a-f]{2}[-:][0-9a-f]{2}[-:][0-9a-f]{2}\\b/gi, '$1-xx-xx-xx');
@@ -133,6 +133,30 @@ const CAPTURE_CSS = `
     await shoot(`pb-${run.id}`, rect);
     console.log(`  ${run.id}: ${state} in ${((Date.now() - started) / 1000).toFixed(0)} s, ${rect.height}px tall`);
     await evalJs(`(() => { document.getElementById('__cap')?.remove(); document.getElementById('term-close-all').click(); return true; })()`);
+  }
+  // 3. The dashboard — after the playbooks, so its DNS-honesty, router and devices tiles have something to show.
+  if (!ONLY.length || ONLY.includes('dashboard')) {
+    console.log('dashboard…');
+    const runQuiet = async (id) => evalJs(`(async () => {
+      if (document.querySelector('.vtab[data-view="dashboard"]').classList.contains('is-active')) document.querySelector('.vtab[data-view="playbooks"]').click();
+      const c = document.querySelector('.card[data-pb="${id}"]'); c.querySelector('.run-btn').click();
+      for (let i = 0; i < 1000; i++) { if (document.querySelector('.pane:not([hidden]) .pb-verdict:not([hidden])')) break; await new Promise(r => setTimeout(r, 250)); }
+      const p = document.querySelector('.pane:not([hidden])');
+      return (p?.querySelector('.pb-verdict')?.dataset.tone || '?') + ' — ' + [...(p?.querySelectorAll('.pb-summary') || [])].map((s) => s.textContent).join(' | ').slice(0, 400); })()`);
+    // only when asked for on its own: the full run has just done these three
+    if (ONLY.length) for (const id of ['dnshonest', 'routercheck', 'scan']) console.log(`  ${id}: ${await runQuiet(id)}`);
+    await evalJs(`(() => { document.getElementById('term-close-all').click(); return true; })()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 1240, height: 1000, deviceScaleFactor: 1.5, mobile: false });
+    await evalJs(`(() => { const s = document.createElement('style'); s.id = '__capdash'; s.textContent = '.terminal { display: none !important; }'; document.head.appendChild(s); return true; })()`);
+    await evalJs(`(async () => { document.querySelector('.vtab[data-view="dashboard"]').click();
+      for (let i = 0; i < 200; i++) { if (/^Last check/.test(document.getElementById('dash-status').textContent) && !document.getElementById('dash-refresh').disabled) break; await new Promise(r => setTimeout(r, 250)); }
+      await new Promise(r => setTimeout(r, 600)); return true; })()`);
+    await evalJs(SCRUB);
+    const rect = await evalJs(`(() => { const top = document.querySelector('.view-switch').getBoundingClientRect().top + scrollY - 6; const r = document.getElementById('view-dashboard').getBoundingClientRect(); return { x: 0, y: Math.max(0, top), width: 1240, height: Math.ceil(r.bottom + scrollY - top) + 6 }; })()`);
+    await shoot('dashboard', rect);
+    console.log(`  dashboard: ${rect.height}px tall`);
+    await evalJs(`(() => { document.getElementById('__capdash')?.remove(); return true; })()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 1000, deviceScaleFactor: 1.5, mobile: false });
   }
   console.log('ALL_DONE');
   ws.close();

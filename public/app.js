@@ -10,7 +10,8 @@
   const grid = $('grid'), emptyMsg = $('empty'), resultCount = $('result-count');
   const searchInput = $('search'), platformRow = $('platform-filters'), categoryRow = $('category-filters');
   const template = $('card-template'), playbookGrid = $('playbook-grid'), pbGroupRow = $('pb-group-filters');
-  const viewCommands = $('view-commands'), viewPlaybooks = $('view-playbooks');
+  const viewCommands = $('view-commands'), viewPlaybooks = $('view-playbooks'), viewDashboard = $('view-dashboard');
+  const DASH = window.NetDeckDashboard;
   const terminal = $('terminal'), tabStrip = $('tab-strip'), tabStripEmpty = $('tab-strip-empty');
   const panes = $('panes'), paneEmpty = $('pane-empty');
   const viewBtn = $('term-view'), stopBtn = $('term-stop'), copyBtn = $('term-copy');
@@ -257,6 +258,7 @@
     if (kind === 'cmd' && byId.has(id)) jumpTo('cmd', id, p);
     else if (kind === 'pb' && PB.get(id)) jumpTo('pb', id, p);
     else if (kind === 'playbooks') setView('playbooks');
+    else if (kind === 'dashboard') setView('dashboard');
     else if (kind === 'pinned') { setView('commands'); setCategory('pinned'); }
   }
 
@@ -404,6 +406,7 @@
     renderContext();
     render();
     renderPlaybooks();
+    DASH.poke();
     if (refresh) pollHealth();
   }
 
@@ -459,6 +462,7 @@
       el.title = host ? `Pinging ${host} every ${HEALTH_INTERVAL / 1000}s` : 'No gateway detected';
       el.dataset.state = state;
     }
+    DASH.poke('health');
   }
 
   async function pollHealth() {
@@ -693,6 +697,8 @@
   // The one search box filters whichever view is showing.
   searchInput.addEventListener('input', () => {
     query = searchInput.value.trim().toLowerCase();
+    // The dashboard has nothing to filter: typing there searches the commands.
+    if (activeView === 'dashboard' && query) { setView('commands'); return; }
     if (activeView === 'playbooks') renderPlaybooks(); else render();
   });
 
@@ -714,11 +720,14 @@
     });
     viewCommands.hidden = view !== 'commands';
     viewPlaybooks.hidden = view !== 'playbooks';
+    viewDashboard.hidden = view !== 'dashboard';
     platformRow.hidden = view !== 'commands';
     categoryRow.hidden = view !== 'commands';
     pbGroupRow.hidden = view !== 'playbooks';
     searchInput.placeholder = view === 'playbooks' ? 'Search playbooks by symptom, name or command…' : 'Search commands, syntax or purpose…';
     cursorCard = null;
+    if (view === 'dashboard') { DASH.show(); return; }
+    DASH.hide();
     // A search typed in one view carries over to the other.
     if (view === 'playbooks') renderPlaybooks(); else render();
   }
@@ -1585,6 +1594,7 @@
     history = history.slice(0, MAX_HISTORY);
     persistHistory();
     renderHistory();
+    DASH.poke();
     if (entry.params?.host) { render(); renderPlaybooks(); }
   }
 
@@ -2135,6 +2145,7 @@ ${body}
   }
 
   function moveCursor(dir) {
+    if (activeView === 'dashboard') return;
     const cards = [...(activeView === 'commands' ? grid : playbookGrid).querySelectorAll('.card')];
     if (!cards.length) return;
     const idx = cards.indexOf(cursorCard);
@@ -2290,6 +2301,10 @@ ${body}
     if (STATIC && !API) setAgentStatus('none');
     buildCategoryChips();
     buildPlaybookGroupChips();
+    DASH.init({
+      $, byId, PB, P, execute, startRun, runPlaybook, isWin,
+      context: () => context, health: () => health, history: () => history, canRun: () => canRun,
+    });
     render();
     renderPlaybooks();
     renderHistory();

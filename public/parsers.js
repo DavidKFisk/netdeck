@@ -291,7 +291,7 @@ window.NetDeckParsers = (() => {
     // the scan log: when was each device first seen, and what changed since the last scan of this range
     if (log && ipCol !== -1) {
       const range = (text.match(/Scanned (\S+) on /) || [])[1] || '';
-      const devices = base.map((r) => ({ ip: r[ipCol], mac: r[macCol], name: nameCol !== -1 ? r[nameCol] : '', maker: '' }));
+      const devices = base.map((r) => ({ ip: r[ipCol], mac: r[macCol], name: nameCol !== -1 ? r[nameCol] : '', maker: window.NetDeckOui.lookup(r[macCol]) }));
       const diff = log.record(range, devices);
       const seen = (d) => { if (!diff) return ''; if (diff.firstEver) return 'first scan'; const ts = diff.first[log.keyOf(d)]; return ts ? 'since ' + new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'NEW'; };
       const mi = columns.indexOf('Manufacturer');

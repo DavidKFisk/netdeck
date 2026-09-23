@@ -59,7 +59,16 @@ window.NetDeckScanLog = (() => {
   function nameFor(ip) { const db = load(); const n = db.names[ip]; return n && Date.now() - n.ts < NAME_TTL ? n.name : ''; }
 
   function history() { return load().scans.map((s) => ({ ts: s.ts, range: s.range, count: s.devices.length })); }
+  /* The most recent scan (for the dashboard): its devices, the previous scan of the same range, and the first-seen
+     stamps — a device whose stamp equals the scan's own time was new in that scan. */
+  function latest() {
+    const db = load();
+    const s = db.scans[db.scans.length - 1];
+    if (!s) return null;
+    const prev = db.scans.slice(0, -1).filter((x) => x.range === s.range).slice(-1)[0] || null;
+    return { ts: s.ts, range: s.range, devices: s.devices, prev, firstSeen: db.firstSeen };
+  }
   function clear() { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } lastDiff = null; }
 
-  return { firstSeen, record, rememberNames, nameFor, history, clear, keyOf: key, get lastDiff() { return lastDiff; } };
+  return { firstSeen, record, rememberNames, nameFor, history, latest, clear, keyOf: key, get lastDiff() { return lastDiff; } };
 })();
