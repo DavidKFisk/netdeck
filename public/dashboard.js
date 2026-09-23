@@ -70,6 +70,8 @@ window.NetDeckDashboard = (() => {
   function onClick(e) {
     const fold = e.target.closest('[data-collapse]');
     if (fold) { toggleCollapse(fold.dataset.collapse); return; }
+    const clear = e.target.closest('[data-clear]');
+    if (clear) { clearSeries(clear.dataset.clear); return; }
     const r = e.target.closest('[data-range]');
     if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
     const b = e.target.closest('[data-run],[data-pb]');
@@ -464,6 +466,14 @@ window.NetDeckDashboard = (() => {
     saveSeries();
     return used;
   }
+  /* Forget kept results. The runs stay in History; their ids stay in the ingested list, so they are not picked up again. */
+  function clearSeries(what) {
+    if (what === 'speed') { if (!series.speed.length || !window.confirm(`Forget all ${series.speed.length} speed test${series.speed.length === 1 ? '' : 's'} kept on the dashboard? The runs themselves stay in History.`)) return; series.speed = []; }
+    else if (what === 'trace') { if (!series.trace || !window.confirm('Forget the last traceroute shown on the dashboard? The run itself stays in History.')) return; series.trace = null; }
+    else return;
+    saveSeries();
+    render();
+  }
   function backfill() { let any = false; for (const h of (D.history() || []).slice().reverse()) if (ingest(h)) any = true; return any; }
 
   const clockShort = (ts) => new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
@@ -539,7 +549,7 @@ window.NetDeckDashboard = (() => {
   function speedCard() {
     const runs = series.speed.slice(-20);
     const last = runs[runs.length - 1];
-    const foot = (extra) => `<span>${extra}</span><span class="dash-links">${btn('Run speed test', 'speed-test')}${pbBtn('Why is everything slow?', 'slow')}</span>`;
+    const foot = (extra, clear) => `<span>${extra}</span><span class="dash-links">${btn('Run speed test', 'speed-test')}${pbBtn('Why is everything slow?', 'slow')}${clear ? '<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="speed" title="Forget every speed test kept here">Clear</button>' : ''}</span>`;
     if (!last) return card('Speed tests', '', '<p class="dash-empty">No speed test yet. Each run (about half a minute, against speed.cloudflare.com) is kept here: download, upload, idle latency and the bufferbloat grade, so you can see whether the line is getting better or worse.</p>', foot('from the run history'));
     const mb = (v) => (v == null ? '—' : v >= 100 ? Math.round(v) : v.toFixed(1));
     const big = `<div class="dash-big"><div><span class="dash-big-n">${mb(last.down)}</span><span class="dash-big-l">down Mbit/s</span></div><div><span class="dash-big-n">${mb(last.up)}</span><span class="dash-big-l">up Mbit/s</span></div><div><span class="dash-big-n">${last.idle == null ? '—' : last.idle}</span><span class="dash-big-l">idle ms</span></div><div><span class="dash-big-n" data-state="${GRADE[last.grade] || 'idle'}">${esc(last.grade || '—')}</span><span class="dash-big-l">bufferbloat${last.bloat != null ? ` +${last.bloat} ms` : ''}</span></div></div>`;
@@ -553,7 +563,7 @@ window.NetDeckDashboard = (() => {
     }).join('');
     const labels = runs.length > 1 ? `<text x="0" y="${H - 2}" class="ax">${esc(dayShort(runs[0].t))}</text><text x="${((runs.length - 1) * slot + slot * 0.15 + bw).toFixed(1)}" y="${H - 2}" class="ax" text-anchor="end">${esc(dayShort(last.t))}</text>` : '';
     const chart = `<svg class="dash-chart-svg dash-bars-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Past speed tests"><line x1="0" y1="${H - padB}" x2="${W}" y2="${H - padB}" class="base"/>${bars}${labels}</svg><div class="dash-stats"><span class="dash-stat"><span class="dash-swatch bar-d"></span>download</span><span class="dash-stat"><span class="dash-swatch bar-u"></span>upload</span><span class="dash-stat dim">${runs.length} run${runs.length === 1 ? '' : 's'} · hover a bar</span></div>`;
-    return card('Speed tests', when(last.t), big + chart, foot(`last run ${ago(last.t)}${last.colo ? ` · via ${esc(last.colo)}` : ''}`));
+    return card('Speed tests', when(last.t), big + chart, foot(`last run ${ago(last.t)}${last.colo ? ` · via ${esc(last.colo)}` : ''}`, true));
   }
 
   function routeCard() {
@@ -571,7 +581,7 @@ window.NetDeckDashboard = (() => {
     }).join('');
     const legend = '<div class="dash-stats"><span class="dash-stat"><span class="dash-swatch net-private"></span>your network</span><span class="dash-stat"><span class="dash-swatch net-cgnat"></span>provider</span><span class="dash-stat"><span class="dash-swatch net-public"></span>internet</span><span class="dash-stat"><span class="dash-swatch net-silent"></span>no reply</span></div>';
     const body = `<p class="dash-verdict" data-tone="${TONE[tr.status] || 'idle'}">${esc(tr.summary || '')}</p><div class="dash-chain">${chain}</div>${legend}`;
-    return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}</span>`);
+    return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="trace" title="Forget this trace">Clear</button></span>`);
   }
 
   /* ================= traffic: adapter byte counters every few seconds while the dashboard is showing ================= */

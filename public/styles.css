@@ -1224,3 +1224,5 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-card.is-collapsed { padding-block: 10px; gap: 0; }
 .dash-card.is-collapsed .card-head { align-items: center; }
 .dash-collapsed-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-clear { color: var(--muted); }
+.dash-clear:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
