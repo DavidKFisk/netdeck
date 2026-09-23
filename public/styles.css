@@ -1213,3 +1213,12 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-hop-addr { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-hop.is-jump { border-bottom-color: var(--warn); }
 .dash-hop.is-jump .dash-hop-ms { color: var(--warn); font-weight: 600; }
+
+/* dashboard: collapsible chart cards */
+.dash-head-tools { display: inline-flex; align-items: center; gap: 8px; }
+.dash-collapse { font: 13px var(--mono); line-height: 1; width: 24px; height: 24px; padding: 0; border: 1px solid var(--border-soft); border-radius: 5px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.dash-collapse:hover { color: var(--bright); border-color: var(--muted); }
+.dash-collapse:focus-visible { outline: 1.5px solid var(--ok); outline-offset: 2px; }
+.dash-card.is-collapsed { padding-block: 10px; gap: 0; }
+.dash-card.is-collapsed .card-head { align-items: center; }
+.dash-collapsed-sum { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

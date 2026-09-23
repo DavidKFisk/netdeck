@@ -67,6 +67,8 @@ window.NetDeckDashboard = (() => {
 
   /* Any button on the dashboard that names a command or playbook runs it in the terminal, visibly. */
   function onClick(e) {
+    const fold = e.target.closest('[data-collapse]');
+    if (fold) { toggleCollapse(fold.dataset.collapse); return; }
     const r = e.target.closest('[data-range]');
     if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
     const b = e.target.closest('[data-run],[data-pb]');
@@ -85,12 +87,21 @@ window.NetDeckDashboard = (() => {
   }
 
   // refresh on opening when the snapshot is stale — or predates a tile added in a newer version
-  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun()) startTraffic(); }
+  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun() && !collapsed.has('traffic')) startTraffic(); }
   function hide() { shown = false; stopTraffic(); }
   /* health tick: record the sample and patch the two ping tiles and the latency chart in place (a full redraw
      every 10 s would wipe hover and focus); a saved run: take what the charts need, then redraw. */
   function poke(what, entry) {
-    if (what === 'health') { recordHealth(); if (shown) { updatePingChips(); const b = els.grid.querySelector('#dash-latency-body'); if (b) b.innerHTML = latencyBody(); } return; }
+    if (what === 'health') {
+      recordHealth();
+      if (shown) {
+        updatePingChips();
+        const b = els.grid.querySelector('#dash-latency-body');
+        if (b) b.innerHTML = latencyBody();
+        else { const s = els.grid.querySelector('#dash-latency.is-collapsed .dash-collapsed-sum'); if (s) { const tmp = document.createElement('div'); tmp.innerHTML = latencyCard(); s.textContent = tmp.querySelector('.dash-collapsed-sum').textContent; } }
+      }
+      return;
+    }
     if (what === 'history') { ingest(entry); }
     if (shown) render();
   }
@@ -500,10 +511,27 @@ window.NetDeckDashboard = (() => {
     return `<div class="dash-chart">${c.svg}</div><div class="dash-stats">${line('router', c.g, 'l-g')}${line('internet', c.n, 'l-n')}<span class="dash-stat dim">${c.samples} samples</span></div>${mons ? `<p class="dash-sub">Longer monitors (one ping a second):</p><ul class="dash-checks">${mons}</ul>` : ''}`;
   }
 
+  /* The two chart cards can be folded to their header, with a one-line summary; the choice is remembered. */
+  let collapsed = new Set((() => { try { const j = JSON.parse(localStorage.getItem('netdeck.dashboard.collapsed') || '[]'); return Array.isArray(j) ? j : []; } catch (e) { return []; } })());
+  const collapseBtn = (key) => `<button type="button" class="dash-collapse" data-collapse="${key}" aria-expanded="${!collapsed.has(key)}" title="${collapsed.has(key) ? 'Expand' : 'Collapse'} this card">${collapsed.has(key) ? '&#x25B8;' : '&#x25BE;'}</button>`;
+  function toggleCollapse(key) {
+    if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
+    try { localStorage.setItem('netdeck.dashboard.collapsed', JSON.stringify([...collapsed])); } catch (e) { /* fine */ }
+    const el = els.grid.querySelector(`#dash-${key}`);
+    if (el) el.outerHTML = key === 'latency' ? latencyCard() : trafficCard();
+    if (key === 'traffic') { if (collapsed.has(key)) stopTraffic(); else if (shown && D.canRun()) startTraffic(); }
+  }
+
   function latencyCard() {
+    const folded = collapsed.has('latency');
+    if (folded) {
+      const c = latencyChart(Date.now());
+      const one = (label, s) => (s && s.avg != null ? `${label} ${s.avg} ms${s.lossPct ? ` (${s.lossPct}% lost)` : ''}` : `${label} —`);
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-collapsed-sum">${esc(one('router', c.g))} · ${esc(one('internet', c.n))} · last ${esc(range)}</span>${collapseBtn('latency')}</header></article>`;
+    }
     const ranges = Object.keys(RANGES).map((r) => `<button type="button" class="tbtn tbtn-sm${r === range ? ' is-on' : ''}" data-range="${r}" aria-pressed="${r === range}">${r}</button>`).join('');
     const foot = `<span>router and internet ping every 10 s while NetDeck is open · hover the chart for a moment's figures</span><span class="dash-links">${pbBtn('Does my connection drop out?', 'dropouts')}${pbBtn('Why is everything slow?', 'slow')}</span>`;
-    return `<article class="card dash-card dash-wide" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-ranges" role="group" aria-label="Range">${ranges}</span></header><div id="dash-latency-body">${latencyBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+    return `<article class="card dash-card dash-wide" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-head-tools"><span class="dash-ranges" role="group" aria-label="Range">${ranges}</span>${collapseBtn('latency')}</span></header><div id="dash-latency-body">${latencyBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
   }
 
   const GRADE = { A: 'ok', B: 'ok', C: 'warn', D: 'err' };
@@ -614,8 +642,15 @@ window.NetDeckDashboard = (() => {
   }
 
   function trafficCard() {
+    if (collapsed.has('traffic')) {
+      const ctx = D.context() || {};
+      const name = (trafficLatest && ((trafficLatest.adapters.find((a) => a.name === ctx.adapter) || trafficLatest.adapters[0]) || {}).name) || ctx.adapter;
+      const last = name ? series.traffic.filter((x) => x[1] === name).slice(-1)[0] : null;
+      const sum = last ? `${esc(name)} ↓ ${esc(fmtBps(last[2]))} · ↑ ${esc(fmtBps(last[3]))} · ${esc(ago(last[0]))} · sampling paused` : 'sampling paused — expand to read the adapter';
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-collapsed-sum">${sum}</span>${collapseBtn('traffic')}</header></article>`;
+    }
     const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
-    return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+    return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
   }
 
   /* ================= security posture: the live firewall state plus the latest run of each security check ================= */
