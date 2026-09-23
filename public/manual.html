@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 55 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 60 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -343,7 +343,7 @@
 <!-- ============================================================ -->
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
-<p>There are twenty-three, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
+<p>There are twenty-five, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, is my DNS honest, router check-up, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
 <figure class="shot"><img src="manual-img/playbooks-overview.webp" width="1350" height="1500" alt="The Playbooks view, grouped, with the group chips and search box" loading="lazy"><figcaption>The Playbooks view: group chips under the view switch, a count, then each group with its playbooks. A “?” after a step number marks a step that only runs when an earlier result calls for it.</figcaption></figure>
 
 <p class="shots-note">The screenshots in this chapter are real runs. The computer name, public IP addresses and the second half of MAC addresses have been replaced with placeholders.</p>
@@ -509,6 +509,12 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <p>Shows whether your address is leased or typed in by hand, which DHCP server issued it and how long is left (Windows renews at the halfway point, so a few hours left is normal), whether that server still answers, and whether Windows has logged another device using your IP address. A recent conflict explains connections that drop at random: two devices with one address knock each other offline. An event from more than a month ago is reported as history, not a fault.</p>
 
 <figure class="shot"><img src="manual-img/pb-dhcp.webp" width="1350" height="597" alt="Result of the “DHCP lease & address conflicts” playbook" loading="lazy"><figcaption>A leased address with time remaining, a DHCP server that answers, and an old conflict reported as history rather than a current problem.</figcaption></figure>
+
+<h3 id="pb-dnshonest">Is my DNS honest?</h3>
+<p>Two steps: the <a href="#cmd-dns-check">DNS honesty check</a> (who answers your lookups, tampering and interception tests, VPN leak, encryption) and the <a href="#cmd-hosts-audit">hosts file &amp; DNS cache audit</a> (redirections on this PC itself). The verdict names the one thing that matters: a hosts-file hijack (scan the PC), a tampering resolver (switch it — the verdict offers the command to copy), interception on this network (use encrypted DNS), a VPN leak (set the VPN's DNS), or honest-but-unencrypted (optional: encrypt it). No input, no admin.</p>
+
+<h3 id="pb-routercheck">Router check-up</h3>
+<p>The <a href="#cmd-router-check">router check-up</a> with a verdict: telnet open is a fail, UPnP forwards or TR-069 are worth knowing about, otherwise healthy — with a reminder of the two things it cannot check for you, firmware and the admin password. Only ever your own gateway; read-only.</p>
 
 <h3 id="pb-proxy">Proxy &amp; HTTPS inspection</h3>
 <p>Shows any proxy configured system-wide or for your account, then connects to a well-known site and reads the certificate it presents <em>to you</em>. Normally that's signed by a public certificate authority. If it's signed by a security product instead — Zscaler, Fortinet, Sophos, an antivirus "web shield" — your HTTPS traffic is being decrypted and re-signed on the way. On a work PC that's usually policy; on a personal one it's worth knowing about.</p>
@@ -730,6 +736,22 @@ Ethernet 1 Gbps  31.40    0.72   52.11     1.10  58.9 MB 1.3 MB ▂▆▇▇▇�
   <p><strong>Linux / macOS:</strong> <code>ifstat 1</code>, <code>nload</code>, or <code>watch -n1 cat /proc/net/dev</code>.</p>
 </article>
 
+<article class="cmd" id="cmd-listeners">
+  <h4><code>Listening ports — who and whether reachable</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The deeper version of "what is this PC exposing": every listening TCP port and UDP endpoint with the program behind it, the Windows service if it is one, who digitally signed the program, when it started, and — the important column — whether the firewall actually lets the network reach it. A port bound only to localhost cannot be reached from outside at all; a port bound to all addresses is reachable only if an inbound rule on the current network profile admits it.</p>
+  <pre>41 listening ports (26 TCP, 15 UDP below 49152): 6 reachable from the network, 12 localhost only.
+
+ Port Proto Service    Bound         Process  PID  Windows service Signer                  Started      Firewall
+ ---- ----- -------    -----         -------  ---  --------------- ------                  -------      --------
+   22 TCP   SSH        all addresses sshd     6336 sshd            (no access)                          allowed: OpenSSH SSH Server
+ 5432 TCP   PostgreSQL all addresses postgres 8320                 (no access)                          allowed: PostgreSQL
+ 4573 TCP              localhost only node    2853                 Node.js Foundation      Sep 23 09:10 n/a (local)
+
+<span class="hl">Reachable from the network: TCP 22 (SSH) - sshd; TCP 5432 (PostgreSQL) - postgres …</span></pre>
+  <p><strong>How to read it:</strong> the "Reachable" list at the bottom is what other devices on this network can connect to. Windows' own entries (RPC 135, SMB 445, NetBIOS, the mDNS/LLMNR/SSDP discovery ports, Delivery Optimization 7680) are normal on a private network. Anything else should be a program you deliberately serve from this PC — a database, SSH, a media server. "UNSIGNED" in Signer is not proof of anything bad, but an unsigned listener you cannot name deserves a look. "(no access)" means the program runs as SYSTEM; Run as admin shows its path and signer.</p>
+  <p><strong>Linux / macOS:</strong> <code>sudo ss -tulpn</code> or <code>sudo lsof -i -P -n | grep LISTEN</code>.</p>
+</article>
+
 <article class="cmd" id="cmd-route-print">
   <h4><code>route print</code> <span class="tag">WIN</span> <span class="tag run">runnable</span></h4>
   <p>Shows the routing table — the rules your computer uses to decide where to send each packet. Most people only need one line from it: the <code>0.0.0.0</code> row, which is the "everything else goes here" rule, i.e. your default gateway. Two of those rows on different adapters explains a lot of "sometimes my VPN / Ethernet takes over" mysteries.</p>
@@ -873,6 +895,44 @@ Addresses:  2606:2800:21f:cb07:6820:80da:af6b:8b2c
   <h4><code>nslookup &lt;domain&gt; &lt;server&gt;</code> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
   <p>The same lookup, but you choose which DNS server to ask — for example <code>nslookup example.com 1.1.1.1</code> asks Cloudflare instead of your router. If this works when the plain <code>nslookup</code> doesn't, your normal DNS server is the problem. The "Is DNS healthy?" playbook automates exactly this comparison.</p>
   <p><strong>Linux / macOS:</strong> <code>dig @1.1.1.1 example.com</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-dns-check">
+  <h4><code>DNS honesty check</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Who really answers your name lookups, and whether anyone is interfering. Four parts: <strong>1.</strong> the resolvers each adapter is configured with, and who runs them (your ISP, Cloudflare, Google, Quad9, a device on your network…); <strong>2.</strong> the address your lookups actually leave from, learned by asking Google's own servers what address the query arrived from; <strong>3.</strong> tampering tests — a random non-existent name (an honest resolver says "no such name", a redirecting one invents an address), a query sent straight to 8.8.8.8 to see whether something on the path intercepts port 53, and a well-known site checked for a private-address answer; <strong>4.</strong> whether DNS over HTTPS is configured. Then a verdict, including a VPN-leak check when a VPN adapter is up.</p>
+  <pre>2. Where your lookups actually go
+   Your public address: 203.0.113.5
+   Resolver egress address: 96.120.x.x (cdns01.comcast.net) - Comcast/Xfinity (your ISP)
+
+3. Tampering tests
+   Non-existent name (netdeck-481233-nxtest.example.com): correctly returned no address
+   Port-53 interception (query sent straight to 8.8.8.8): none - the answer came back through Google as it should
+   www.microsoft.com via your resolver: 20.112.250.133; via 1.1.1.1: 20.112.250.133
+
+4. Encrypted DNS (DNS over HTTPS)
+   Not configured: every name you look up crosses the network in the clear…
+
+<span class="hl">Honest but visible: lookups go to Comcast/Xfinity (your ISP), unencrypted, with no tampering found.</span></pre>
+  <p><strong>How to read it:</strong> <em>Honest</em> is the normal result. <em>Intercepted</em> means the network answers DNS itself whatever you configure — deliberate on office and school networks, an ISP habit at home; encrypted DNS gets around it. <em>Tampering</em> (invented answers, private addresses for public sites) is either an advertising resolver or a hijack; switching the resolver tells you which. <em>DNS leak</em> means a VPN is up but names still go to the ISP. Encrypted DNS takes a minute to set up in Windows 11: Settings → Network &amp; internet → your adapter → DNS server assignment → Manual → 1.1.1.1 with "Encrypted only".</p>
+  <p><strong>Linux / macOS:</strong> <code>dig +short TXT o-o.myaddr.l.google.com</code> (your resolver's egress) vs <code>… @ns1.google.com</code> (your own address); <code>resolvectl status</code> for the configuration.</p>
+</article>
+
+<article class="cmd" id="cmd-hosts-audit">
+  <h4><code>Hosts file & DNS cache audit</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Two places on this PC where names can be quietly redirected. The <strong>hosts file</strong> overrides DNS for any name listed in it: malware uses it to block antivirus and update sites, ad-blockers use it to blank tracking domains, developers use it for local aliases — the audit tells those apart, recognising Docker's and Windows' own entries as normal. The <strong>DNS cache</strong> is what this PC has looked up recently; the audit flags public names that resolved to private addresses (a DNS filter, or a hijack), internationalised look-alike names (<code>xn--</code>, a phishing trick), random-looking names (CDNs do this, so does malware), and a flood of failed lookups.</p>
+  <pre>1. Hosts file (C:\Windows\System32\drivers\etc\hosts): 5 entries, 1 beyond the defaults - last changed 2026-09-08 12:31
+
+Address      Name                       Assessment
+-------      ----                       ----------
+192.168.65.2 host.docker.internal       Docker (harmless leftover)
+10.0.0.20    fileserver                 local alias (your own network)
+
+2. DNS cache: 214 names cached, 6 negative (names that did not exist)
+   Busiest domains: microsoft.com (31), google.com (12), github.com (9)…
+
+<span class="hl">Fine: 1 custom hosts entry that looks deliberate (fileserver), nothing pinned that should not be, and nothing odd in the cache.</span></pre>
+  <p><strong>How to read it:</strong> a hosts entry that pins a security, update or well-known site (microsoft.com, windowsupdate, an antivirus vendor, a bank) to nowhere or to some other address is the thing to act on: unless you wrote it, scan the PC and remove the line (Notepad as administrator). Everything else is context. The file's "last changed" date is a useful clue — a change you do not remember making is worth explaining.</p>
+  <p><strong>Linux / macOS:</strong> <code>cat /etc/hosts</code>; <code>resolvectl statistics</code> for the cache.</p>
 </article>
 
 <article class="cmd" id="cmd-resolve-dnsname">
@@ -1093,6 +1153,30 @@ Tip: it has a web page - open http://192.168.7.51 in a browser to identify it fo
   <p><strong>Linux / macOS:</strong> <code>nmap -F 192.168.1.20</code>.</p>
 </article>
 
+<article class="cmd" id="cmd-router-check">
+  <h4><code>Router check-up</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Your router looked at from the inside, without logging in. <strong>1.</strong> Which management ports answer on the LAN side — the web admin page (80/443), SSH, <strong>telnet</strong> (the red flag: an unencrypted login anything on the network can try passwords against), DNS, and TR-069 (the channel ISPs use to manage routers they supply). <strong>2.</strong> The admin page's title and its certificate (self-signed is normal for a router). <strong>3.</strong> Whether UPnP is on, and every port it has opened from the internet to devices on your network — the thing games, consoles and some cameras do silently. Read-only: it lists forwards, it never changes anything, and it only ever talks to your own gateway on a private address.</p>
+  <pre>Router: 192.168.7.1 (F8-BB-BF-xx-xx-xx)
+
+1. Management ports on the LAN side
+ Port Purpose                        State
+ ---- -------                        -----
+   80 HTTP admin page                OPEN
+  443 HTTPS admin page               OPEN
+   23 TELNET                         no answer
+ 7547 TR-069 (ISP remote management) no answer
+
+3. UPnP (programs opening ports on the router automatically)
+   UPnP is ON (http://192.168.7.1:5000/rootDesc.xml).
+   Port forwards currently open from the internet:
+External port Proto Goes to             Description
+------------- ----- -------             -----------
+3074          UDP   192.168.7.88:3074   Xbox
+<span class="hl">Attention: 1 UPnP port forward exposes devices on your network to the internet (3074->192.168.7.88:3074)…</span></pre>
+  <p><strong>How to read it:</strong> telnet open = fix or replace the router. UPnP forwards to a console or a game are normal and close by themselves; a forward pointing at a camera, NAS or PC is an exposure you should recognise. Mesh systems managed from an app (eero, Google Wifi, Deco) show no admin page, which is fine. NetDeck cannot check the two things that matter most — current firmware and a non-default admin password — those are yours.</p>
+  <p><strong>Linux / macOS:</strong> <code>nmap -p 22,23,53,80,443,7547 &lt;gateway&gt;</code>; <code>upnpc -l</code> (miniupnpc) lists UPnP forwards.</p>
+</article>
+
 <article class="cmd" id="cmd-curl">
   <h4><code>curl</code> / <code>wget</code> <span class="tag">ALL</span> <span class="tag run">runnable</span></h4>
   <p>Fetch a web address from the command line. NetDeck runs <code>curl -I &lt;url&gt;</code>, which asks only for the headers — so you can see whether a site answers, what status it gives, and where it redirects, without downloading the page. <code>curl</code> is built into Windows 10 and 11.</p>
@@ -1199,6 +1283,21 @@ KB5129195 Security Update 2026-09-14       4</pre>
 11:00:02, +00.0547719s</pre>
   <p><strong>How to read it:</strong> the signed number is how far your clock is from true time, in seconds. Under a second is fine. "error: 0x800705B4" means the time server didn't answer — NTP uses UDP port 123, which some networks block.</p>
   <p><strong>Linux / macOS:</strong> <code>timedatectl status</code>; <code>sntp time.apple.com</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-fw-audit">
+  <h4><code>Firewall rule audit</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Every enabled inbound <em>allow</em> rule in Windows Firewall, scored by how much it opens: from any address or only the local network, any port or one, any program or a named one, and whether it applies on public networks. Most exposed first, with the reason in the Why column and a verdict. Read-only, no admin. Windows ships with ~150 built-in rules and installers add more; the ones to care about are the wide-open leftovers.</p>
+  <pre>183 enabled inbound allow rules: 4 high exposure, 61 medium, 118 low. Most exposed first (top 40):
+
+Exposure Rule                 Profile  Proto Ports Remote Program    Why
+-------- ----                 -------  ----- ----- ------ -------    ---
+HIGH     Some Game Launcher   Any      Any   Any   Any    Any        any address; any program, any port; on public networks too
+medium   python.exe           Public   Any   Any   Any    python.exe any address; every port of python.exe; on public networks too
+…
+<span class="hl">Attention: 1 rule allows any program on any port from any address: "Some Game Launcher". That is the firewall switched off for whatever matches…</span></pre>
+  <p><strong>How to read it:</strong> HIGH means any program, any port, from anywhere — effectively no firewall for that rule; delete it unless you know why it exists. Medium rows are program-scoped rules that accept from any address on every port: fine while you use that program, worth removing when you no longer do. Windows' own groups (Core Networking, File and Printer Sharing, Delivery Optimization) are normal. Rules are managed in <em>Windows Defender Firewall with Advanced Security</em> (search "wf.msc").</p>
+  <p><strong>Linux / macOS:</strong> <code>sudo ufw status verbose</code> or <code>sudo nft list ruleset</code>; macOS: System Settings → Network → Firewall.</p>
 </article>
 
 <article class="cmd" id="cmd-sfc">

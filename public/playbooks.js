@@ -1034,6 +1034,35 @@ window.NetDeckPlaybooks = (() => {
       return { status: 'pass', summary: `${count} device${count === 1 ? '' : 's'} answered with a name${list ? ': ' + list : ''}${Object.keys(names).length > 6 ? ', …' : ''}`, data: { count, names } };
     },
 
+    dnsHonest(out) {
+      const m = out.match(/^SUMMARY (\{.*\})\s*$/m);
+      if (!m) return { status: 'fail', summary: 'The check did not finish (no summary line)' };
+      let d; try { d = JSON.parse(m[1]); } catch (e) { return { status: 'fail', summary: 'The summary could not be read' }; }
+      const bits = [];
+      bits.push(d.egressOwner ? `lookups go to ${d.egressOwner}` : d.egress ? `lookups leave via ${d.egress}` : 'resolver did not answer the test');
+      if (d.hijacked) bits.push('invents answers for non-existent names');
+      if (d.privateAnswer) bits.push('a public site resolved to a private address');
+      if (d.intercepted === true) bits.push('port 53 is intercepted on this path');
+      if (d.vpnLeak) bits.push('VPN connected but DNS goes to the ISP');
+      bits.push(d.doh ? 'encrypted (DoH)' : 'unencrypted');
+      const status = (d.hijacked || d.privateAnswer || d.intercepted === true || d.vpnLeak) ? 'fail' : 'pass';
+      return { status, summary: bits.join(' — '), data: d };
+    },
+    hostsAudit(out) {
+      const m = out.match(/^SUMMARY (\{.*\})\s*$/m);
+      if (!m) return { status: 'fail', summary: 'The audit did not finish (no summary line)' };
+      let d; try { d = JSON.parse(m[1]); } catch (e) { return { status: 'fail', summary: 'The summary could not be read' }; }
+      const bits = [`hosts file: ${d.custom} custom entr${d.custom === 1 ? 'y' : 'ies'}${d.bad ? `, ${d.bad} pinning security/update sites` : ''}`, `cache: ${d.cached} names${d.privatePublic ? `, ${d.privatePublic} public names with private answers` : ''}${d.puny ? `, ${d.puny} look-alike` : ''}${d.weird ? `, ${d.weird} random-looking` : ''}`];
+      return { status: d.bad ? 'fail' : (d.privatePublic > 3 || d.puny) ? 'warn' : 'pass', summary: bits.join(' — '), data: d };
+    },
+    routerCheck(out) {
+      const err = out.match(/ROUTER-ERROR:\s*([^\r\n]+)/); if (err) return { status: 'fail', summary: err[1] };
+      const m = out.match(/^SUMMARY (\{.*\})\s*$/m);
+      if (!m) return { status: 'fail', summary: 'The check did not finish (no summary line)' };
+      let d; try { d = JSON.parse(m[1]); } catch (e) { return { status: 'fail', summary: 'The summary could not be read' }; }
+      const bits = [`router ${d.gw}`, `open: ${d.open || 'nothing'}`, d.upnp ? `UPnP on, ${d.forwards} forward${d.forwards === 1 ? '' : 's'}` : 'UPnP off', d.admin ? `admin page ${d.title ? '"' + d.title + '"' : 'present'}` : 'no web admin page'];
+      return { status: d.telnet ? 'fail' : (d.forwards || d.tr069) ? 'warn' : 'pass', summary: bits.join(' — '), data: d };
+    },
     lanScan(out) {
       const err = out.match(/SCAN-ERROR:\s*([^\r\n]+)/);
       if (err) return { status: 'fail', summary: err[1] };
@@ -1373,11 +1402,53 @@ window.NetDeckPlaybooks = (() => {
     },
   });
 
+  PLAYBOOKS.push({
+    id: 'dnshonest',
+    name: 'Is my DNS honest?',
+    description: 'Finds out who really answers your name lookups and whether anyone is tampering: the configured resolvers and who runs them, the address your lookups actually leave from, a non-existent-name test (advertising redirection), a port-53 interception test, a VPN leak test, whether DNS is encrypted — then the hosts file and DNS cache for anything pinned or odd on this PC itself.',
+    params: [],
+    steps: [
+      { id: 'dns', cmd: 'dns-check', label: 'Where do lookups go, and are answers tampered with?', check: 'dnsHonest', what: 'Resolve-DnsName tests against your resolver, ns1.google.com, 8.8.8.8 and 1.1.1.1' },
+      { id: 'hosts', cmd: 'hosts-audit', label: 'Hosts file and DNS cache on this PC', check: 'hostsAudit', what: 'hosts file assessed line by line; DNS cache scanned for private answers, look-alike and random names' },
+    ],
+    verdict(r, p, ctx, R) {
+      const d = R.dns?.data, h = R.hosts?.data;
+      if (!d) return { tone: 'fail', text: R.dns?.summary || 'The DNS check did not run.' };
+      const fix = [{ label: 'Copy: set 1.1.1.1 on this adapter (admin PowerShell)', copy: `Set-DnsClientServerAddress -InterfaceAlias "${ctx.adapter || 'Wi-Fi'}" -ServerAddresses 1.1.1.1,1.0.0.1` }];
+      if (h && h.bad) return { tone: 'fail', text: `This PC's own hosts file is redirecting or blocking ${h.bad} security, update or well-known site${h.bad === 1 ? '' : 's'}. That is the classic move of malware trying to stop updates and antivirus; unless you added those lines yourself, run a full scan and remove them (Notepad as administrator on C:\\Windows\\System32\\drivers\\etc\\hosts).` };
+      if (d.hijacked || d.privateAnswer) return { tone: 'fail', text: `Your resolver is tampering with answers${d.hijacked ? ' — it invents addresses for names that do not exist' : ''}${d.privateAnswer ? ' — a public site resolved to a private address' : ''}. Point this adapter (or the router) at 1.1.1.1 or 9.9.9.9 and re-run; if it persists, the tampering is on this PC.`, actions: fix };
+      if (d.intercepted === true) return { tone: 'fail', text: `Port-53 DNS is intercepted on this network: a query sent straight to 8.8.8.8 was answered by something else on the path. Whatever resolver you configure, the router or ISP answers instead. Office and school networks do this deliberately; at home it is the ISP. Encrypted DNS (Windows 11: DNS server assignment → Manual → 1.1.1.1, "Encrypted only") is the way around it.` };
+      if (d.vpnLeak) return { tone: 'fail', text: `DNS leak: a VPN is connected but your lookups still go to ${d.egressOwner}. The VPN hides where you connect while the ISP still sees every name you look up. Set the VPN's own DNS in its settings, or use an encrypted resolver.`, actions: fix };
+      const where = d.egressOwner ? `Lookups go to ${d.egressOwner}` : `Lookups leave via ${d.egress || 'an unidentified resolver'}`;
+      const hostsBit = h ? (h.custom ? ` The hosts file has ${h.custom} deliberate-looking custom entr${h.custom === 1 ? 'y' : 'ies'} and the cache shows nothing odd.` : ' Nothing is pinned in the hosts file and the cache shows nothing odd.') : '';
+      if (!d.doh) return { tone: 'pass', text: `${where}, honestly — no tampering, no interception, no leak.${hostsBit} The one thing to know: it is unencrypted, so the router${/ISP/.test(d.egressOwner) ? ' and your ISP' : ''} can see every site name you look up. Windows 11 can encrypt it in a minute (Settings → Network & internet → your adapter → DNS server assignment → Manual → 1.1.1.1 with "Encrypted only").` };
+      return { tone: 'pass', text: `${where}, honestly and encrypted — no tampering, no interception, no leak.${hostsBit}` };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'routercheck',
+    name: 'Router check-up',
+    description: 'Looks at your router from the inside: which management ports answer (telnet is the red flag), whether the admin page is there and what its certificate looks like, and whether UPnP is on — including every port it has opened from the internet to devices on your network. Read-only, and only ever your own gateway.',
+    params: [],
+    steps: [
+      { id: 'router', cmd: 'router-check', label: 'Probe the gateway: ports, admin page, UPnP forwards', check: 'routerCheck', what: 'TCP probes of 12 management ports, admin page fetch, UPnP IGD port-mapping listing' },
+    ],
+    verdict(r, p, ctx, R) {
+      const d = R.router?.data;
+      if (!d) return { tone: 'fail', text: R.router?.summary || 'The router check did not run.' };
+      if (d.telnet) return { tone: 'fail', text: `Telnet (port 23) is open on the router at ${d.gw}. That is an unencrypted login that anything on your network can try passwords against — a 1990s protocol that should not be on. Turn it off in the router's settings; if there is no setting, the router is old enough to replace.${d.forwards ? ` Also ${d.forwards} UPnP port forward${d.forwards === 1 ? ' is' : 's are'} open to the internet.` : ''}` };
+      if (d.forwards) return { tone: 'warn', text: `UPnP is on and ${d.forwards} port forward${d.forwards === 1 ? ' is' : 's are'} currently open from the internet to devices on your network (listed in the step above). Games, consoles and video calls open these legitimately and close them after; a forward you do not recognise, or one that points at a camera, NAS or PC, is an exposure. If in doubt, turn UPnP off in the router and forward ports by hand when needed.` };
+      if (d.tr069) return { tone: 'warn', text: `No telnet and ${d.upnp ? 'no UPnP forwards' : 'no UPnP'}, but TR-069 (port 7547) answers on the LAN side — the channel ISPs use to manage the routers they supply. Normal on an ISP router; it means the ISP can change its settings remotely. Nothing to do unless that bothers you, in which case a router of your own behind it is the fix.` };
+      return { tone: 'pass', text: `Router ${d.gw} looks healthy: no telnet, ${d.upnp ? 'UPnP on but nothing forwarded' : 'UPnP not offered'}, ${d.admin ? `admin page present${d.cert ? ' (' + d.cert.split(' (')[0] + ' certificate)' : ''}` : 'managed from an app rather than a web page'}. Two things NetDeck cannot check from here: that its firmware is current, and that its admin password is not the default.` };
+    },
+  });
+
   /* ================= groups (order here is the order on the page) ================= */
   const GROUPS = [
     ['Connectivity', ['internet', 'website', 'slow', 'dropouts', 'drops', 'path', 'port', 'services', 'mtu', 'wifi']],
     ['DNS & email', ['dns', 'propagation', 'email']],
-    ['Security & exposure', ['exposure', 'outbound', 'proxy']],
+    ['Security & exposure', ['exposure', 'outbound', 'dnshonest', 'routercheck', 'proxy']],
     ['This PC & local network', ['scan', 'lan', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],
   ];
   for (const [group, ids] of GROUPS) ids.forEach((id, i) => { const pb = PLAYBOOKS.find((p) => p.id === id); if (pb) { pb.group = group; pb.order = i; } });

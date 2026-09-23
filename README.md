@@ -31,9 +31,16 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **Adapter throughput (live)** — bytes in/out per second on every adapter for 15 s / 60 s / 3 min, a bar per second, and a verdict (idle vs. busy, % of link speed).
 - **Per-process network activity** — connections and remote hosts per program (no admin); the "with traffic" variant attributes a 10 s pktmon capture to programs through their ports for bytes sent/received per program.
 - **iperf3** — runnable when installed: client, reverse, 4 parallel streams, or one-shot server.
-- **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-three of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
+- **Firewall rule audit** — every enabled inbound allow rule scored by exposure (any address / any port / any program / public profile), most exposed first, with a verdict.
+- **Listening ports — who and whether reachable** — program, Windows service, code signer, start time and firewall verdict per listening port.
+- **DNS honesty check** — configured resolvers and their operators, real egress address, tampering and port-53 interception tests, VPN leak, DoH status.
+- **Router check-up** — management ports (telnet!), admin page and certificate, UPnP on/off and every port it has forwarded from the internet.
+- **Hosts file & DNS cache audit** — pinned security/update sites (malware), Docker/local aliases recognised, cache scanned for private answers, look-alike and random names.
+- **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-five of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
   - *Does my connection drop out?* — the 3-minute stability monitor with a verdict: local link vs. beyond the router vs. jitter.
+  - *Is my DNS honest?* — DNS honesty check + hosts/cache audit with one verdict (hijack / tampering / interception / leak / honest).
+  - *Router check-up* — the router check with a verdict.
   - *Are packets being dropped on this PC?* — pktmon counters on every driver layer for 10 s while pinging the router and 1.1.1.1 and downloading 5 MB; names the layer that drops (firewall/VPN filter vs. adapter) or clears this PC. Needs Run as admin.
   - *Is a port open on a host?* — resolve → ping → TCP test
   - *Is DNS healthy?* — your resolver vs. Cloudflare vs. Google
