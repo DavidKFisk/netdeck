@@ -149,6 +149,9 @@ const CAPTURE_CSS = `
     await send('Emulation.setDeviceMetricsOverride', { width: 1240, height: 1000, deviceScaleFactor: 1.5, mobile: false });
     await evalJs(`(() => { const s = document.createElement('style'); s.id = '__capdash'; s.textContent = '.terminal { display: none !important; }'; document.head.appendChild(s); return true; })()`);
     await evalJs(`(async () => { document.querySelector('.vtab[data-view="dashboard"]').click();
+      await new Promise(r => setTimeout(r, 400));
+      document.querySelectorAll('.dash-collapse[aria-expanded="false"]').forEach((b) => b.click());   // the chart cards start folded; open them first so Traffic samples while the rest fills in
+      await new Promise(r => setTimeout(r, 300));
       for (let i = 0; i < 200; i++) { if (/^Last check/.test(document.getElementById('dash-status').textContent) && !document.getElementById('dash-refresh').disabled) break; await new Promise(r => setTimeout(r, 250)); }
       // the speed and route cards fill from the dashboard's own buttons
       document.querySelector('.dash-card button[data-run="tracert"]').click();
@@ -158,8 +161,6 @@ const CAPTURE_CSS = `
       document.querySelector('.dash-card button[data-run="fw-audit"]').click();   // fills the security posture row
       for (let i = 0; i < 400; i++) { const t = document.getElementById('dash-grid').innerText; if (!/No speed test yet|No traceroute yet|run the firewall rule audit/.test(t)) break; await new Promise(r => setTimeout(r, 250)); }
       document.getElementById('term-close-all').click();
-      document.querySelectorAll('.dash-collapse[aria-expanded="false"]').forEach((b) => b.click());   // the chart cards start folded; the manual shows them open
-      await new Promise(r => setTimeout(r, 300));
       document.querySelector('[data-range="10m"]').click();   // a headless page collects few samples; the short range shows them
       await new Promise(r => setTimeout(r, 600)); return true; })()`);
     await evalJs(SCRUB);

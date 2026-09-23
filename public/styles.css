@@ -1104,7 +1104,9 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .dash-tools { display: inline-flex; gap: 6px; }
 .dash-age { color: var(--muted); font-size: 11px; white-space: nowrap; }
-.dash-span2 .dash-check { grid-template-columns: 10px 9.5em minmax(0, 1fr) auto; }
+.dash-checks .dash-check-stack { grid-template-columns: 10px minmax(0, 1fr) auto; align-items: start; }
+.dash-check-stack .dash-dot { margin-top: 5px; }
+.dash-check-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .dash-chip {
   min-width: 0; text-align: left;
   display: flex; flex-direction: column; gap: 2px;

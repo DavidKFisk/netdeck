@@ -198,7 +198,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), latencyCard(), speedCard(), routeCard(), trafficCard(), postureCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), latencyCard(), trafficCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -571,7 +571,7 @@ window.NetDeckDashboard = (() => {
     }).join('');
     const legend = '<div class="dash-stats"><span class="dash-stat"><span class="dash-swatch net-private"></span>your network</span><span class="dash-stat"><span class="dash-swatch net-cgnat"></span>provider</span><span class="dash-stat"><span class="dash-swatch net-public"></span>internet</span><span class="dash-stat"><span class="dash-swatch net-silent"></span>no reply</span></div>';
     const body = `<p class="dash-verdict" data-tone="${TONE[tr.status] || 'idle'}">${esc(tr.summary || '')}</p><div class="dash-chain">${chain}</div>${legend}`;
-    return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}</span>`, 'dash-span2');
+    return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}</span>`);
   }
 
   /* ================= traffic: adapter byte counters every few seconds while the dashboard is showing ================= */
@@ -686,10 +686,10 @@ window.NetDeckDashboard = (() => {
     else if (n.pass && !n.pending) { tone = 'ok'; text = 'All security checks pass.'; }
     else if (n.pass) { tone = 'ok'; text = `${n.pass} check${n.pass === 1 ? ' passes' : 's pass'}; ${n.pending} not run yet.`; }
     else text = 'No security checks run yet — each row has a run button.';
-    const li = rows.map((r) => `<li class="dash-check" data-status="${esc(r.status)}"><span class="dash-dot"></span><span class="dash-check-name">${esc(r.label)}</span><span class="dash-check-sum">${esc(r.summary)}${r.at ? ` <small class="dash-age">· ${esc(ago(r.at))}</small>` : ''}</span>${r.action}</li>`).join('');
+    const li = rows.map((r) => `<li class="dash-check dash-check-stack" data-status="${esc(r.status)}"><span class="dash-dot"></span><span class="dash-check-body"><span class="dash-check-name">${esc(r.label)}</span><span class="dash-check-sum">${esc(r.summary)}${r.at ? ` <small class="dash-age">· ${esc(ago(r.at))}</small>` : ''}</span></span>${r.action}</li>`).join('');
     const body = `<p class="dash-verdict" data-tone="${tone}">${esc(text)}</p><ul class="dash-checks">${li}</ul>`;
     const foot = `<span>firewall state is live; the rest shows the latest run of each check</span><span class="dash-links">${btn('Listening ports', 'listeners')}${pbBtn('What is this PC exposing?', 'exposure')}</span>`;
-    return card('Security posture', `${n.pass} / ${rows.length} pass`, body, foot, 'dash-span2');
+    return card('Security posture', `${n.pass} / ${rows.length} pass`, body, foot);
   }
 
   /* ================= snapshot: the dashboard as one self-contained HTML page ================= */
