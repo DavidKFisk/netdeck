@@ -1,6 +1,6 @@
 [package]
 name = "netdeck"
-version = "1.17.0"
+version = "1.17.1"
 description = "Network & system command reference with live execution"
 authors = ["NetDeck"]
 edition = "2021"

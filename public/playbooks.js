@@ -334,7 +334,7 @@ window.NetDeckPlaybooks = (() => {
     wlan(out) {
       if (/no wireless interface|is not running/i.test(out)) return { status: 'info', summary: 'No Wi-Fi adapter in use', data: { wifi: false } };
       // Windows 11 withholds Wi-Fi details from non-elevated programs unless Location services are on.
-      if (/location permission|requires elevation/i.test(out)) return { status: 'info', summary: 'Windows is withholding Wi-Fi details: turn on Location services (Settings → Privacy & security → Location), or run NetDeck as administrator', data: { wifi: false, blocked: true } };
+      if (/location permission|requires elevation/i.test(out)) return { status: 'info', summary: 'Windows is withholding Wi-Fi details: turn on Location services and "Let desktop apps access your location" (Settings → Privacy & security → Location) — being administrator does not bypass this', data: { wifi: false, blocked: true } };
       const get = (label) => ((out.match(new RegExp(`^\\s*${label}\\s*:\\s*(.+)$`, 'im')) || [])[1] || '').trim();
       const state = get('State');
       if (!/^connected/i.test(state)) return { status: 'info', summary: `Wi-Fi is not connected${state ? ` (${state})` : ''}`, data: { wifi: false } };
@@ -752,7 +752,7 @@ window.NetDeckPlaybooks = (() => {
 
   Object.assign(CHECKS, {
     wlanNetworks(out, params, ctx, meta) {
-      if (/location permission|requires elevation/i.test(out)) return { status: 'info', summary: 'Windows is withholding the list of nearby networks (needs Location permission or an administrator shell)', data: { blocked: true } };
+      if (/location permission|requires elevation/i.test(out)) return { status: 'info', summary: 'Windows is withholding the list of nearby networks (needs Location services on, even for an administrator)', data: { blocked: true } };
       const aps = [];
       let ssid = '', cur = null;
       for (const line of out.split(/\r?\n/)) {
@@ -1088,7 +1088,7 @@ window.NetDeckPlaybooks = (() => {
       verdict(r, p, ctx, R) {
         const g = R.gw?.data;
         const link = g ? ` The link to your router measures avg ${g.avg} ms, worst ${g.max} ms, jitter ${g.jitter} ms${g.loss ? `, ${g.loss}% loss` : ''} — ${warned(R.gw) || g.jitter > 15 ? 'unsteady; a good Wi-Fi link is under 10 ms with little jitter.' : 'steady.'}` : '';
-        if (R.link?.data?.blocked) return { tone: warned(R.gw) ? 'warn' : 'pass', text: `Windows 11 hides Wi-Fi details from programs unless Location services are on (Settings → Privacy & security → Location) or NetDeck runs as administrator, so signal and channel could not be read.${link}` };
+        if (R.link?.data?.blocked) return { tone: warned(R.gw) ? 'warn' : 'pass', text: `Windows 11 hides Wi-Fi details from programs unless Location services and "Let desktop apps access your location" are on (Settings → Privacy & security → Location) — even for an administrator — so signal and channel could not be read.${link}` };
         if (!R.link?.data?.wifi) return { tone: 'pass', text: `This PC is not using Wi-Fi right now (${R.link?.summary || 'no wireless link'}).${link}` };
         const d = R.link.data;
         const notes = [...(d.problems || [])];
