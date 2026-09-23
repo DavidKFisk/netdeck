@@ -330,6 +330,7 @@ window.NetDeckParsers = (() => {
     'lan-scan': lanScan,
     'discover': fixedWidth,
     'device-probe': fixedWidth,
+    'capture-view': fixedWidth,
     'wifi-survey': fixedWidth,
     tracert,
   };

@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 51 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 53 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -970,8 +970,39 @@ Name                 Queries
 github.com                 4
 api.github.com             2</pre>
   <p><strong>How to read it:</strong> <em>Top internet hosts</em> is the "what is my PC talking to?" list — the Name column resolves the address where it can, and the Traffic column says over which protocol. A host you don't recognise moving a lot of data is worth looking up. <em>DNS lookups</em> shows what your programs asked for by name, which is often clearer than the addresses. <em>Local network peers</em> is traffic that stayed inside your own network.</p>
-  <p><strong>What it doesn't do:</strong> it keeps only the first 256 bytes of each packet — enough for the addresses and protocol, not the content — and the recording is deleted after the summary unless you chose the keep variant. It can't see other devices' traffic, only this PC's. If you press <strong>Stop</strong> during a capture, the recording keeps running in the background until the next capture cleans it up (it is capped at 200 MB).</p>
+  <p><strong>What it doesn't do:</strong> it keeps only the first 256 bytes of each packet — enough for the addresses and protocol, not the content — and the recording is deleted after the summary unless you chose the keep variant — though its decoded text stays for the <a href="#cmd-capture-view">Capture viewer</a> until the next capture. It can't see other devices' traffic, only this PC's. If you press <strong>Stop</strong> during a capture, the recording keeps running in the background until the next capture cleans it up (it is capped at 200 MB).</p>
   <p><strong>Linux / macOS:</strong> <code>sudo tcpdump -i any -c 2000 -w capture.pcap</code>, then open the file in Wireshark.</p>
+</article>
+
+<article class="cmd" id="cmd-pktmon-filtered">
+  <h4><code>Packet capture (filtered)</code> <span class="tag">PS</span> <span class="tag run">runnable</span> <span class="tag">admin</span></h4>
+  <p>The <a href="#cmd-pktmon-capture">timed capture</a> narrowed to one thing, so the summary and the viewer show only that conversation. Four filters, chosen with the variant menu: <strong>DNS only</strong> (every name this PC asks for and every answer — the quickest way to see what a program is really talking to), <strong>one host</strong> (everything to or from an address or name you type), <strong>one port</strong> (say 443, or a game's port), and <strong>ARP &amp; broadcast</strong> (who is asking for whom on the local network — the way to catch address conflicts and chatty devices). It captures for 20 seconds and needs administrator rights.</p>
+  <pre>Capturing on all adapters for 20 s (pktmon, NIC level, first 256 bytes of each packet). Filter: DNS only (port 53). Use the network normally...
+Captured 20 s on Wi-Fi (DNS only (port 53)): 142 packets, 18 KB (received 11 KB, sent 7 KB)
+
+DNS lookups (23 names)
+Name                      Queries
+----                      -------
+github.com                      4
+api.github.com                  2
+…</pre>
+  <p><strong>How to read it:</strong> the same sections as the timed capture, restricted to the filter. For <em>one host</em>, a name is resolved to its IPv4 address first; a site with many addresses (large services rotate them) may need the address itself. Filters are on the packet's addresses and ports, in either direction.</p>
+  <p><strong>Linux / macOS:</strong> <code>sudo tcpdump -i any port 53</code>, <code>… host 192.168.1.20</code>, <code>… arp or broadcast</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-capture-view">
+  <h4><code>Capture viewer</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The packets behind the summary. Every capture NetDeck makes (timed or filtered) leaves its decoded text on disk until the next one; the viewer turns the most recent into a table — one row per packet with time, direction, source, destination, protocol, size and pktmon's decode — and <strong>Table</strong> makes it sortable and filterable. Variants: the first 1,000 packets (default), up to 5,000, <strong>DNS packets only</strong>, and <strong>connection attempts only</strong> (TCP SYN: each row is one program trying to open a connection somewhere). No admin rights needed to view.</p>
+  <pre>Last capture: Tue 20:35:47, 30 s on Wi-Fi, filter: all traffic - 4,812 packets decoded, showing 1,000 packets (the first 1,000; use the larger variant for more)
+
+  # Time         Dir Source              Destination         Proto Bytes Info
+  - ----         --- ------              -----------         ----- ----- ----
+  1 20:35:47.192 out 192.168.7.45:52114  140.82.112.22:443   HTTPS    74 Flags [S], seq 1234, win 64240, options [mss 1460], length 0
+  2 20:35:47.230 in  140.82.112.22:443   192.168.7.45:52114  HTTPS  1514 Flags [P.], seq 1:1449, ack 1, win 501, length 1448
+  3 20:35:47.300 out 192.168.7.45:61000  192.168.7.1:53      DNS      70 4321+ A? github.com. (28)
+  4 20:35:47.310 in  192.168.7.1:53      192.168.7.45:61000  DNS      86 4321 1/0/0 A 140.82.112.22 (44)</pre>
+  <p><strong>How to read it:</strong> <em>Dir</em> is from this PC's point of view. In <em>Info</em>, TCP flags tell the story of a connection: <code>[S]</code> is an attempt, <code>[S.]</code> the other side accepting, <code>[P.]</code> data, <code>[F.]</code> a polite close, <code>[R]</code> a slammed door (a refused port or a firewall). DNS rows show the question (<code>A? name</code>) and the answer (<code>1/0/0 A address</code>). To dig deeper than this, capture with the "keep .pcapng" variant and open the file in Wireshark.</p>
+  <p><strong>Linux / macOS:</strong> <code>tcpdump -nn -r capture.pcap</code>; <code>tshark -r capture.pcap</code> for the full decode.</p>
 </article>
 
 <article class="cmd" id="cmd-pktmon-counters">

@@ -1301,7 +1301,7 @@
     let sortIdx = -1, dir = 1, q = '';
     const isNum = (v) => v !== '' && !isNaN(Number(String(v).replace(/,/g, '')));
     const procIdx = table.columns.indexOf('Process');
-    const wrapIdx = table.columns.findIndex((c) => /^(Value|Data|Transport Name|Command|Name)$/.test(c));
+    const wrapIdx = table.columns.findIndex((c) => /^(Value|Data|Transport Name|Command|Name|Info)$/.test(c));
 
     function sortBy(i) {
       if (sortIdx === i) dir = -dir; else { sortIdx = i; dir = 1; }
