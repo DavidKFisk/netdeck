@@ -1155,3 +1155,58 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-delta[data-state="warn"] { color: var(--warn); border-color: var(--warn-line); }
 .dash-delta[data-state="ok"] { color: var(--ok); border-color: var(--ok-line); }
 @media (max-width: 640px) { .dash-check { grid-template-columns: 10px minmax(0, 1fr) auto; } .dash-check-name { display: none; } }
+
+/* dashboard: over time */
+.dash-wide { grid-column: 1 / -1; }
+@media (min-width: 900px) { .dash-span2 { grid-column: span 2; } }
+.dash-chart-svg .dot.l-g { fill: var(--ok); }
+.dash-chart-svg .dot.l-n { fill: var(--text); }
+.dash-ranges { display: inline-flex; gap: 4px; }
+.dash-ranges .tbtn.is-on { background: var(--border); color: var(--bright); }
+.dash-chart { width: 100%; }
+.dash-chart-svg { display: block; width: 100%; height: auto; font-family: var(--mono); }
+.dash-chart-svg .base { stroke: var(--border); stroke-width: 1; }
+.dash-chart-svg .grid { stroke: var(--border-soft); stroke-width: 1; stroke-dasharray: 3 4; }
+.dash-chart-svg .ax { fill: var(--muted); font-size: 9px; }
+.dash-chart-svg .line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.dash-chart-svg .l-g { stroke: var(--ok); }
+.dash-chart-svg .l-n { stroke: var(--text); }
+.dash-chart-svg .loss { fill: var(--err); }
+.dash-chart-svg .hit { fill: transparent; }
+.dash-chart-svg .hit:hover { fill: var(--ok-dim); }
+.dash-chart-svg .bar-d { fill: var(--ok); opacity: 0.85; }
+.dash-chart-svg .bar-u { fill: var(--text); opacity: 0.5; }
+.dash-bars-svg { max-width: 480px; }
+.dash-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--text); }
+.dash-stat b { font-family: var(--mono); color: var(--bright); font-weight: 600; }
+.dash-stat.dim { color: var(--muted); }
+.dash-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--muted); }
+.dash-swatch.l-g, .dash-swatch.bar-d { background: var(--ok); }
+.dash-swatch.l-n { background: var(--text); }
+.dash-swatch.bar-u { background: var(--text); opacity: 0.5; }
+.dash-swatch.net-private { background: var(--ok); }
+.dash-swatch.net-cgnat { background: var(--warn); }
+.dash-swatch.net-public { background: var(--text); }
+.dash-swatch.net-silent { background: var(--border); }
+.dash-loss { color: var(--err); }
+.dash-sub { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.dash-big { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+.dash-big > div { display: flex; flex-direction: column; }
+.dash-big-n { font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--bright); line-height: 1.1; }
+.dash-big-n[data-state="warn"] { color: var(--warn); }
+.dash-big-n[data-state="err"] { color: var(--err); }
+.dash-big-l { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.dash-chain { display: flex; flex-wrap: wrap; gap: 4px 0; align-items: flex-end; }
+.dash-hop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 74px; padding: 0 10px 4px 4px; font-size: 11px; color: var(--muted); border-bottom: 2px solid var(--border-soft); }
+.dash-hop::after { content: "\203A"; position: absolute; right: 0; bottom: 6px; color: var(--border); font-size: 14px; }
+.dash-hop:last-child::after { content: none; }
+.dash-hop-bar { display: block; width: 14px; min-height: 2px; margin-bottom: 4px; background: var(--muted); border-radius: 2px 2px 0 0; }
+.dash-hop[data-net="private"] .dash-hop-bar { background: var(--ok); }
+.dash-hop[data-net="cgnat"] .dash-hop-bar { background: var(--warn); }
+.dash-hop[data-net="public"] .dash-hop-bar { background: var(--text); }
+.dash-hop[data-net="silent"] .dash-hop-bar { background: var(--border); }
+.dash-hop-n { font-family: var(--mono); color: var(--bright); font-weight: 600; }
+.dash-hop-ms { font-family: var(--mono); color: var(--text); }
+.dash-hop-addr { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-hop.is-jump { border-bottom-color: var(--warn); }
+.dash-hop.is-jump .dash-hop-ms { color: var(--warn); font-weight: 600; }

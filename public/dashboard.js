@@ -52,10 +52,13 @@ window.NetDeckDashboard = (() => {
     els = { view: D.$('view-dashboard'), strip: D.$('dash-strip'), grid: D.$('dash-grid'), status: D.$('dash-status'), refresh: D.$('dash-refresh'), off: D.$('dash-static') };
     els.refresh.addEventListener('click', () => refresh());
     els.view.addEventListener('click', onClick);
+    backfill();
   }
 
   /* Any button on the dashboard that names a command or playbook runs it in the terminal, visibly. */
   function onClick(e) {
+    const r = e.target.closest('[data-range]');
+    if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
     const b = e.target.closest('[data-run],[data-pb]');
     if (!b || !D.canRun()) return;
     if (b.dataset.pb) { const pb = D.PB.get(b.dataset.pb); if (pb) D.runPlaybook(pb, {}); return; }
@@ -73,7 +76,13 @@ window.NetDeckDashboard = (() => {
 
   function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS)) refresh(); }
   function hide() { shown = false; }
-  function poke(what) { if (!shown) return; if (what === 'health') updatePingChips(); else render(); }   // health tick: patch; anything else: redraw
+  /* health tick: record the sample and patch the two ping tiles and the latency chart in place (a full redraw
+     every 10 s would wipe hover and focus); a saved run: take what the charts need, then redraw. */
+  function poke(what, entry) {
+    if (what === 'health') { recordHealth(); if (shown) { updatePingChips(); const b = els.grid.querySelector('#dash-latency-body'); if (b) b.innerHTML = latencyBody(); } return; }
+    if (what === 'history') { ingest(entry); }
+    if (shown) render();
+  }
 
   async function refresh() {
     if (busy || !D || !D.canRun()) return;
@@ -166,7 +175,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx)].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), latencyCard(), speedCard(), routeCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -259,8 +268,8 @@ window.NetDeckDashboard = (() => {
     return out;
   }
 
-  function card(title, meta, body, foot) {
-    return `<article class="card dash-card"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="card-cat">${esc(meta || '')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
+  function card(title, meta, body, foot, cls) {
+    return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="card-cat">${esc(meta || '')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
   }
   const btn = (label, run, params, preset) => `<button type="button" class="tbtn tbtn-sm" data-run="${esc(run)}" data-params="${esc(JSON.stringify(params || {}))}"${preset ? ` data-preset="${esc(preset)}"` : ''}>${esc(label)}</button>`;
   const pbBtn = (label, id) => `<button type="button" class="tbtn tbtn-sm" data-pb="${esc(id)}">${esc(label)}</button>`;
@@ -359,5 +368,164 @@ window.NetDeckDashboard = (() => {
     return card('Network', `${L.devices.length} seen`, body, foot);
   }
 
-  return { init, show, hide, poke, refresh };
+  /* ================= over time: latency samples, speed tests, monitors, the last trace =================
+     The health strip already pings the router and 1.1.1.1 every 10 s; the dashboard keeps those samples
+     for 24 hours (only while NetDeck is open — gaps are drawn as gaps). Speed tests, stability monitors
+     and traceroutes are read from the run history as they are saved, so the history's 30-entry limit
+     does not lose them. Everything lives in localStorage under its own key. */
+  const SKEY = 'netdeck.dashboard.series.v1';
+  const SAMPLE_KEEP = 24 * 3600 * 1000;
+  const RANGES = { '10m': 10 * 60000, '1h': 3600000, '6h': 6 * 3600000, '24h': 24 * 3600000 };
+  let series = loadSeries();
+  let range = (() => { try { return RANGES[localStorage.getItem('netdeck.dashboard.range')] ? localStorage.getItem('netdeck.dashboard.range') : '1h'; } catch (e) { return '1h'; } })();
+  let saveTimer = null;
+
+  function loadSeries() {
+    try { const j = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (j && Array.isArray(j.samples)) return { samples: j.samples, speed: j.speed || [], monitors: j.monitors || [], trace: j.trace || null, ingested: j.ingested || [] }; } catch (e) { /* blocked or corrupt */ }
+    return { samples: [], speed: [], monitors: [], trace: null, ingested: [] };
+  }
+  function saveSeries() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(SKEY, JSON.stringify(series)); } catch (e) { /* quota: the charts just get shorter */ } }, 400); }
+  const num = (x) => (Number.isFinite(+x) && +x >= 0 ? +x : null);
+
+  /* One sample per health tick: [t, router ms | null (lost) | -1 (no gateway), internet ms | null]. */
+  function recordHealth() {
+    const H = D.health() || {};
+    const g = (H.gateway || []).slice(-1)[0], n = (H.internet || []).slice(-1)[0];
+    const s = n || g;
+    if (!s) return;
+    const last = series.samples[series.samples.length - 1];
+    if (last && last[0] >= s.t) return;
+    series.samples.push([s.t, g && g.t === s.t ? g.v : -1, n && n.t === s.t ? n.v : -1]);
+    if (series.samples[0][0] < s.t - SAMPLE_KEEP) series.samples = series.samples.filter((x) => x[0] >= s.t - SAMPLE_KEEP);
+    saveSeries();
+  }
+
+  /* A saved run or playbook: keep what the charts need. Returns true when something was taken. */
+  function ingest(h) {
+    if (!h || !h.hid || series.ingested.includes(h.hid)) return false;
+    const t = h.endedAt || h.startedAt || Date.now();
+    const ctx = D.context() || {};
+    let used = false;
+    const consider = (cmdId, out, params) => {
+      if (!out) return;
+      const summary = () => { const m = out.match(/^SUMMARY (\{.*\})\s*$/m); if (!m) return null; try { return JSON.parse(m[1]); } catch (e) { return null; } };
+      if (cmdId === 'speed-test') {
+        const d = summary(); if (!d) return;
+        series.speed.push({ t, hid: h.hid, down: num(d.downMbps), up: num(d.upMbps), idle: num(d.idleMs), jitter: num(d.jitterMs), bloat: num(d.bloatMs), grade: String(d.grade || '').charAt(0), colo: d.colo || '' });
+        used = true;
+      } else if (cmdId === 'stability-monitor') {
+        const d = summary(); if (!d || !d.internet) return;
+        series.monitors.push({ t, hid: h.hid, router: d.router || null, internet: d.internet });
+        used = true;
+      } else if (cmdId === 'tracert') {
+        const c = D.PB.check('tracertPath', out, params || {}, ctx, {});
+        if (!c.data || !c.data.hops || !c.data.hops.length) return;
+        const host = String((params && params.host) || '').replace(/\{(\w+)\}/g, (m, k) => (h.params && h.params[k]) || ctx[k] || m);
+        series.trace = { t, hid: h.hid, host, target: c.data.target || '', hops: c.data.hops.map((x) => ({ n: x.n, addr: x.addr || '', ms: x.ms == null ? null : x.ms })), reached: c.data.reached, jump: c.data.jump ? { n: c.data.jump.at.n, delta: c.data.jump.delta } : null, where: c.data.where || '', summary: c.summary, status: c.status };
+        used = true;
+      }
+    };
+    if (h.kind === 'run') consider(h.cmdId, h.output, h.params);
+    else if (h.kind === 'playbook') { const pb = D.PB.get(h.pbId); (h.steps || []).forEach((s, i) => { const spec = pb && pb.steps[i]; if (spec) consider(spec.cmd, s.output, spec.params); }); }
+    series.ingested.push(h.hid);
+    if (series.ingested.length > 120) series.ingested.splice(0, series.ingested.length - 120);
+    if (series.speed.length > 100) series.speed.splice(0, series.speed.length - 100);
+    if (series.monitors.length > 50) series.monitors.splice(0, series.monitors.length - 50);
+    saveSeries();
+    return used;
+  }
+  function backfill() { let any = false; for (const h of (D.history() || []).slice().reverse()) if (ingest(h)) any = true; return any; }
+
+  const clockShort = (ts) => new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const dayShort = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const when = (ts) => (Date.now() - ts < 20 * 3600 * 1000 ? clockShort(ts) : `${dayShort(ts)} ${clockShort(ts)}`);
+
+  /* Router and internet latency over the chosen range: one line each (average per bin), red marks where pings were lost. */
+  function latencyChart(to) {
+    const from = to - RANGES[range];
+    const W = 720, H = 150, padL = 34, padR = 8, padT = 8, padB = 18;
+    const bins = Math.max(12, Math.min(180, Math.floor(RANGES[range] / 20000)));   // a bin is never shorter than two ticks
+    const step = (to - from) / bins, plotW = W - padL - padR, plotH = H - padT - padB;
+    const mk = () => Array.from({ length: bins }, () => ({ sum: 0, max: 0, cnt: 0, lost: 0 }));
+    const rows = { g: mk(), n: mk() };
+    const add = (b, v) => { if (v === -1 || v === undefined) return; if (v === null) { b.lost++; return; } b.sum += v; b.cnt++; if (v > b.max) b.max = v; };
+    let samples = 0;
+    for (const [t, g, n] of series.samples) { if (t < from || t > to) continue; const i = Math.min(bins - 1, Math.floor((t - from) / step)); add(rows.g[i], g); add(rows.n[i], n); samples++; }
+    const avgs = [...rows.g, ...rows.n].filter((b) => b.cnt).map((b) => b.sum / b.cnt).sort((a, b) => a - b);
+    const yMax = Math.max(20, Math.ceil(((avgs[Math.floor(avgs.length * 0.97)] || 0) * 1.2) / 10) * 10);
+    const x = (i) => padL + ((i + 0.5) / bins) * plotW;
+    const y = (v) => padT + (1 - Math.min(v, yMax) / yMax) * plotH;
+    // one empty bin is bridged (a missed tick); a longer gap breaks the line
+    const path = (bs) => { let d = '', open = false, empty = 0; bs.forEach((b, i) => { if (!b.cnt) { if (++empty > 1) open = false; return; } empty = 0; d += (open ? ' L' : ' M') + `${x(i).toFixed(1)} ${y(b.sum / b.cnt).toFixed(1)}`; open = true; }); return d.trim(); };
+    const dots = (bs, cls) => bs.map((b, i) => (b.cnt && !(bs[i - 1] && bs[i - 1].cnt) && !(bs[i + 1] && bs[i + 1].cnt)) ? `<circle cx="${x(i).toFixed(1)}" cy="${y(b.sum / b.cnt).toFixed(1)}" r="2" class="dot ${cls}"/>` : '').join('');
+    const loss = (bs) => bs.map((b, i) => { if (!b.lost) return ''; const hgt = Math.max(3, (b.lost / (b.cnt + b.lost)) * plotH); return `<rect x="${(x(i) - 1.5).toFixed(1)}" y="${(H - padB - hgt).toFixed(1)}" width="3" height="${hgt.toFixed(1)}" class="loss"/>`; }).join('');
+    const fmt = (b) => (b.cnt ? `avg ${Math.round(b.sum / b.cnt)} ms, max ${Math.round(b.max)} ms${b.lost ? `, ${b.lost} lost` : ''}` : b.lost ? `${b.lost} lost` : '—');
+    const hits = rows.g.map((b, i) => (b.cnt || b.lost || rows.n[i].cnt || rows.n[i].lost) ? `<rect x="${(x(i) - plotW / bins / 2).toFixed(1)}" y="0" width="${(plotW / bins).toFixed(2)}" height="${H}" class="hit"><title>${esc(when(from + i * step))} — router ${esc(fmt(b))} · internet ${esc(fmt(rows.n[i]))}</title></rect>` : '').join('');
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => `<text x="${(padL + f * plotW).toFixed(1)}" y="${H - 4}" class="ax" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${esc(clockShort(from + f * (to - from)))}</text>`).join('');
+    const grid = [0.5, 1].map((f) => `<line x1="${padL}" y1="${y(yMax * f).toFixed(1)}" x2="${W - padR}" y2="${y(yMax * f).toFixed(1)}" class="grid"/><text x="${padL - 4}" y="${(y(yMax * f) + 3.5).toFixed(1)}" class="ax" text-anchor="end">${Math.round(yMax * f)}</text>`).join('');
+    const stat = (bs) => { let sum = 0, cnt = 0, max = 0, lost = 0; for (const b of bs) { sum += b.sum; cnt += b.cnt; lost += b.lost; if (b.max > max) max = b.max; } return cnt || lost ? { avg: cnt ? Math.round(sum / cnt) : null, max: Math.round(max), lossPct: Math.round((lost / (cnt + lost)) * 1000) / 10, lost } : null; };
+    const svg = samples
+      ? `<svg class="dash-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Router and internet latency over the last ${range}"><line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" class="base"/>${grid}${loss(rows.n)}${loss(rows.g)}<path d="${path(rows.n)}" class="line l-n"/><path d="${path(rows.g)}" class="line l-g"/>${dots(rows.n, 'l-n')}${dots(rows.g, 'l-g')}${ticks}${hits}</svg>`
+      : `<p class="dash-empty">No samples in the last ${range} yet. NetDeck records the router and internet ping every 10 seconds while it is open.</p>`;
+    return { svg, g: stat(rows.g), n: stat(rows.n), samples };
+  }
+
+  function latencyBody() {
+    const now = Date.now();
+    const c = latencyChart(now);
+    const line = (label, s, cls) => s ? `<span class="dash-stat"><span class="dash-swatch ${cls}"></span>${esc(label)} <b>${s.avg != null ? `${s.avg} ms` : '—'}</b> avg · worst ${s.max} ms · ${s.lossPct ? `<span class="dash-loss">${s.lossPct}% lost</span>` : 'no loss'}</span>` : `<span class="dash-stat"><span class="dash-swatch ${cls}"></span>${esc(label)} —</span>`;
+    const mons = series.monitors.slice(-4).reverse().map((m) => {
+      const one = (k, d) => d ? `${k} ${d.sent - d.lost}/${d.sent}${d.pct ? ` (${d.pct}% lost)` : ''}, ${d.avg} ms, jitter ${d.jitter} ms${d.bursts ? `, ${d.bursts} loss run${d.bursts === 1 ? '' : 's'}` : ''}` : '';
+      const bad = (d) => d && (d.bursts >= 1 || (d.lost >= 3 && d.pct >= 1));
+      return `<li class="dash-check" data-status="${bad(m.router) ? 'fail' : bad(m.internet) ? 'warn' : 'pass'}"><span class="dash-dot"></span><span class="dash-check-name">${esc(when(m.t))}</span><span class="dash-check-sum">${esc([one('router', m.router), one('internet', m.internet)].filter(Boolean).join(' — '))}</span></li>`;
+    }).join('');
+    return `<div class="dash-chart">${c.svg}</div><div class="dash-stats">${line('router', c.g, 'l-g')}${line('internet', c.n, 'l-n')}<span class="dash-stat dim">${c.samples} samples</span></div>${mons ? `<p class="dash-sub">Longer monitors (one ping a second):</p><ul class="dash-checks">${mons}</ul>` : ''}`;
+  }
+
+  function latencyCard() {
+    const ranges = Object.keys(RANGES).map((r) => `<button type="button" class="tbtn tbtn-sm${r === range ? ' is-on' : ''}" data-range="${r}" aria-pressed="${r === range}">${r}</button>`).join('');
+    const foot = `<span>router and internet ping every 10 s while NetDeck is open · hover the chart for a moment's figures</span><span class="dash-links">${pbBtn('Does my connection drop out?', 'dropouts')}${pbBtn('Why is everything slow?', 'slow')}</span>`;
+    return `<article class="card dash-card dash-wide" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-ranges" role="group" aria-label="Range">${ranges}</span></header><div id="dash-latency-body">${latencyBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+  }
+
+  const GRADE = { A: 'ok', B: 'ok', C: 'warn', D: 'err' };
+  function speedCard() {
+    const runs = series.speed.slice(-20);
+    const last = runs[runs.length - 1];
+    const foot = (extra) => `<span>${extra}</span><span class="dash-links">${btn('Run speed test', 'speed-test')}${pbBtn('Why is everything slow?', 'slow')}</span>`;
+    if (!last) return card('Speed tests', '', '<p class="dash-empty">No speed test yet. Each run (about half a minute, against speed.cloudflare.com) is kept here: download, upload, idle latency and the bufferbloat grade, so you can see whether the line is getting better or worse.</p>', foot('from the run history'));
+    const mb = (v) => (v == null ? '—' : v >= 100 ? Math.round(v) : v.toFixed(1));
+    const big = `<div class="dash-big"><div><span class="dash-big-n">${mb(last.down)}</span><span class="dash-big-l">down Mbit/s</span></div><div><span class="dash-big-n">${mb(last.up)}</span><span class="dash-big-l">up Mbit/s</span></div><div><span class="dash-big-n">${last.idle == null ? '—' : last.idle}</span><span class="dash-big-l">idle ms</span></div><div><span class="dash-big-n" data-state="${GRADE[last.grade] || 'idle'}">${esc(last.grade || '—')}</span><span class="dash-big-l">bufferbloat${last.bloat != null ? ` +${last.bloat} ms` : ''}</span></div></div>`;
+    const W = 320, H = 90, padB = 14, padT = 4;
+    const max = Math.max(1, ...runs.map((r) => Math.max(r.down || 0, r.up || 0)));
+    const slot = W / Math.max(runs.length, 6), bw = Math.max(3, slot * 0.32);
+    const bars = runs.map((r, i) => {
+      const x0 = i * slot + slot * 0.15;
+      const hD = ((r.down || 0) / max) * (H - padT - padB), hU = ((r.up || 0) / max) * (H - padT - padB);
+      return `<g><title>${esc(when(r.t))} — down ${mb(r.down)}, up ${mb(r.up)} Mbit/s, idle ${r.idle == null ? '—' : r.idle + ' ms'}, bufferbloat ${esc(r.grade || '—')}${r.colo ? ` · via ${esc(r.colo)}` : ''}</title><rect x="${x0.toFixed(1)}" y="${(H - padB - hD).toFixed(1)}" width="${bw.toFixed(1)}" height="${hD.toFixed(1)}" class="bar-d"/><rect x="${(x0 + bw + 1).toFixed(1)}" y="${(H - padB - hU).toFixed(1)}" width="${bw.toFixed(1)}" height="${hU.toFixed(1)}" class="bar-u"/></g>`;
+    }).join('');
+    const labels = runs.length > 1 ? `<text x="0" y="${H - 2}" class="ax">${esc(dayShort(runs[0].t))}</text><text x="${((runs.length - 1) * slot + slot * 0.15 + bw).toFixed(1)}" y="${H - 2}" class="ax" text-anchor="end">${esc(dayShort(last.t))}</text>` : '';
+    const chart = `<svg class="dash-chart-svg dash-bars-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Past speed tests"><line x1="0" y1="${H - padB}" x2="${W}" y2="${H - padB}" class="base"/>${bars}${labels}</svg><div class="dash-stats"><span class="dash-stat"><span class="dash-swatch bar-d"></span>download</span><span class="dash-stat"><span class="dash-swatch bar-u"></span>upload</span><span class="dash-stat dim">${runs.length} run${runs.length === 1 ? '' : 's'} · hover a bar</span></div>`;
+    return card('Speed tests', when(last.t), big + chart, foot(`last run ${ago(last.t)}${last.colo ? ` · via ${esc(last.colo)}` : ''}`));
+  }
+
+  function routeCard() {
+    const tr = series.trace;
+    const host = (tr && tr.host) || '1.1.1.1';
+    const links = `${btn('Trace now', 'tracert', { host }, 'quick')}${pbBtn('Where does the path break?', 'path')}`;
+    if (!tr) return card('Route to the internet', '', '<p class="dash-empty">No traceroute yet. "Trace now" follows the path to 1.1.1.1 hop by hop — your router first, then your provider, then the internet — and shows where the delay is added.</p>', `<span>from the run history</span><span class="dash-links">${links}</span>`);
+    const answered = tr.hops.filter((h) => h.ms != null);
+    const max = Math.max(1, ...answered.map((h) => h.ms));
+    const chain = tr.hops.map((h) => {
+      const net = h.addr ? D.P.classifyIp(h.addr) : 'silent';
+      const jump = tr.jump && tr.jump.n === h.n;
+      const hgt = h.ms == null ? 0 : Math.max(2, Math.round((h.ms / max) * 28));
+      return `<div class="dash-hop${jump ? ' is-jump' : ''}" data-net="${net}" title="hop ${h.n}: ${h.addr || 'no reply'}${h.ms != null ? `, ${h.ms} ms` : ''}${jump ? ` — latency jumps +${tr.jump.delta} ms here` : ''}"><span class="dash-hop-bar" style="height:${hgt}px"></span><span class="dash-hop-n">${h.n}</span><span class="dash-hop-ms">${h.ms == null ? '*' : `${h.ms} ms`}</span><span class="dash-hop-addr">${esc(h.addr || 'no reply')}</span></div>`;
+    }).join('');
+    const legend = '<div class="dash-stats"><span class="dash-stat"><span class="dash-swatch net-private"></span>your network</span><span class="dash-stat"><span class="dash-swatch net-cgnat"></span>provider</span><span class="dash-stat"><span class="dash-swatch net-public"></span>internet</span><span class="dash-stat"><span class="dash-swatch net-silent"></span>no reply</span></div>';
+    const body = `<p class="dash-verdict" data-tone="${TONE[tr.status] || 'idle'}">${esc(tr.summary || '')}</p><div class="dash-chain">${chain}</div>${legend}`;
+    return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}</span>`, 'dash-span2');
+  }
+
+  return { init, show, hide, poke, refresh, backfill };
 })();

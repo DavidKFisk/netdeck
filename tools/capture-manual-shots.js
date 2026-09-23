@@ -150,6 +150,13 @@ const CAPTURE_CSS = `
     await evalJs(`(() => { const s = document.createElement('style'); s.id = '__capdash'; s.textContent = '.terminal { display: none !important; }'; document.head.appendChild(s); return true; })()`);
     await evalJs(`(async () => { document.querySelector('.vtab[data-view="dashboard"]').click();
       for (let i = 0; i < 200; i++) { if (/^Last check/.test(document.getElementById('dash-status').textContent) && !document.getElementById('dash-refresh').disabled) break; await new Promise(r => setTimeout(r, 250)); }
+      // the speed and route cards fill from the dashboard's own buttons
+      document.querySelector('.dash-card button[data-run="tracert"]').click();
+      await new Promise(r => setTimeout(r, 500));
+      document.querySelector('.dash-card button[data-run="speed-test"]').click();
+      for (let i = 0; i < 400; i++) { const t = document.getElementById('dash-grid').innerText; if (!/No speed test yet|No traceroute yet/.test(t)) break; await new Promise(r => setTimeout(r, 250)); }
+      document.getElementById('term-close-all').click();
+      document.querySelector('[data-range="10m"]').click();   // a headless page collects few samples; the short range shows them
       await new Promise(r => setTimeout(r, 600)); return true; })()`);
     await evalJs(SCRUB);
     const rect = await evalJs(`(() => { const top = document.querySelector('.view-switch').getBoundingClientRect().top + scrollY - 6; const r = document.getElementById('view-dashboard').getBoundingClientRect(); return { x: 0, y: Math.max(0, top), width: 1240, height: Math.ceil(r.bottom + scrollY - top) + 6 }; })()`);

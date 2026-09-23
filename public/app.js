@@ -1594,7 +1594,7 @@
     history = history.slice(0, MAX_HISTORY);
     persistHistory();
     renderHistory();
-    DASH.poke();
+    DASH.poke('history', history[0]);
     if (entry.params?.host) { render(); renderPlaybooks(); }
   }
 
