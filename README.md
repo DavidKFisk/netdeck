@@ -36,6 +36,10 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **DNS honesty check** — configured resolvers and their operators, real egress address, tampering and port-53 interception tests, VPN leak, DoH status.
 - **Router check-up** — management ports (telnet!), admin page and certificate, UPnP on/off and every port it has forwarded from the internet.
 - **Hosts file & DNS cache audit** — pinned security/update sites (malware), Docker/local aliases recognised, cache scanned for private answers, look-alike and random names.
+- **Notes** — a note per run, kept in History and included in reports.
+- **Compare** — line-by-line diff of any two runs of the same command or playbook (open tabs or History).
+- **Report** — one self-contained HTML file per run (with Print/PDF), anonymisation on by default: computer name, consistent fake addresses, MAC device halves.
+- **Schedule** — a playbook every 5 min–3 h while NetDeck is open; unchanged runs replace the previous tab, changed results are kept, flagged and can notify.
 - **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-five of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
   - *Does my connection drop out?* — the 3-minute stability monitor with a verdict: local link vs. beyond the router vs. jitter.

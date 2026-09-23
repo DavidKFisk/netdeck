@@ -55,6 +55,7 @@
     <span class="live-only health" data-health="internet" data-state="idle"><span class="ctx-label">internet ping</span><span class="spark-wrap"></span><span class="health-val" data-state="idle">—</span></span>
     <span class="live-only ctx-badge" id="ctx-admin" data-admin="unknown">…</span>
     <button class="live-only tbtn tbtn-sm" id="ctx-elevate" hidden>Run as admin</button>
+    <button class="live-only tbtn tbtn-sm" id="sched-badge" hidden title="Scheduled playbooks"></button>
     <button class="live-only icon-btn" id="ctx-refresh" title="Re-detect network context" aria-label="Refresh network context">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 2v3h-3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
@@ -102,6 +103,9 @@
         <button id="term-copy" class="tbtn" disabled>Copy</button>
         <button id="term-close-all" class="tbtn" disabled title="Close every tab and stop running commands">Close all</button>
         <button id="term-history" class="tbtn" aria-pressed="false">History</button>
+        <button id="term-compare" class="tbtn" disabled title="Compare this run with an earlier run of the same thing">Compare</button>
+        <button id="term-report" class="tbtn" disabled title="Save this run as a self-contained HTML report">Report</button>
+        <button id="term-schedule" class="tbtn live-only" title="Run a playbook on a schedule while NetDeck is open">Schedule</button>
         <button id="term-notify" class="tbtn" aria-pressed="false" title="Notify me when a run finishes while this tab is in the background" aria-label="Toggle desktop notifications">&#x1F514;&#xFE0E;</button>
         <button id="term-size" class="tbtn" title="Toggle terminal height" aria-label="Toggle terminal height">&#x2195;</button>
         <button id="term-toggle" class="tbtn" aria-expanded="false">Expand</button>
@@ -158,6 +162,51 @@
         <button type="button" class="tbtn" id="elevate-copy" hidden>Copy commands</button>
         <button type="button" class="tbtn" id="elevate-cancel">Close</button>
         <button type="button" class="run-btn" id="elevate-go" hidden>Restart as administrator</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="compare-modal" hidden role="dialog" aria-labelledby="compare-title">
+    <div class="modal-box">
+      <h2 id="compare-title">Compare with an earlier run</h2>
+      <p class="modal-hint">Pick another run of the same command or playbook. NetDeck shows what changed line by line — the older run in red, the newer in green — so "what is different since it worked?" has an answer.</p>
+      <div class="choice-list" id="compare-list"></div>
+      <p class="modal-hint" id="compare-empty" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="tbtn" id="compare-cancel">Cancel</button>
+        <button type="button" class="run-btn" id="compare-go">Compare</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="report-modal" hidden role="dialog" aria-labelledby="report-title">
+    <div class="modal-box">
+      <h2 id="report-title">Save a report of this run</h2>
+      <p class="modal-hint">A single HTML file with the run's title, time, your note, and its output — steps and verdict for a playbook, output and table for a command. It opens in any browser and has a Print button for a PDF.</p>
+      <label class="modal-row"><input type="checkbox" id="report-anon" checked> Anonymise: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
+      <label class="modal-row"><input type="checkbox" id="report-full" checked> Include each step's full output (collapsed sections)</label>
+      <div class="modal-actions">
+        <button type="button" class="tbtn" id="report-cancel">Cancel</button>
+        <button type="button" class="run-btn" id="report-go">Save report</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="schedule-modal" hidden role="dialog" aria-labelledby="schedule-title">
+    <div class="modal-box">
+      <h2 id="schedule-title">Scheduled playbooks</h2>
+      <p class="modal-hint">Run a playbook every few minutes while NetDeck is open. Each run opens a tab; unchanged runs replace the previous one, and a run whose result changed (a new device, a verdict that flipped, a step that started failing) is kept, marked with "!" and, if you like, announced with a notification. Schedules are remembered and resume when NetDeck is reopened.</p>
+      <div class="modal-row">
+        <label for="schedule-pb">Playbook</label> <select id="schedule-pb"></select>
+        <label for="schedule-every">every</label>
+        <select id="schedule-every"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">1 hour</option><option value="180">3 hours</option></select>
+        <label class="modal-row"><input type="checkbox" id="schedule-notify" checked> notify on change</label>
+        <button type="button" class="run-btn" id="schedule-add">Add</button>
+      </div>
+      <ul class="sched-list" id="schedule-list"></ul>
+      <p class="modal-hint" id="schedule-empty">No schedules yet. Playbooks that need input appear once you have run them, with the input you used last.</p>
+      <div class="modal-actions">
+        <button type="button" class="tbtn" id="schedule-cancel">Close</button>
       </div>
     </div>
   </div>

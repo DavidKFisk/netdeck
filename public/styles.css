@@ -1076,3 +1076,26 @@ body[data-mode="static"] .live-only { display: none !important; }
 /* per-row action button in parsed tables (the scan's "probe") */
 .data-table td.row-action { text-align: right; white-space: nowrap; padding-top: 2px; padding-bottom: 2px; }
 .data-table th.row-action-h { width: 1%; }
+
+/* ---------- working with results: notes, compare, report, schedules ---------- */
+.pane-note { padding: 6px 14px 2px; }
+.pane-note-text { width: 100%; background: var(--ground); color: var(--text); border: 1px solid var(--border-soft); border-radius: 6px; font-family: var(--sans); font-size: 13px; padding: 6px 8px; resize: vertical; }
+.pane-note-text:focus { outline: none; border-color: var(--muted); }
+.note-btn[aria-pressed="true"] { color: var(--ok); border-color: var(--ok-line); }
+.pb-bar { gap: 8px; }
+.history-item .h-note { color: var(--ok); margin-left: 4px; }
+.diff-head { color: var(--muted); }
+.diff-ctx { color: var(--text); }
+.diff-add { background: var(--ok-dim); color: var(--ok); }
+.diff-del { background: var(--err-dim); color: var(--err); }
+.diff-skip { color: var(--muted); font-style: italic; }
+.choice-list { max-height: 40vh; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+.choice-list label { display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 5px 8px; border: 1px solid var(--border-soft); border-radius: 6px; cursor: pointer; }
+.choice-list label:hover { border-color: var(--muted); }
+.modal-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.modal-row select { background: var(--ground); color: var(--text); border: 1px solid var(--border-soft); border-radius: 6px; padding: 5px 8px; font-family: var(--mono); font-size: 12.5px; }
+.sched-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.sched-item { display: flex; gap: 10px; align-items: center; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border-soft); border-radius: 6px; }
+.sched-item .grow { flex: 1; }
+.sched-item .changed { color: var(--warn); }
+#sched-badge.sched-alert { color: var(--warn); border-color: var(--warn-line); }

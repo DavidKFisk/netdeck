@@ -175,6 +175,7 @@
     <ul class="toc">
       <li><a href="#start">Getting started</a></li>
       <li><a href="#screen">The screen, top to bottom</a></li>
+      <li><a href="#results">Working with results</a></li>
       <li class="sub"><a href="#s-header">Header &amp; search</a></li>
       <li class="sub"><a href="#s-context">Network context strip</a></li>
       <li class="sub"><a href="#s-filters">Views &amp; filters</a></li>
@@ -341,6 +342,15 @@
 </div>
 
 <!-- ============================================================ -->
+<h2 id="results">Working with results</h2>
+<p>Four tools on the output bar and in each tab turn a run into evidence you can keep, compare and hand over.</p>
+<div class="ui">
+  <div>note</div><div>On the right of a run's top line (and on the bar above a playbook's steps). Opens a box for a note about this run — what you were seeing, a ticket number, what you tried. The note is saved with the run in History (a ✎ marks entries that have one; hover to read it) and goes into any report you save. It is yours alone; nothing is sent anywhere.</div>
+  <div>Compare</div><div>With a finished run in front of you, press <strong>Compare</strong> and pick an earlier run of the same command or playbook — an open tab or a History entry. NetDeck opens a new tab showing the difference line by line: lines only in the older run in red, only in the newer in green, unchanged stretches folded. For playbooks it compares the step summaries and the verdict. This is the "what changed since it worked?" question answered in one click; run <code>ipconfig /all</code>, <code>route print</code> or the network scan when things work, and compare when they do not.</div>
+  <div>Report</div><div>Saves the run in front of you as a single HTML file: title, time, your note, the output and its table for a command, the steps (with their full output in collapsible sections) and the verdict for a playbook. It opens in any browser and has a <em>Print / save as PDF</em> button. <strong>Anonymise</strong> is on by default: your computer's name becomes OFFICE-PC, every address is replaced consistently (private ones with 192.0.2.x, public with 203.0.113.x — so the same device keeps the same fake address throughout), and the device half of MAC addresses becomes xx-xx-xx. Well-known addresses such as 1.1.1.1 are left alone. Turn it off for a report you keep yourself.</div>
+  <div>Schedule</div><div>Runs a playbook every 5 minutes to 3 hours while NetDeck is open — <em>Scan my network</em> every 15 minutes, say, or <em>Does my connection drop out?</em> every hour. Each run opens a tab; an unchanged run replaces the previous one so tabs do not pile up. A run whose result changed — a new device, a verdict that flipped, a step that started failing — is kept, marked with "!" in its tab, counted on the ⏱ badge in the context strip, and (if you tick "notify on change") announced with a desktop notification. Schedules are remembered and resume when NetDeck is reopened; they never run while it is closed. Playbooks that need input appear in the list once you have run them, with the input you used last.</div>
+</div>
+
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
 <p>There are twenty-five, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, is my DNS honest, router check-up, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>

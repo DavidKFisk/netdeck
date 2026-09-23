@@ -951,7 +951,7 @@
   function createTab({ kind, title, cmdId, pbId, params, preset = null, help = false }) {
     const tab = {
       id: `t${++tabSeq}`, kind, title, cmdId, pbId, params, preset, help,
-      output: '', state: 'running', exitCode: null,
+      output: '', state: 'running', exitCode: null, note: '', hid: null,
       startedAt: Date.now(), endedAt: null, controller: new AbortController(),
       view: 'raw', table: null, els: {}, find: '', findTimer: null, tick: null,
     };
@@ -969,6 +969,7 @@
         <span class="pane-tools">
           <span class="find-wrap"><input class="find-input" type="search" placeholder="find in output" aria-label="Find in output" spellcheck="false"><span class="find-count"></span></span>
           <button class="tbtn tbtn-sm wrap-btn" aria-pressed="${wrapLines}" title="Wrap long lines">wrap</button>
+          <span class="note-slot"></span>
           <button class="tbtn tbtn-sm save-btn" title="Save output as a text file">save</button>
           <button class="tbtn tbtn-sm link-tbtn" title="Copy a link that opens this command pre-filled">link</button>
         </span>`;
@@ -982,6 +983,7 @@
       tableWrap.hidden = true;
       pane.append(meta, raw, tableWrap);
       Object.assign(tab.els, { meta, raw, tableWrap, find: meta.querySelector('.find-input'), findCount: meta.querySelector('.find-count') });
+      meta.querySelector('.note-slot').replaceWith(attachNote(tab, meta));
 
       tab.els.find.addEventListener('input', () => { tab.find = tab.els.find.value; rehighlight(tab); });
       tab.els.find.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nextMatch(tab, e.shiftKey ? -1 : 1); } if (e.key === 'Escape') { tab.els.find.value = ''; tab.find = ''; rehighlight(tab); } });
@@ -992,16 +994,19 @@
       linkBtn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link()); linkBtn.textContent = 'copied'; setTimeout(() => { linkBtn.textContent = 'link'; }, 1200); } catch { /* ignore */ } });
 
       tab.tick = setInterval(() => { meta.querySelector('.dur').textContent = fmtDur(Date.now() - tab.startedAt); }, 500);
-    } else if (LINKABLE) {
+    } else {
       const bar = document.createElement('div');
       bar.className = 'pb-bar';
-      const linkBtn = document.createElement('button');
-      linkBtn.className = 'tbtn tbtn-sm';
-      linkBtn.textContent = 'link';
-      linkBtn.title = 'Copy a link that opens this playbook pre-filled';
-      linkBtn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link()); linkBtn.textContent = 'copied'; setTimeout(() => { linkBtn.textContent = 'link'; }, 1200); } catch { /* ignore */ } });
-      bar.appendChild(linkBtn);
       pane.appendChild(bar);
+      bar.appendChild(attachNote(tab, bar));
+      if (LINKABLE) {
+        const linkBtn = document.createElement('button');
+        linkBtn.className = 'tbtn tbtn-sm';
+        linkBtn.textContent = 'link';
+        linkBtn.title = 'Copy a link that opens this playbook pre-filled';
+        linkBtn.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link()); linkBtn.textContent = 'copied'; setTimeout(() => { linkBtn.textContent = 'link'; }, 1200); } catch { /* ignore */ } });
+        bar.appendChild(linkBtn);
+      }
     }
 
     panes.appendChild(pane);
@@ -1222,8 +1227,9 @@
     saveHistory({
       kind: 'run', cmdId: cmd.id, title, params, preset, help,
       startedAt: tab.startedAt, endedAt: tab.endedAt, exitCode: tab.exitCode, state: tab.state,
-      output: tab.output.slice(0, MAX_STORED_OUTPUT),
+      output: tab.output.slice(0, MAX_STORED_OUTPUT), note: tab.note,
     });
+    tab.hid = lastSavedHid;
   }
 
   /* ================= table view ================= */
@@ -1550,8 +1556,10 @@
     saveHistory({
       kind: 'playbook', pbId: pb.id, title: pb.name, params,
       startedAt: tab.startedAt, endedAt: tab.endedAt, state: tab.state, exitCode: null,
-      steps: stored, verdict: v,
+      steps: stored, verdict: v, note: tab.note,
     });
+    tab.hid = lastSavedHid;
+    return { tab, verdict: v, results, R };
   }
 
   /* ================= history ================= */
@@ -1569,8 +1577,11 @@
     }
   }
 
+  let lastSavedHid = null;
   function saveHistory(entry) {
-    history.unshift({ hid: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...entry });
+    const hid = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    lastSavedHid = hid;
+    history.unshift({ hid, ...entry });
     history = history.slice(0, MAX_HISTORY);
     persistHistory();
     renderHistory();
@@ -1586,8 +1597,9 @@
       li.tabIndex = 0;
       const dur = h.endedAt ? fmtDur(h.endedAt - h.startedAt) : '';
       const exit = h.kind === 'run' ? (h.exitCode === null ? h.state : `exit ${h.exitCode}`) : (h.verdict ? h.verdict.tone : h.state);
-      li.innerHTML = `<span class="status-dot" data-state="${dotFor(h.state)}"></span><span class="h-title"></span><button class="tbtn tbtn-sm" title="Run again">↻</button><span class="h-meta"></span>`;
+      li.innerHTML = `<span class="status-dot" data-state="${dotFor(h.state)}"></span><span class="h-title"></span>${h.note ? '<span class="h-note" title="">✎</span>' : ''}<button class="tbtn tbtn-sm" title="Run again">↻</button><span class="h-meta"></span>`;
       li.querySelector('.h-title').textContent = h.title;
+      if (h.note) li.querySelector('.h-note').title = h.note;
       li.querySelector('.h-meta').textContent = [fmtTime(h.startedAt), dur, exit].filter(Boolean).join(' · ');
       li.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); rerun(h); });
       li.addEventListener('click', () => openHistoryEntry(h));
@@ -1615,6 +1627,8 @@
       tab.output = h.output || '';
       appendRaw(tab, tab.output);
       tab.exitCode = h.exitCode;
+      tab.hid = h.hid;
+      setNote(tab, h.note);
       finishTab(tab, h.state);
       tab.endedAt = h.endedAt;
       if (h.endedAt) tab.els.meta.querySelector('.dur').textContent = fmtDur(h.endedAt - h.startedAt);
@@ -1636,6 +1650,8 @@
         }
       });
       if (h.verdict) showVerdict(verdict, h.verdict);
+      tab.hid = h.hid;
+      setNote(tab, h.note);
       finishTab(tab, h.state);
     }
   }
@@ -1706,6 +1722,344 @@
       setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
     }
   });
+
+  /* ================= working with results: notes, compare, report, schedules ================= */
+
+  /* ---- notes (kept with the run in History) ---- */
+  function updateHistoryNote(hid, note) {
+    const h = history.find((x) => x.hid === hid);
+    if (!h) return;
+    h.note = note;
+    persistHistory();
+    renderHistory();
+  }
+
+  // Adds the note box after `host` (must already be in the pane) and returns the toggle button for the tools row.
+  function attachNote(tab, host) {
+    const box = document.createElement('div');
+    box.className = 'pane-note';
+    box.hidden = !tab.note;
+    const ta = document.createElement('textarea');
+    ta.className = 'pane-note-text';
+    ta.rows = 2;
+    ta.placeholder = 'Note for this run — what you were seeing, a ticket number, what you tried. Saved with the run in History and included in reports.';
+    ta.value = tab.note || '';
+    let timer = null;
+    ta.addEventListener('input', () => {
+      tab.note = ta.value;
+      btn.setAttribute('aria-pressed', String(Boolean(tab.note) || !box.hidden));
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (tab.hid) updateHistoryNote(tab.hid, tab.note); }, 400);
+    });
+    box.appendChild(ta);
+    host.insertAdjacentElement('afterend', box);
+    const btn = document.createElement('button');
+    btn.className = 'tbtn tbtn-sm note-btn';
+    btn.textContent = 'note';
+    btn.title = 'Attach a note to this run (kept in History, included in reports)';
+    btn.setAttribute('aria-pressed', String(Boolean(tab.note)));
+    btn.addEventListener('click', () => { box.hidden = !box.hidden; btn.setAttribute('aria-pressed', String(!box.hidden || Boolean(tab.note))); if (!box.hidden) ta.focus(); });
+    Object.assign(tab.els, { note: box, noteText: ta, noteBtn: btn });
+    return btn;
+  }
+
+  function setNote(tab, text) {
+    tab.note = text || '';
+    if (!tab.els.noteText) return;
+    tab.els.noteText.value = tab.note;
+    tab.els.note.hidden = !tab.note;
+    tab.els.noteBtn.setAttribute('aria-pressed', String(Boolean(tab.note)));
+  }
+
+  /* ---- compare two runs ---- */
+  function pbText(pane) {
+    return [...pane.querySelectorAll('.pb-step')]
+      .map((el) => `${el.querySelector('.pb-icon').textContent} ${el.querySelector('.pb-label').textContent.trim()} — ${el.querySelector('.pb-summary').textContent}`)
+      .concat(pane.querySelector('.pb-verdict-text')?.textContent || [])
+      .join('\n');
+  }
+  const textOfTab = (tab) => (tab.kind === 'playbook' ? pbText(tab.els.pane) : tab.output);
+  const textOfHistory = (h) => (h.kind === 'playbook'
+    ? (h.steps || []).map((s) => `${STEP_ICON[s.status] || '○'} ${s.summary}`).concat(h.verdict ? [h.verdict.text] : []).join('\n')
+    : (h.output || ''));
+
+  // Line diff by longest common subsequence, capped so a 5,000-line capture cannot freeze the page.
+  function diffLines(a, b) {
+    const A = a.replace(/\r/g, '').split('\n'), B = b.replace(/\r/g, '').split('\n');
+    const cap = 1500;
+    const ta = A.slice(0, cap), tb = B.slice(0, cap);
+    const n = ta.length, m = tb.length;
+    const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = ta[i] === tb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const ops = [];
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (ta[i] === tb[j]) { ops.push(['=', ta[i]]); i++; j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) { ops.push(['-', ta[i]]); i++; }
+      else { ops.push(['+', tb[j]]); j++; }
+    }
+    while (i < n) ops.push(['-', ta[i++]]);
+    while (j < m) ops.push(['+', tb[j++]]);
+    return { ops, truncated: A.length > cap || B.length > cap };
+  }
+
+  const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function showDiff(a, b) {
+    // a and b: { title, when, text }; a is the older one
+    const { ops, truncated } = diffLines(a.text, b.text);
+    const added = ops.filter((o) => o[0] === '+').length, removed = ops.filter((o) => o[0] === '-').length;
+    const tab = createTab({ kind: 'run', title: `Compare: ${b.title}`, cmdId: null, params: {} });
+    tab.els.meta.querySelector('.link-tbtn').hidden = true;
+    // collapse long unchanged stretches
+    const html = [];
+    const unified = [];
+    let run = [];
+    const flushRun = () => {
+      if (!run.length) return;
+      if (run.length > 8) {
+        run.slice(0, 3).forEach((l) => { html.push(`<span class="diff-ctx">  ${escHtml(l)}</span>`); unified.push('  ' + l); });
+        html.push(`<span class="diff-skip">  … ${run.length - 6} unchanged lines …</span>`); unified.push(`  … ${run.length - 6} unchanged lines …`);
+        run.slice(-3).forEach((l) => { html.push(`<span class="diff-ctx">  ${escHtml(l)}</span>`); unified.push('  ' + l); });
+      } else run.forEach((l) => { html.push(`<span class="diff-ctx">  ${escHtml(l)}</span>`); unified.push('  ' + l); });
+      run = [];
+    };
+    for (const [op, line] of ops) {
+      if (op === '=') { run.push(line); continue; }
+      flushRun();
+      html.push(`<span class="${op === '+' ? 'diff-add' : 'diff-del'}">${op} ${escHtml(line)}</span>`);
+      unified.push(`${op} ${line}`);
+    }
+    flushRun();
+    const head = `− A: ${a.title}  (${a.when})\n+ B: ${b.title}  (${b.when})\n${removed} line${removed === 1 ? '' : 's'} only in A, ${added} only in B${truncated ? ' — compared the first 1,500 lines of each' : ''}${!added && !removed ? ' — identical' : ''}\n\n`;
+    tab.output = head + unified.join('\n');
+    tab.els.raw.innerHTML = `<span class="diff-head">${escHtml(head)}</span>` + html.join('\n');
+    tab.exitCode = null;
+    finishTab(tab, 'done');
+    return tab;
+  }
+
+  const compareModal = $('compare-modal'), compareList = $('compare-list'), compareEmpty = $('compare-empty');
+  function openCompare() {
+    const cur = activeTab();
+    if (!cur || cur.state === 'running') return;
+    compareList.textContent = '';
+    const key = cur.kind === 'playbook' ? ['pbId', cur.pbId] : ['cmdId', cur.cmdId];
+    const cands = [];
+    tabs.filter((t) => t !== cur && t.state !== 'running' && t[key[0]] === key[1] && t.kind === cur.kind && t.cmdId !== null).forEach((t) => cands.push({ id: 'tab:' + t.id, label: `${t.title} — open tab, ${fmtTime(t.startedAt)}`, when: t.startedAt, text: () => textOfTab(t), title: t.title }));
+    history.filter((h) => h.kind === cur.kind && h[key[0]] === key[1] && h.hid !== cur.hid).slice(0, 25).forEach((h) => cands.push({ id: 'hist:' + h.hid, label: `${h.title} — ${new Date(h.startedAt).toLocaleDateString()} ${fmtTime(h.startedAt)}${h.note ? ' · ' + h.note.slice(0, 40) : ''}`, when: h.startedAt, text: () => textOfHistory(h), title: h.title }));
+    compareEmpty.hidden = cands.length > 0;
+    compareEmpty.textContent = `No other run of "${cur.title}" is open or in History yet. Run it again later and compare then.`;
+    cands.forEach((c, i) => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="radio" name="compare-pick" value="${c.id}"${i === 0 ? ' checked' : ''}><span></span>`;
+      label.querySelector('span').textContent = c.label;
+      compareList.appendChild(label);
+    });
+    compareModal.dataset.cands = '1';
+    compareModal._cands = cands;
+    compareModal._cur = cur;
+    compareModal.hidden = false;
+  }
+  $('compare-cancel').addEventListener('click', () => { compareModal.hidden = true; });
+  $('compare-go').addEventListener('click', () => {
+    const pick = compareModal.querySelector('input[name="compare-pick"]:checked');
+    const c = (compareModal._cands || []).find((x) => x.id === pick?.value);
+    const cur = compareModal._cur;
+    compareModal.hidden = true;
+    if (!c || !cur) return;
+    const mine = { title: cur.title, when: `${new Date(cur.startedAt).toLocaleDateString()} ${fmtTime(cur.startedAt)}`, text: textOfTab(cur), at: cur.startedAt };
+    const other = { title: c.title, when: `${new Date(c.when).toLocaleDateString()} ${fmtTime(c.when)}`, text: c.text(), at: c.when };
+    const [a, b] = other.at <= mine.at ? [other, mine] : [mine, other];
+    showDiff(a, b);
+  });
+
+  /* ---- report: a self-contained HTML file of one run ---- */
+  function makeAnonymiser() {
+    const ipMap = new Map();
+    let n = 0;
+    const host = (context?.hostname || '').trim();
+    const priv = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/;
+    const keep = /^(127\.|0\.0\.0\.0$|255\.|224\.|239\.|1\.1\.1\.1$|1\.0\.0\.1$|8\.8\.8\.8$|8\.8\.4\.4$|9\.9\.9\.9$)/;
+    return (text) => {
+      let s = String(text);
+      if (host) s = s.replace(new RegExp(host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), 'OFFICE-PC');
+      s = s.replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, (m) => { if (keep.test(m)) return m; if (!ipMap.has(m)) { n++; ipMap.set(m, (priv.test(m) ? '192.0.2.' : '203.0.113.') + n); } return ipMap.get(m); });
+      s = s.replace(/\b([0-9A-Fa-f]{2})([-:])([0-9A-Fa-f]{2})[-:]([0-9A-Fa-f]{2})[-:][0-9A-Fa-f]{2}[-:][0-9A-Fa-f]{2}[-:][0-9A-Fa-f]{2}\b/g, (m, a, sep, b, c) => `${a}${sep}${b}${sep}${c}${sep}xx${sep}xx${sep}xx`);
+      s = s.replace(/\b[23][0-9a-f]{3}:[0-9a-f:]{3,}\b/gi, '2001:db8::1');
+      return s;
+    };
+  }
+
+  function buildReport(tab, { anonymise, fullOutputs }) {
+    const anon = anonymise ? makeAnonymiser() : (t) => t;
+    const e = (t) => escHtml(anon(t));
+    const when = new Date(tab.startedAt);
+    const dur = tab.endedAt ? fmtDur(tab.endedAt - tab.startedAt) : '';
+    const edition = TAURI ? 'desktop app' : STATIC ? 'hosted reference' : 'local server';
+    const params = Object.entries(tab.params || {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(', ');
+    let body = '';
+    if (tab.kind === 'playbook') {
+      const steps = [...tab.els.pane.querySelectorAll('.pb-step')];
+      const v = tab.els.pane.querySelector('.pb-verdict');
+      body += '<h2>Steps</h2><ol class="steps">' + steps.map((el, i) => {
+        const status = el.dataset.status || '';
+        const out = fullOutputs ? (el.querySelector('.pb-out')?.textContent || '') : '';
+        return `<li class="step s-${status}"><span class="icon">${escHtml(el.querySelector('.pb-icon').textContent)}</span> <strong>${escHtml(el.querySelector('.pb-label').textContent.trim())}</strong><div class="sum">${e(el.querySelector('.pb-summary').textContent)}</div>${out ? `<details><summary>output</summary><pre>${e(out)}</pre></details>` : ''}</li>`;
+      }).join('') + '</ol>';
+      if (v && !v.hidden) body += `<h2>Verdict</h2><div class="verdict tone-${escHtml(v.dataset.tone || '')}"><span class="lbl">${escHtml(v.querySelector('.pb-verdict-label')?.textContent || '')}</span><p>${e(v.querySelector('.pb-verdict-text')?.textContent || '').replace(/\n/g, '<br>')}</p></div>`;
+    } else {
+      body += `<h2>Output</h2><pre>${e(tab.output)}</pre>`;
+      if (tab.table && tab.table.rows.length) body += '<h2>Table</h2><table><thead><tr>' + tab.table.columns.map((c) => `<th>${e(c)}</th>`).join('') + '</tr></thead><tbody>' + tab.table.rows.map((r) => '<tr>' + r.map((c) => `<td>${e(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+    }
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${e(tab.title)} — NetDeck report</title>
+<style>
+body{font:14px/1.5 system-ui,Segoe UI,sans-serif;color:#1e221e;background:#fff;max-width:960px;margin:32px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:#666;margin:28px 0 8px}
+.meta{color:#555;font-size:13px}.meta span{margin-right:16px}.note{background:#f4f6f4;border-left:3px solid #8fb896;padding:8px 12px;margin:14px 0;white-space:pre-wrap}
+pre{background:#f6f7f6;border:1px solid #dfe3df;border-radius:6px;padding:12px;overflow:auto;font:12.5px/1.45 ui-monospace,Consolas,monospace;white-space:pre-wrap}
+table{border-collapse:collapse;font-size:12.5px;width:100%}th,td{border:1px solid #dfe3df;padding:4px 8px;text-align:left;vertical-align:top}th{background:#f0f2f0}
+ol.steps{list-style:none;padding:0;margin:0}.step{border:1px solid #dfe3df;border-radius:6px;padding:8px 12px;margin-bottom:8px}.step .icon{display:inline-block;width:1.4em;font-weight:600}
+.s-pass .icon{color:#3d7a48}.s-warn .icon{color:#9a5a3c}.s-fail .icon{color:#a53c3c}.step .sum{color:#444;margin-left:1.4em}details{margin-left:1.4em;margin-top:6px}summary{cursor:pointer;color:#555;font-size:12.5px}
+.verdict{border:1px solid #dfe3df;border-left-width:4px;border-radius:6px;padding:10px 14px}.verdict .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#666}.tone-pass{border-left-color:#3d7a48}.tone-warn{border-left-color:#9a5a3c}.tone-fail{border-left-color:#a53c3c}.verdict p{margin:6px 0 0;white-space:pre-wrap}
+.foot{margin-top:36px;color:#888;font-size:12px}.print{float:right;font:13px system-ui;padding:6px 12px;border:1px solid #b6bab6;border-radius:6px;background:#fff;cursor:pointer}
+@media print{.print{display:none}details{display:block}details>summary{display:none}details>*{display:block}}
+</style></head><body>
+<button class="print" onclick="window.print()">Print / save as PDF</button>
+<h1>${e(tab.title)}</h1>
+<div class="meta"><span>${when.toLocaleString()}</span>${dur ? `<span>took ${dur}</span>` : ''}${tab.exitCode !== null && tab.exitCode !== undefined ? `<span>exit ${tab.exitCode}</span>` : ''}${params ? `<span>${e(params)}</span>` : ''}<span>NetDeck ${window.NETDECK_VERSION || ''} (${edition})</span>${anonymise ? '<span>anonymised: computer name, addresses and MACs replaced</span>' : ''}</div>
+${tab.note ? `<div class="note">${e(tab.note)}</div>` : ''}
+${body}
+<p class="foot">Generated by NetDeck — network &amp; system command reference.</p>
+</body></html>`;
+  }
+
+  function saveFile(name, text, type) {
+    if (BACKEND.saveText) { BACKEND.saveText(name, text).catch(() => {}); return; }
+    const blob = new Blob([text], { type });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  const reportModal = $('report-modal');
+  $('report-cancel').addEventListener('click', () => { reportModal.hidden = true; });
+  $('report-go').addEventListener('click', () => {
+    const tab = activeTab();
+    reportModal.hidden = true;
+    if (!tab) return;
+    const html = buildReport(tab, { anonymise: $('report-anon').checked, fullOutputs: $('report-full').checked });
+    const slug = tab.title.replace(/[^A-Za-z0-9.-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'run';
+    const stamp = new Date(tab.startedAt).toISOString().replace(/[:T]/g, '-').slice(0, 19);
+    saveFile(`${slug}-report-${stamp}.html`, html, 'text/html');
+  });
+
+  /* ---- schedules: a playbook every N minutes while NetDeck is open, alert on change ---- */
+  const SCHED_KEY = 'netdeck.schedules.v1';
+  let schedules = readJson(SCHED_KEY, []);
+  const schedRunning = new Set();
+  const schedBadge = $('sched-badge'), schedModal = $('schedule-modal'), schedList = $('schedule-list'), schedPb = $('schedule-pb');
+  function persistSchedules() { try { localStorage.setItem(SCHED_KEY, JSON.stringify(schedules)); } catch { /* fine */ } renderSchedBadge(); }
+  function renderSchedBadge() {
+    schedBadge.hidden = !schedules.length || !canRun;
+    const alerts = schedules.filter((s) => s.alert).length;
+    schedBadge.textContent = `⏱ ${schedules.length} schedule${schedules.length === 1 ? '' : 's'}${alerts ? ` · ${alerts} changed` : ''}`;
+    schedBadge.classList.toggle('sched-alert', alerts > 0);
+  }
+  const signatureOf = (v, results, R) => `${v?.tone || 'none'}|${results.map((r) => r?.status || 'skip').join(',')}|${(R?.scan?.data?.fresh || []).length ? 'new-devices' : ''}`;
+  function notifyChange(pb, v) {
+    const body = (v?.text || 'result changed').slice(0, 200);
+    if (BACKEND.notify) { BACKEND.notify(`NetDeck schedule: ${pb.name} changed`, body).catch(() => {}); return; }
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification(`NetDeck schedule: ${pb.name} changed`, { body });
+  }
+  async function runScheduled(s) {
+    const pb = PB.get(s.pbId);
+    if (!pb || !canRun || schedRunning.has(s.id)) return;
+    schedRunning.add(s.id);
+    try {
+      const out = await runPlaybook(pb, s.params || {});
+      const sig = signatureOf(out.verdict, out.results, out.R);
+      const changed = Boolean(s.lastSig) && sig !== s.lastSig;
+      s.lastRunAt = Date.now(); s.lastSig = sig; s.lastTone = out.verdict?.tone || out.tab.state; s.runs = (s.runs || 0) + 1;
+      if (changed) {
+        s.changes = (s.changes || 0) + 1; s.alert = true;
+        out.tab.title = `! ${out.tab.title}`; renderTabStrip();
+        if (s.notify) notifyChange(pb, out.verdict);
+      } else if (s.prevTabId && tabs.some((t) => t.id === s.prevTabId) && s.prevTabId !== activeTabId) {
+        closeTab(s.prevTabId);   // keep only the latest unchanged run open, so scheduled runs do not pile up
+      }
+      s.prevTabId = changed ? null : out.tab.id;
+      persistSchedules();
+    } catch (e) { /* the run itself reported */ } finally { schedRunning.delete(s.id); }
+  }
+  function schedTick() {
+    if (!canRun || document.hidden && false) return;
+    const now = Date.now();
+    schedules.forEach((s) => { if (!s.lastRunAt || now - s.lastRunAt >= s.minutes * 60000) runScheduled(s); });
+  }
+  setInterval(schedTick, 15000);
+  setTimeout(schedTick, 4000);
+
+  function renderSchedules() {
+    schedList.textContent = '';
+    $('schedule-empty').hidden = schedules.length > 0;
+    schedules.forEach((s) => {
+      const pb = PB.get(s.pbId);
+      const li = document.createElement('li');
+      li.className = 'sched-item';
+      const last = s.lastRunAt ? `last ${fmtTime(s.lastRunAt)}${s.lastTone ? ` (${s.lastTone})` : ''}` : 'not run yet';
+      li.innerHTML = `<span class="grow"><strong></strong> every ${s.minutes} min — ${last}${s.runs ? `, ${s.runs} run${s.runs === 1 ? '' : 's'}` : ''}${s.changes ? `, <span class="changed">${s.changes} change${s.changes === 1 ? '' : 's'}</span>` : ''}${s.notify ? ' · notifies' : ''}</span><button class="tbtn tbtn-sm run-now">Run now</button><button class="tbtn tbtn-sm cancel">Remove</button>`;
+      li.querySelector('strong').textContent = pb ? pb.name : s.pbId;
+      li.querySelector('.run-now').addEventListener('click', () => { s.lastRunAt = 0; schedTick(); schedModal.hidden = true; });
+      li.querySelector('.cancel').addEventListener('click', () => { schedules = schedules.filter((x) => x !== s); persistSchedules(); renderSchedules(); });
+      schedList.appendChild(li);
+    });
+  }
+  function openSchedules() {
+    schedules.forEach((s) => { s.alert = false; });
+    persistSchedules();
+    schedPb.textContent = '';
+    PB.list().forEach((pb) => {
+      const lastParams = history.find((h) => h.kind === 'playbook' && h.pbId === pb.id && h.params && Object.values(h.params).some(Boolean))?.params;
+      if (pb.params.length && !lastParams) return;   // needs input and was never run: nothing to schedule with
+      const o = document.createElement('option');
+      o.value = pb.id;
+      o.textContent = pb.name + (pb.params.length ? ` (with ${Object.values(lastParams).filter(Boolean).join(', ')})` : '');
+      o.dataset.params = JSON.stringify(lastParams || {});
+      schedPb.appendChild(o);
+    });
+    renderSchedules();
+    schedModal.hidden = false;
+  }
+  schedBadge.addEventListener('click', openSchedules);
+  $('term-schedule').addEventListener('click', openSchedules);
+  $('schedule-cancel').addEventListener('click', () => { schedModal.hidden = true; });
+  $('schedule-add').addEventListener('click', async () => {
+    const o = schedPb.selectedOptions[0];
+    if (!o) return;
+    const notify = $('schedule-notify').checked;
+    if (notify && !TAURI && typeof Notification !== 'undefined' && Notification.permission !== 'granted') { try { await Notification.requestPermission(); } catch { /* fine */ } }
+    schedules.push({ id: `s${Date.now()}`, pbId: o.value, params: JSON.parse(o.dataset.params || '{}'), minutes: Number($('schedule-every').value) || 15, notify, lastRunAt: 0, lastSig: '', runs: 0, changes: 0 });
+    persistSchedules();
+    renderSchedules();
+    schedTick();
+  });
+  renderSchedBadge();
+
+  /* ---- buttons in the terminal bar ---- */
+  $('term-compare').addEventListener('click', openCompare);
+  $('term-report').addEventListener('click', () => { const t = activeTab(); if (!t || t.state === 'running') return; $('report-full').parentElement.hidden = t.kind !== 'playbook'; reportModal.hidden = false; });
+  const _syncActions = syncActions;
+  syncActions = function () {
+    _syncActions();
+    const t = activeTab();
+    const ready = Boolean(t) && t.state !== 'running';
+    $('term-compare').disabled = !ready || (t.kind === 'run' && !t.cmdId);
+    $('term-report').disabled = !ready || (t.kind === 'run' && !t.cmdId);
+  };
 
   /* ================= command palette ================= */
   let paletteItems = [];
