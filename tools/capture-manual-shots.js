@@ -19,7 +19,8 @@ const RUNS = [
   { id: 'dns' }, { id: 'propagation', vals: { host: 'example.com' } }, { id: 'email', vals: { host: 'google.com' } },
   { id: 'exposure' }, { id: 'outbound' }, { id: 'proxy' },
   { id: 'pchealth' }, { id: 'timesync' }, { id: 'routing' }, { id: 'dhcp' }, { id: 'lan', openTable: 1 }, { id: 'ipv6' },
-  { id: 'scan', openTable: 0 },
+  { id: 'scan', openTables: [1] },
+  { id: 'dnshonest' }, { id: 'routercheck' }, { id: 'dropouts' },
 ];
 const ONLY = process.argv.slice(3);
 const SELECTED = ONLY.length ? RUNS.filter((r) => ONLY.includes(r.id)) : RUNS;
@@ -39,9 +40,12 @@ const SCRUB = `(() => {
       const cell = tr.children[idx];
       const v = cell && cell.textContent.trim();
       if (!v || v === host) return;
-      if (!window.__nameMap.has(v)) window.__nameMap.set(v, 'device-' + (1 + window.__nameMap.size) + '.lan');
+      for (const part of v.split(' / ').map((p) => p.trim()).filter((p) => p && p.length >= 4 && p !== host && !/^(this pc|router)$/i.test(p))) { if (!window.__nameMap.has(part)) window.__nameMap.set(part, 'device-' + (1 + window.__nameMap.size) + '.lan'); }
     });
   });
+  // names the discovery step lists in its summary never reach a table when that table is closed
+  const alias = (p) => { p = p.trim(); if (p.length >= 4 && p !== host && !/^(this pc|router)$/i.test(p) && !window.__nameMap.has(p)) window.__nameMap.set(p, 'device-' + (1 + window.__nameMap.size) + '.lan'); };
+  document.querySelectorAll('.pb-summary').forEach((el) => { const m = el.textContent.match(/answered with a name: (.*)$/); if (m) m[1].split(',').forEach((p) => alias(p.replace(/…/g, ''))); });
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
   for (const n of nodes) {
@@ -49,7 +53,8 @@ const SCRUB = `(() => {
     if (!t || !t.trim()) continue;
     const before = t;
     if (host) t = t.split(host).join('OFFICE-PC').split(host.toLowerCase()).join('office-pc');
-    window.__nameMap.forEach((alias, name) => { t = t.split(name).join(alias); });
+    t = t.replace(/\\b(DESKTOP|LAPTOP|WIN)-[A-Z0-9]{5,}\\b/g, 'OFFICE-PC').replace(/\\b[A-Z][A-Z0-9]{2,}-PC\\b/g, 'device-x.lan');
+    window.__nameMap.forEach((alias, name) => { const re = new RegExp('(^|[^A-Za-z0-9])' + name.replace(/[.*+?^$()|[\\]{}\\\\]/g, '\\\\$&') + '(?![A-Za-z0-9])', 'g'); t = t.replace(re, '$1' + alias); });
     t = t.replace(/\\b(\\d{1,3}(?:\\.\\d{1,3}){3})\\b/g, (m) => mapIp(m));
     t = t.replace(/\\b([0-9a-f]{2}[-:][0-9a-f]{2}[-:][0-9a-f]{2})[-:][0-9a-f]{2}[-:][0-9a-f]{2}[-:][0-9a-f]{2}\\b/gi, '$1-xx-xx-xx');
     t = t.replace(/\\bfd[0-9a-f]{2}:[0-9a-f:]{8,}/gi, 'fd12:3456:789a::1f');
@@ -116,10 +121,9 @@ const CAPTURE_CSS = `
       const vals = ${JSON.stringify(run.vals || {})};
       for (const [k, v] of Object.entries(vals)) c.querySelector('#pb-${run.id}-' + k).value = v;
       c.querySelector('.run-btn').click();
-      for (let i = 0; i < 800; i++) { if (document.querySelector('.pane:not([hidden]) .pb-verdict:not([hidden])')) break; await new Promise(r => setTimeout(r, 250)); }
+      for (let i = 0; i < 1000; i++) { if (document.querySelector('.pane:not([hidden]) .pb-verdict:not([hidden])')) break; await new Promise(r => setTimeout(r, 250)); }
       const pane = document.querySelector('.pane:not([hidden])');
-      const openTable = ${run.openTable ?? -1};
-      if (openTable >= 0) { const b = pane.querySelectorAll('.pb-step')[openTable]?.querySelector('.pb-table-btn'); if (b && !b.hidden) { b.click(); await new Promise(r => setTimeout(r, 1200)); } }
+      for (const openTable of ${JSON.stringify(run.openTables ?? (run.openTable >= 0 ? [run.openTable] : []))}) { const b = pane.querySelectorAll('.pb-step')[openTable]?.querySelector('.pb-table-btn'); if (b && !b.hidden) { b.click(); await new Promise(r => setTimeout(r, 1200)); } }
       return pane.querySelector('.pb-verdict')?.dataset.tone || 'no-verdict';
     })()`);
     await send('Runtime.evaluate', { expression: `(() => { const s = document.createElement('style'); s.id = '__cap'; s.textContent = ${JSON.stringify(CAPTURE_CSS)}; document.head.appendChild(s); })()` });

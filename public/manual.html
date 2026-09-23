@@ -412,7 +412,7 @@
   <li><strong>blank</strong> — the prefix is not in the IEEE registry NetDeck carries (the official list of every manufacturer's address blocks, about 54,000 entries, bundled with the app). That is rare for real hardware: it usually means a virtual adapter, a device faking its address, or a very new assignment — the registry is refreshed with each NetDeck release.</li>
 </ul>
 <p>Anything you can't account for is worth tracking down; your router's own client list usually shows a name for each address. <strong>What it will not do:</strong> it only ever scans the private subnet this PC is on, never more than 254 addresses, and refuses to run on a public address — it's a "what's on <em>my</em> network" tool, not a general scanner. Reply times aren't shown, because pinging 254 addresses at once makes them meaningless; use <code>ping</code> on one device for that.</p>
-<figure class="shot"><img src="manual-img/pb-scan.webp" width="1350" height="2658" alt="Result of the “Scan my network” playbook" loading="lazy"><figcaption>A home network with the table opened: 39 other devices in six seconds, eleven of which never answer ping. The second half of each MAC address is hidden here.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-scan.webp" width="1350" height="5076" alt="Result of the “Scan my network” playbook" loading="lazy"><figcaption>The two-step scan: devices that announced themselves first, then the sweep — with Name filled from discovery, a Seen column, and a probe button on every row.</figcaption></figure>
 
 <h3 id="pb-lan">Who's on my network?</h3>
 <p>Pings your router to freshen the cache, then reads the ARP cache (every device your computer has recently exchanged packets with), counting real devices on your network and ignoring broadcast and multicast entries. Press <strong>table</strong> on that step to see each device's IP and MAC address. The cache only knows devices you've exchanged traffic with, so quiet ones can be missing.</p>
@@ -441,6 +441,8 @@
 
 <h3 id="pb-dropouts">Does my connection drop out?</h3>
 <p>The three-minute version of the <a href="#cmd-stability-monitor">stability monitor</a>, with a verdict: one ping a second to your router and to the internet, a line every ten seconds, runs of loss called out as they happen. Start it when the problem tends to happen and keep working; it needs no input and no admin rights. The verdict says whether dropouts are on the <em>local link</em> (router pings lost — Wi-Fi, cable, adapter, router), <em>beyond the router</em> (only internet pings lost — the ISP), or whether there is no loss but the delay wobbles (jitter, which calls and games feel). If three minutes is not enough to catch it, run the monitor command's 10-minute variant instead.</p>
+
+<figure class="shot"><img src="manual-img/pb-dropouts.webp" width="1350" height="473" alt="Result of the “Does my connection drop out?” playbook" loading="lazy"><figcaption>Three minutes of pings to the router and the internet, a line every ten seconds with a bar chart of the delay, and a verdict that separates the local link from everything beyond it.</figcaption></figure>
 
 <h3 id="pb-drops">Are packets being dropped on this PC?</h3>
 <p>The playbook behind the <a href="#cmd-pktmon-counters">packet counters</a>: for ten seconds it counts packets on every layer of this PC's network stack — the adapter, and the firewall, VPN and other filter drivers stacked on it — while it pings your router and the internet once a second and downloads a 5 MB test file from Cloudflare. Everything is measured in the same ten seconds, so the verdict can line the two up. It needs administrator rights (press <strong>Run as admin</strong> first; otherwise it just tells you so).</p>
@@ -523,8 +525,12 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <h3 id="pb-dnshonest">Is my DNS honest?</h3>
 <p>Two steps: the <a href="#cmd-dns-check">DNS honesty check</a> (who answers your lookups, tampering and interception tests, VPN leak, encryption) and the <a href="#cmd-hosts-audit">hosts file &amp; DNS cache audit</a> (redirections on this PC itself). The verdict names the one thing that matters: a hosts-file hijack (scan the PC), a tampering resolver (switch it — the verdict offers the command to copy), interception on this network (use encrypted DNS), a VPN leak (set the VPN's DNS), or honest-but-unencrypted (optional: encrypt it). No input, no admin.</p>
 
+<figure class="shot"><img src="manual-img/pb-dnshonest.webp" width="1350" height="561" alt="Result of the “Is my DNS honest?” playbook" loading="lazy"><figcaption>Both steps green: lookups leave via the office resolver, no tampering, no interception, nothing pinned in the hosts file — and the one thing to know, that it is unencrypted.</figcaption></figure>
+
 <h3 id="pb-routercheck">Router check-up</h3>
 <p>The <a href="#cmd-router-check">router check-up</a> with a verdict: telnet open is a fail, UPnP forwards or TR-069 are worth knowing about, otherwise healthy — with a reminder of the two things it cannot check for you, firmware and the admin password. Only ever your own gateway; read-only.</p>
+
+<figure class="shot"><img src="manual-img/pb-routercheck.webp" width="1350" height="428" alt="Result of the “Router check-up” playbook" loading="lazy"><figcaption>The gateway from the inside: web admin on 80/443 and SSH open, no telnet, no TR-069, UPnP not offered. Healthy — with the two things it cannot check for you spelled out.</figcaption></figure>
 
 <h3 id="pb-proxy">Proxy &amp; HTTPS inspection</h3>
 <p>Shows any proxy configured system-wide or for your account, then connects to a well-known site and reads the certificate it presents <em>to you</em>. Normally that's signed by a public certificate authority. If it's signed by a security product instead — Zscaler, Fortinet, Sophos, an antivirus "web shield" — your HTTPS traffic is being decrypted and re-signed on the way. On a work PC that's usually policy; on a personal one it's worth knowing about.</p>
