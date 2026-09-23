@@ -94,7 +94,10 @@
     <div id="view-dashboard" hidden>
       <div class="result-row">
         <p class="result-count" id="dash-status" role="status"></p>
-        <button class="tbtn" id="dash-refresh" title="Run the quick checks again: adapter, router and internet pings, DNS, HTTPS, Wi-Fi link, uptime">Refresh</button>
+        <span class="dash-tools">
+          <button class="tbtn" id="dash-snapshot" title="Save this dashboard as one self-contained HTML page">Snapshot</button>
+          <button class="tbtn" id="dash-refresh" title="Run the quick checks again: adapter, router and internet pings, DNS, HTTPS, Wi-Fi link, firewall, uptime">Refresh</button>
+        </span>
       </div>
       <p class="empty" id="dash-static" hidden>The dashboard reads this computer's live network, which a hosted page cannot do. Use the desktop app or the local server — or connect a local NetDeck above.</p>
       <section class="dash-strip" id="dash-strip" aria-label="Status"></section>
@@ -202,6 +205,17 @@
     </div>
   </div>
 
+  <div class="modal" id="snapshot-modal" hidden role="dialog" aria-labelledby="snapshot-title">
+    <div class="modal-box">
+      <h2 id="snapshot-title">Save a dashboard snapshot</h2>
+      <p class="modal-hint">One HTML file with every tile and card exactly as they are on screen — status, this computer, connection, network, latency chart, speed tests, route, traffic and security posture. It opens in any browser and has a Print button for a PDF, so it can go to IT or a provider as a picture of the network right now.</p>
+      <label class="modal-row"><input type="checkbox" id="snapshot-anon" checked> Anonymise: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
+      <div class="modal-actions">
+        <button type="button" class="tbtn" id="snapshot-cancel">Cancel</button>
+        <button type="button" class="run-btn" id="snapshot-go">Save snapshot</button>
+      </div>
+    </div>
+  </div>
   <div class="modal" id="schedule-modal" hidden role="dialog" aria-labelledby="schedule-title">
     <div class="modal-box">
       <h2 id="schedule-title">Scheduled playbooks</h2>

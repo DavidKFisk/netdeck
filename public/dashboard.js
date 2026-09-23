@@ -17,6 +17,7 @@ window.NetDeckDashboard = (() => {
     { key: 'web', cmd: 'curl', preset: 'timing', params: { url: 'https://example.com/' }, check: 'curlTiming' },
     { key: 'wifi', cmd: 'netsh', check: 'wlan' },
     { key: 'os', cmd: 'os-health', check: 'osHealth' },
+    { key: 'fw', cmd: 'netsh', preset: 'advfirewall-show-allprofiles', check: 'firewall' },
   ];
   const STATE = { pass: 'ok', warn: 'warn', fail: 'err', info: 'idle' };
   const TONE = { pass: 'ok', warn: 'warn', fail: 'err' };
@@ -52,6 +53,15 @@ window.NetDeckDashboard = (() => {
     els = { view: D.$('view-dashboard'), strip: D.$('dash-strip'), grid: D.$('dash-grid'), status: D.$('dash-status'), refresh: D.$('dash-refresh'), off: D.$('dash-static') };
     els.refresh.addEventListener('click', () => refresh());
     els.view.addEventListener('click', onClick);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && shown) pollTraffic(); });
+    // snapshot: a small dialog for the anonymise choice, then one HTML file
+    const modal = D.$('snapshot-modal'), snapBtn = D.$('dash-snapshot');
+    if (modal && snapBtn) {
+      snapBtn.addEventListener('click', () => { modal.hidden = false; });
+      D.$('snapshot-cancel').addEventListener('click', () => { modal.hidden = true; });
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
+      D.$('snapshot-go').addEventListener('click', () => { modal.hidden = true; snapshot(D.$('snapshot-anon').checked); });
+    }
     backfill();
   }
 
@@ -74,8 +84,9 @@ window.NetDeckDashboard = (() => {
     return i === -1 ? null : i;
   }
 
-  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS)) refresh(); }
-  function hide() { shown = false; }
+  // refresh on opening when the snapshot is stale — or predates a tile added in a newer version
+  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun()) startTraffic(); }
+  function hide() { shown = false; stopTraffic(); }
   /* health tick: record the sample and patch the two ping tiles and the latency chart in place (a full redraw
      every 10 s would wipe hover and focus); a saved run: take what the charts need, then redraw. */
   function poke(what, entry) {
@@ -175,7 +186,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), latencyCard(), speedCard(), routeCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), latencyCard(), speedCard(), routeCard(), trafficCard(), postureCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -240,6 +251,13 @@ window.NetDeckDashboard = (() => {
     else if (wd && wd.blocked) { wVal = 'withheld'; wSub = 'turn on Location services to read signal and channel'; }
     else if (w) { wVal = 'not in use'; wSub = 'this PC is on a cable (or Wi-Fi is off)'; }
     out.push(chip({ key: 'wifi', label: 'Wi-Fi', state: wState, val: wVal, sub: wSub, title: 'Run "netsh wlan show interfaces" in the terminal', run: 'netsh' }));
+
+    const fw = T.fw, off = fw && fw.data && fw.data.off;
+    out.push(chip({
+      key: 'fw', label: 'Firewall', state: fw ? STATE[fw.status] : 'idle',
+      val: fw ? (fw.status === 'pass' ? 'on' : off && off.length ? `off: ${off.join(', ')}` : 'unknown') : '—',
+      sub: fw ? fw.summary : 'not checked yet', title: 'Run "netsh advfirewall show allprofiles" in the terminal', run: 'netsh', preset: 'advfirewall-show-allprofiles',
+    }));
 
     const dh = lastPlaybook('dnshonest');
     out.push(chip({
@@ -381,8 +399,8 @@ window.NetDeckDashboard = (() => {
   let saveTimer = null;
 
   function loadSeries() {
-    try { const j = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (j && Array.isArray(j.samples)) return { samples: j.samples, speed: j.speed || [], monitors: j.monitors || [], trace: j.trace || null, ingested: j.ingested || [] }; } catch (e) { /* blocked or corrupt */ }
-    return { samples: [], speed: [], monitors: [], trace: null, ingested: [] };
+    try { const j = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (j && Array.isArray(j.samples)) return { samples: j.samples, speed: j.speed || [], monitors: j.monitors || [], trace: j.trace || null, ingested: j.ingested || [], traffic: j.traffic || [] }; } catch (e) { /* blocked or corrupt */ }
+    return { samples: [], speed: [], monitors: [], trace: null, ingested: [], traffic: [] };
   }
   function saveSeries() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(SKEY, JSON.stringify(series)); } catch (e) { /* quota: the charts just get shorter */ } }, 400); }
   const num = (x) => (Number.isFinite(+x) && +x >= 0 ? +x : null);
@@ -527,5 +545,157 @@ window.NetDeckDashboard = (() => {
     return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}</span>`, 'dash-span2');
   }
 
-  return { init, show, hide, poke, refresh, backfill };
+  /* ================= traffic: adapter byte counters every few seconds while the dashboard is showing ================= */
+  const TRAFFIC_MS = 6000, TRAFFIC_KEEP = 60 * 60000;
+  let trafficTimer = null, trafficPrev = null, trafficBusy = false, trafficLatest = null;
+
+  async function pollTraffic() {
+    if (trafficBusy || !shown || document.hidden || !D.canRun()) return;
+    const cmd = D.byId.get('adapter-stats');
+    if (!cmd || !cmd.runnable) return;
+    trafficBusy = true;
+    try {
+      const r = await D.execute(cmd, {});
+      const m = (r.output || '').match(/^STATS (\{.*\})\s*$/m);
+      if (m) {
+        const d = JSON.parse(m[1]);
+        const now = Number(d.t) || Date.now();
+        const adapters = Array.isArray(d.adapters) ? d.adapters : [d.adapters].filter(Boolean);
+        if (trafficPrev && now > trafficPrev.t) {
+          const dt = (now - trafficPrev.t) / 1000;
+          for (const a of adapters) {
+            const p = trafficPrev.by[a.name];
+            if (!p || a.rx < p.rx || a.tx < p.tx) continue;   // counters reset (adapter bounced): skip one interval
+            series.traffic.push([now, a.name, Math.round(((a.rx - p.rx) * 8) / dt), Math.round(((a.tx - p.tx) * 8) / dt)]);
+          }
+          if (series.traffic.length && series.traffic[0][0] < now - TRAFFIC_KEEP) series.traffic = series.traffic.filter((x) => x[0] >= now - TRAFFIC_KEEP);
+          saveSeries();
+        }
+        trafficPrev = { t: now, by: Object.fromEntries(adapters.map((a) => [a.name, a])) };
+        trafficLatest = { t: now, adapters };
+        if (shown) { const el = els.grid.querySelector('#dash-traffic-body'); if (el) el.innerHTML = trafficBody(); }
+      }
+    } catch (e) { /* next tick */ }
+    trafficBusy = false;
+  }
+  function startTraffic() { if (trafficTimer) return; pollTraffic(); trafficTimer = setInterval(pollTraffic, TRAFFIC_MS); }
+  function stopTraffic() { clearInterval(trafficTimer); trafficTimer = null; }
+
+  const fmtBps = (b) => (b == null ? '—' : b >= 1e9 ? `${(b / 1e9).toFixed(2)} Gbit/s` : b >= 1e6 ? `${(b / 1e6).toFixed(b >= 1e8 ? 0 : 1)} Mbit/s` : b >= 1e3 ? `${Math.round(b / 1e3)} kbit/s` : `${b} bit/s`);
+  const fmtBytes = (n) => (n >= 1e12 ? `${(n / 1e12).toFixed(2)} TB` : n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : n >= 1e6 ? `${Math.round(n / 1e6)} MB` : `${Math.round(n / 1e3)} kB`);
+
+  function trafficChart(name, to) {
+    const from = to - 10 * 60000;
+    const pts = series.traffic.filter((x) => x[1] === name && x[0] >= from);
+    if (pts.length < 2) return '';
+    const W = 720, H = 80, padL = 46, padR = 8, padT = 6, padB = 16, plotW = W - padL - padR, plotH = H - padT - padB;
+    const max = Math.max(1e6, ...pts.map((p) => Math.max(p[2], p[3])));
+    const x = (t) => padL + ((t - from) / (to - from)) * plotW;
+    const y = (v) => padT + (1 - Math.min(v, max) / max) * plotH;
+    const path = (k) => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)} ${y(p[k]).toFixed(1)}`).join(' ');
+    const peakRx = Math.max(...pts.map((p) => p[2])), peakTx = Math.max(...pts.map((p) => p[3]));
+    const ticks = [0, 0.5, 1].map((f) => `<text x="${(padL + f * plotW).toFixed(1)}" y="${H - 3}" class="ax" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${esc(clockShort(from + f * (to - from)))}</text>`).join('');
+    return `<svg class="dash-chart-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Traffic on ${esc(name)} over the last 10 minutes"><title>${esc(name)}, last 10 min — peak down ${esc(fmtBps(peakRx))}, peak up ${esc(fmtBps(peakTx))}</title><line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" class="base"/><line x1="${padL}" y1="${y(max).toFixed(1)}" x2="${W - padR}" y2="${y(max).toFixed(1)}" class="grid"/><text x="${padL - 4}" y="${(y(max) + 3.5).toFixed(1)}" class="ax" text-anchor="end">${esc(fmtBps(max))}</text><path d="${path(3)}" class="line l-n"/><path d="${path(2)}" class="line l-g"/>${ticks}</svg>`;
+  }
+
+  function trafficBody() {
+    const ctx = D.context() || {};
+    const L = trafficLatest;
+    if (!L) return '<p class="dash-empty">Reading the adapter counters — a sample every 6 seconds while the dashboard is showing.</p>';
+    const primary = L.adapters.find((a) => a.name === ctx.adapter) || L.adapters.find((a) => !a.virtual) || L.adapters[0];
+    if (!primary) return '<p class="dash-empty">No adapter is up.</p>';
+    const last = series.traffic.filter((x) => x[1] === primary.name).slice(-1)[0];
+    const rx = last ? last[2] : null, tx = last ? last[3] : null;
+    const util = primary.speed && rx != null ? Math.round((Math.max(rx, tx) / primary.speed) * 1000) / 10 : null;
+    const big = `<div class="dash-big"><div><span class="dash-big-n">${esc(fmtBps(rx))}</span><span class="dash-big-l">down</span></div><div><span class="dash-big-n">${esc(fmtBps(tx))}</span><span class="dash-big-l">up</span></div><div><span class="dash-big-n">${primary.speed ? esc(fmtBps(primary.speed)) : '—'}</span><span class="dash-big-l">link${util != null ? ` · ${util}% used` : ''}</span></div><div><span class="dash-big-n">${esc(fmtBytes(primary.rx))}</span><span class="dash-big-l">received since boot · ${esc(fmtBytes(primary.tx))} sent</span></div></div>`;
+    const chart = trafficChart(primary.name, L.t) || '<p class="dash-sub">The chart appears after a second sample.</p>';
+    const others = L.adapters.filter((a) => a !== primary).map((a) => { const p = series.traffic.filter((x) => x[1] === a.name).slice(-1)[0]; return `<li class="dash-check" data-status="info"><span class="dash-dot"></span><span class="dash-check-name">${esc(a.name)}</span><span class="dash-check-sum">${p ? `↓ ${esc(fmtBps(p[2]))} · ↑ ${esc(fmtBps(p[3]))}` : 'waiting for a second sample'}${a.virtual ? ' · virtual' : ''}</span></li>`; }).join('');
+    return `${big}<div class="dash-chart">${chart}</div><div class="dash-stats"><span class="dash-stat"><span class="dash-swatch l-g"></span>down</span><span class="dash-stat"><span class="dash-swatch l-n"></span>up</span><span class="dash-stat dim">${esc(primary.name)} · last 10 min</span></div>${others ? `<ul class="dash-checks">${others}</ul>` : ''}`;
+  }
+
+  function trafficCard() {
+    const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
+    return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+  }
+
+  /* ================= security posture: the live firewall state plus the latest run of each security check ================= */
+  const TONE_STATUS = { pass: 'pass', warn: 'warn', fail: 'fail' };
+  function postureCard() {
+    const T = snap.tiles;
+    const H = D.history() || [];
+    const lastRun = (cmdId) => H.find((h) => h.kind === 'run' && h.cmdId === cmdId && h.state !== 'error' && h.output);
+    const rows = [];
+    const row = (label, status, summary, at, action) => rows.push({ label, status, summary, at, action });
+    const fw = T.fw;
+    row('Firewall', fw ? fw.status : 'pending', fw ? fw.summary : 'not checked yet', fw && fw.at, btn('run', 'netsh', {}, 'advfirewall-show-allprofiles'));
+    const ex = lastPlaybook('exposure');
+    row('Exposed services', ex ? TONE_STATUS[ex.verdict.tone] || 'info' : 'pending', ex ? ((ex.steps && ex.steps[1] && ex.steps[1].summary) || ex.verdict.text.slice(0, 160)) : 'run "What is this PC exposing?"', ex && (ex.endedAt || ex.startedAt), pbBtn('run', 'exposure'));
+    const fa = lastRun('fw-audit');
+    if (fa) {
+      const line = fa.output.split(/\r?\n/).find((l) => /^(Reasonable|Attention|PROBLEM|Wide open|Exposed|Danger)/i.test(l.trim())) || '';
+      row('Firewall rules', /^Reasonable/i.test(line.trim()) ? 'pass' : /^Attention/i.test(line.trim()) ? 'warn' : line ? 'fail' : 'info', line.trim().slice(0, 200) || 'audit ran — open it for the verdict', fa.endedAt || fa.startedAt, btn('run', 'fw-audit'));
+    } else row('Firewall rules', 'pending', 'run the firewall rule audit', null, btn('run', 'fw-audit'));
+    const px = lastPlaybook('proxy');
+    row('Proxy & HTTPS inspection', px ? TONE_STATUS[px.verdict.tone] || 'info' : 'pending', px ? px.verdict.text.slice(0, 160) : 'run "Proxy & HTTPS inspection"', px && (px.endedAt || px.startedAt), pbBtn('run', 'proxy'));
+    const dh = lastPlaybook('dnshonest');
+    row('DNS honesty', dh ? TONE_STATUS[dh.verdict.tone] || 'info' : 'pending', dh ? ((dh.steps && dh.steps[0] && dh.steps[0].summary) || '') : 'run "Is my DNS honest?"', dh && (dh.endedAt || dh.startedAt), pbBtn('run', 'dnshonest'));
+    if (dh && dh.steps && dh.steps[1]) row('Hosts file & DNS cache', dh.steps[1].status || 'info', dh.steps[1].summary || '', dh.endedAt || dh.startedAt, btn('run', 'hosts-audit'));
+    const rc = lastPlaybook('routercheck');
+    row('Router', rc ? TONE_STATUS[rc.verdict.tone] || 'info' : 'pending', rc ? ((rc.steps && rc.steps[0] && rc.steps[0].summary) || '') : 'run "Router check-up"', rc && (rc.endedAt || rc.startedAt), pbBtn('run', 'routercheck'));
+    const n = { pass: 0, warn: 0, fail: 0, pending: 0 };
+    rows.forEach((r) => { n[r.status in n ? r.status : 'pending']++; });
+    let tone = 'idle', text;
+    if (n.fail) { tone = 'err'; text = `${n.fail} check${n.fail === 1 ? '' : 's'} found a problem${n.warn ? ` and ${n.warn} want${n.warn === 1 ? 's' : ''} a look` : ''}.`; }
+    else if (n.warn) { tone = 'warn'; text = `Nothing broken, but ${n.warn} check${n.warn === 1 ? '' : 's'} want${n.warn === 1 ? 's' : ''} a look.`; }
+    else if (n.pass && !n.pending) { tone = 'ok'; text = 'All security checks pass.'; }
+    else if (n.pass) { tone = 'ok'; text = `${n.pass} check${n.pass === 1 ? ' passes' : 's pass'}; ${n.pending} not run yet.`; }
+    else text = 'No security checks run yet — each row has a run button.';
+    const li = rows.map((r) => `<li class="dash-check" data-status="${esc(r.status)}"><span class="dash-dot"></span><span class="dash-check-name">${esc(r.label)}</span><span class="dash-check-sum">${esc(r.summary)}${r.at ? ` <small class="dash-age">· ${esc(ago(r.at))}</small>` : ''}</span>${r.action}</li>`).join('');
+    const body = `<p class="dash-verdict" data-tone="${tone}">${esc(text)}</p><ul class="dash-checks">${li}</ul>`;
+    const foot = `<span>firewall state is live; the rest shows the latest run of each check</span><span class="dash-links">${btn('Listening ports', 'listeners')}${pbBtn('What is this PC exposing?', 'exposure')}</span>`;
+    return card('Security posture', `${n.pass} / ${rows.length} pass`, body, foot, 'dash-span2');
+  }
+
+  /* ================= snapshot: the dashboard as one self-contained HTML page ================= */
+  async function snapshot(anonymise) {
+    const anon = anonymise && D.anonymiser ? D.anonymiser() : (t) => t;
+    let css = '';
+    try { css = await (await fetch('styles.css')).text(); } catch (e) { css = ''; }
+    const clone = document.createElement('div');
+    clone.innerHTML = `<section class="dash-strip">${els.strip.innerHTML}</section><section class="grid dash-grid">${els.grid.innerHTML}</section>`;
+    clone.querySelectorAll('.dash-links, .dash-ranges, button.tbtn').forEach((el) => el.remove());
+    clone.querySelectorAll('button.dash-chip').forEach((b) => {
+      const d = document.createElement('div');
+      for (const a of b.attributes) if (!/^(type|data-run|data-params|data-preset|data-pb)$/.test(a.name)) d.setAttribute(a.name, a.value);
+      d.innerHTML = b.innerHTML;
+      b.replaceWith(d);
+    });
+    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const t of nodes) t.nodeValue = anon(t.nodeValue);
+    clone.querySelectorAll('[title]').forEach((el) => el.setAttribute('title', anon(el.getAttribute('title'))));
+    const theme = document.documentElement.dataset.theme || '';
+    const when = new Date();
+    const ctx = D.context() || {};
+    const html = `<!doctype html><html lang="en"${theme ? ` data-theme="${esc(theme)}"` : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NetDeck dashboard — ${esc(when.toLocaleString())}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>${css}
+body { padding-block: 24px; }
+.snap-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.snap-head h1 { margin: 0; font-size: 18px; color: var(--bright); }
+.snap-meta { color: var(--muted); font-size: 12.5px; }
+.snap-foot { margin-top: 24px; color: var(--muted); font-size: 12px; }
+.print { font: 12px var(--mono); padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); cursor: pointer; }
+.dash-chip { cursor: default; }
+@media print { .print { display: none; } .dash-card { break-inside: avoid; } }
+</style></head><body>
+<div class="snap-head"><div><h1>NetDeck dashboard snapshot</h1><div class="snap-meta">${esc(when.toLocaleString())}${ctx.hostname ? ` · ${esc(anon(ctx.hostname))}` : ''} · NetDeck ${esc(window.NETDECK_VERSION || '')}${anonymise ? ' · anonymised: computer name, addresses and MACs replaced' : ''}</div></div><button class="print" onclick="window.print()">Print / save as PDF</button></div>
+${clone.innerHTML}
+<p class="snap-foot">Every figure came from a command NetDeck ran on this computer; the tiles and cards are as they were on screen when the snapshot was saved. Generated by NetDeck — network &amp; system command reference.</p>
+</body></html>`;
+    D.saveFile(`netdeck-dashboard-${when.toISOString().replace(/[:T]/g, '-').slice(0, 19)}.html`, html, 'text/html');
+  }
+
+  return { init, show, hide, poke, refresh, backfill, snapshot };
 })();

@@ -1101,7 +1101,10 @@ body[data-mode="static"] .live-only { display: none !important; }
 #sched-badge.sched-alert { color: var(--warn); border-color: var(--warn-line); }
 
 /* ================= dashboard ================= */
-.dash-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.dash-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.dash-tools { display: inline-flex; gap: 6px; }
+.dash-age { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.dash-span2 .dash-check { grid-template-columns: 10px 9.5em minmax(0, 1fr) auto; }
 .dash-chip {
   min-width: 0; text-align: left;
   display: flex; flex-direction: column; gap: 2px;
@@ -1115,8 +1118,8 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-chip[data-state="ok"] { border-left-color: var(--ok); }
 .dash-chip[data-state="warn"] { border-left-color: var(--warn); }
 .dash-chip[data-state="err"] { border-left-color: var(--err); }
-.dash-chip-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-.dash-chip-val { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--bright); font-variant-numeric: tabular-nums; }
+.dash-chip-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-chip-val { font-family: var(--mono); font-size: 17px; font-weight: 600; color: var(--bright); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-chip[data-state="warn"] .dash-chip-val { color: var(--warn); }
 .dash-chip[data-state="err"] .dash-chip-val { color: var(--err); }
 .dash-chip[data-state="idle"] .dash-chip-val { color: var(--muted); font-weight: 500; }

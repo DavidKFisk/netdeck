@@ -2302,7 +2302,7 @@ ${body}
     buildCategoryChips();
     buildPlaybookGroupChips();
     DASH.init({
-      $, byId, PB, P, execute, startRun, runPlaybook, isWin,
+      $, byId, PB, P, execute, startRun, runPlaybook, isWin, saveFile, anonymiser: makeAnonymiser,
       context: () => context, health: () => health, history: () => history, canRun: () => canRun,
     });
     render();

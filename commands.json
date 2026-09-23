@@ -893,6 +893,23 @@
     }
   },
   {
+    "id": "adapter-stats",
+    "name": "Get-NetAdapterStatistics (snapshot)",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Byte counters and link speed of every adapter that is up, as one JSON line (used by the dashboard traffic card)",
+    "platforms": [
+      "powershell"
+    ],
+    "hidden": true,
+    "safe": true,
+    "win": "Get-NetAdapter | Get-NetAdapterStatistics",
+    "run": {
+      "kind": "ps",
+      "display": "Get-NetAdapterStatistics (one sample)",
+      "command": "$rows = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | ForEach-Object { $s = $_ | Get-NetAdapterStatistics; [pscustomobject]@{ name = $_.Name; virtual = [bool]$_.Virtual; speed = [int64]$_.TransmitLinkSpeed; rx = [int64]$s.ReceivedBytes; tx = [int64]$s.SentBytes } }\n'STATS ' + ([pscustomobject]@{ t = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds(); adapters = @($rows) } | ConvertTo-Json -Compress)"
+    }
+  },
+  {
     "id": "route-print",
     "name": "route print",
     "category": "Connectivity & Routing",

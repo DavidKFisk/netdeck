@@ -144,7 +144,7 @@ const CAPTURE_CSS = `
       const p = document.querySelector('.pane:not([hidden])');
       return (p?.querySelector('.pb-verdict')?.dataset.tone || '?') + ' — ' + [...(p?.querySelectorAll('.pb-summary') || [])].map((s) => s.textContent).join(' | ').slice(0, 400); })()`);
     // only when asked for on its own: the full run has just done these three
-    if (ONLY.length) for (const id of ['dnshonest', 'routercheck', 'scan']) console.log(`  ${id}: ${await runQuiet(id)}`);
+    if (ONLY.length) for (const id of ['dnshonest', 'routercheck', 'scan', 'exposure', 'proxy']) console.log(`  ${id}: ${await runQuiet(id)}`);
     await evalJs(`(() => { document.getElementById('term-close-all').click(); return true; })()`);
     await send('Emulation.setDeviceMetricsOverride', { width: 1240, height: 1000, deviceScaleFactor: 1.5, mobile: false });
     await evalJs(`(() => { const s = document.createElement('style'); s.id = '__capdash'; s.textContent = '.terminal { display: none !important; }'; document.head.appendChild(s); return true; })()`);
@@ -154,7 +154,9 @@ const CAPTURE_CSS = `
       document.querySelector('.dash-card button[data-run="tracert"]').click();
       await new Promise(r => setTimeout(r, 500));
       document.querySelector('.dash-card button[data-run="speed-test"]').click();
-      for (let i = 0; i < 400; i++) { const t = document.getElementById('dash-grid').innerText; if (!/No speed test yet|No traceroute yet/.test(t)) break; await new Promise(r => setTimeout(r, 250)); }
+      await new Promise(r => setTimeout(r, 500));
+      document.querySelector('.dash-card button[data-run="fw-audit"]').click();   // fills the security posture row
+      for (let i = 0; i < 400; i++) { const t = document.getElementById('dash-grid').innerText; if (!/No speed test yet|No traceroute yet|run the firewall rule audit/.test(t)) break; await new Promise(r => setTimeout(r, 250)); }
       document.getElementById('term-close-all').click();
       document.querySelector('[data-range="10m"]').click();   // a headless page collects few samples; the short range shows them
       await new Promise(r => setTimeout(r, 600)); return true; })()`);
