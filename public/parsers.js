@@ -282,9 +282,25 @@ window.NetDeckParsers = (() => {
     if (!t) return null;
     const macCol = t.columns.indexOf('MAC');
     if (macCol === -1 || !window.NetDeckOui) return t;
+    const ipCol = t.columns.indexOf('IP'), nameCol = t.columns.indexOf('Name');
+    const log = window.NetDeckScanLog;
+    // names learned by discovery (mDNS/UPnP) fill blanks in the Name column
+    const base = t.rows.map((r) => { const row = [...r]; if (log && nameCol !== -1 && ipCol !== -1 && !row[nameCol]) row[nameCol] = log.nameFor(row[ipCol]); return row; });
     const columns = [...t.columns.slice(0, macCol + 1), 'Manufacturer', ...t.columns.slice(macCol + 1)];
-    const rows = t.rows.map((r) => [...r.slice(0, macCol + 1), window.NetDeckOui.lookup(r[macCol]), ...r.slice(macCol + 1)]);
-    return { columns, rows };
+    let rows = base.map((r) => [...r.slice(0, macCol + 1), window.NetDeckOui.lookup(r[macCol]), ...r.slice(macCol + 1)]);
+    // the scan log: when was each device first seen, and what changed since the last scan of this range
+    if (log && ipCol !== -1) {
+      const range = (text.match(/Scanned (\S+) on /) || [])[1] || '';
+      const devices = base.map((r) => ({ ip: r[ipCol], mac: r[macCol], name: nameCol !== -1 ? r[nameCol] : '', maker: '' }));
+      const diff = log.record(range, devices);
+      const seen = (d) => { if (!diff) return ''; if (diff.firstEver) return 'first scan'; const ts = diff.first[log.keyOf(d)]; return ts ? 'since ' + new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'NEW'; };
+      const mi = columns.indexOf('Manufacturer');
+      columns.splice(mi + 1, 0, 'Seen');
+      rows = rows.map((r, i) => [...r.slice(0, mi + 1), seen(devices[i]), ...r.slice(mi + 1)]);
+    }
+    const out = { columns, rows };
+    if (ipCol !== -1) out.rowAction = { label: 'probe', title: 'Test this device\'s common ports', cmd: 'device-probe', params: { host: 'IP' } };
+    return out;
   }
 
   /* tasklist /fo csv /nh (Windows) or ps -eo pid,comm (Unix) → Map<pid, name> */
@@ -312,6 +328,9 @@ window.NetDeckParsers = (() => {
     'disk-free': fixedWidth,
     'get-hotfix': fixedWidth,
     'lan-scan': lanScan,
+    'discover': fixedWidth,
+    'device-probe': fixedWidth,
+    'wifi-survey': fixedWidth,
     tracert,
   };
   const LINUX = {

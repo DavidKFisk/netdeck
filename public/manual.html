@@ -276,7 +276,7 @@
 <div class="ui">
   <div>Commands / Playbooks</div><div>Two views. <strong>Commands</strong> is the reference — one card per command. <strong>Playbooks</strong> are guided, multi-step diagnostics that run several commands in order and give you a verdict (see <a href="#playbooks">Playbooks</a>).</div>
   <div>All platforms · Windows · Linux / macOS · PowerShell</div><div>Show only commands that exist on that platform. "Linux / macOS" shows every card that has an L/M row.</div>
-  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 48 commands" line tells you how many match.</div>
+  <div>Category chips (dashed)</div><div>Narrow the list to one topic — DNS, ports, routing, and so on. "★ pinned" shows only the cards you've pinned. Combine with the search box and platform chips; the "N of 51 commands" line tells you how many match.</div>
   <div>Playbook groups</div><div>In the Playbooks view the chips change to the four playbook groups — <em>Connectivity</em>, <em>DNS &amp; email</em>, <em>Security &amp; exposure</em>, <em>This PC &amp; local network</em> — plus "★ pinned". The playbooks are laid out under those headings, and the same search box now filters playbooks: it looks at the name, the description and the commands each one runs, so typing a symptom ("slow", "certificate", "port 25") or a command (<code>tracert</code>) both work.</div>
   <div><span class="btn">+ Add command</span></div><div>Adds your own command to the reference: a name, what it's for, a category, the Windows and/or Linux/macOS syntax and an optional note. It becomes a normal card with copy buttons and appears in search, the palette and the cheat sheet. Custom commands are reference-only — they never get a run button, because only the built-in, vetted list can execute. They're saved in <code>custom-commands.json</code> next to the app (or in your browser, on the hosted version).</div>
 </div>
@@ -393,6 +393,8 @@
 <figure class="shot"><img src="manual-img/pb-dns.webp" width="1350" height="737" alt="Result of the “Is DNS healthy?” playbook" loading="lazy"><figcaption>Both configured servers and both public resolvers answer, each with its response time, and the made-up name is correctly reported as non-existent.</figcaption></figure>
 
 <h3 id="pb-scan">Scan my network</h3>
+<p>Two steps now. First it <a href="#cmd-discover">asks devices to announce themselves</a> over mDNS/Bonjour and UPnP, which is how TVs, speakers, printers, Apple and Google devices give their real names. Then it pings every address in your subnet at once and reads the ARP table. The table gains three things: the <strong>Name</strong> column fills from what devices said about themselves, a <strong>Seen</strong> column says when NetDeck first saw each device (<code>NEW</code> means never before), and every row has a <strong>probe</strong> button that runs the <a href="#cmd-device-probe">port probe</a> on that address to ask what it is. The verdict adds what changed since the previous scan — new devices, devices that have gone, and devices that changed address — because NetDeck now remembers each scan (in this browser or app only; nothing leaves the PC). A new device turns the verdict amber so it is not missed.</p>
+
 <p>NetDeck's IP scanner: it finds <em>every</em> device on your network, not just the ones this PC has talked to. There is nothing to type — it works out your subnet from your own address, pings all of its addresses <strong>at the same time</strong> (so 254 addresses take about six seconds, not four minutes), then reads the ARP table the sweep has just filled. That second step matters: phones, TVs and smart-home gadgets often ignore ping, but they cannot avoid answering ARP, so they still show up — marked <em>no reply</em> in the Ping column.</p>
 <p>Press <strong>table</strong> for the full list: IP address, name (when the network can supply one — on home networks it usually can't), MAC address, <strong>manufacturer</strong>, whether it answered ping, and a note marking <em>this PC</em> and the <em>router</em>. Sort by Manufacturer to group things: five Wyze cameras, three eero units and so on. Two values in that column deserve explanation:</p>
 <ul>
@@ -582,6 +584,23 @@ netsh wlan show interfaces        <span class="dim">current Wi-Fi signal and spe
 netsh interface ip show config    <span class="dim">like ipconfig, with more detail</span>
 netsh advfirewall show allprofiles</pre>
   <p><strong>Linux / macOS:</strong> <code>nmcli</code> (network manager), <code>ip</code>, <code>iw</code> (Wi-Fi).</p>
+</article>
+
+<article class="cmd" id="cmd-wifi-survey">
+  <h4><code>Wi-Fi survey</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Every access point your adapter can hear — name, band, channel, signal, security, Wi-Fi generation — sorted by strength, with your own network marked, then a channel-load table and a verdict: is your channel crowded, and which channel would be quieter. Under the hood it is <code>netsh wlan show networks mode=bssid</code> plus the overlap arithmetic (on 2.4 GHz, channels within four of each other collide; on 5 GHz only the same channel does). Windows 11 only shares this with programs when Location services are on, or NetDeck runs as administrator; the run says so if it is blocked.</p>
+  <pre>Wi-Fi survey: 8 access points in range on 6 x 2.4 GHz, 2 x 5 GHz, 0 x 6 GHz. You are on "HomeNet" (2.4 GHz, channel 6, 84% signal, Wi-Fi ax)
+
+Network        Band    Channel Signal Security      Standard BSSID             Note
+-------        ----    ------- ------ --------      -------- -----             ----
+HomeNet        2.4 GHz       6 84%    WPA2-Personal ax       f8:bb:bf:00:11:22 yours
+HomeNet        5 GHz        36 71%    WPA2-Personal ax       f8:bb:bf:00:11:23 your network, other AP
+NETGEAR42      2.4 GHz       6 62%    WPA2-Personal ac       a0:04:60:aa:bb:cc overlaps your channel
+xfinitywifi    2.4 GHz       8 55%    Open          n        5c:e3:0e:11:22:33 overlaps your channel
+…
+<span class="hl">Fine: 84% signal on channel 6 (2.4 GHz); 2 strong networks overlap it, which is normal in a neighbourhood. Channel 1 has only 1 strong network on or near it; 6 has 2. Setting the router to channel 1 (or to Auto) should help.</span></pre>
+  <p><strong>How to read it:</strong> signal above ~60% is good, below ~40% is the reason for drops and slow rates. "Overlaps your channel" networks share airtime with you — every one of them that is busy slows you down. If your network appears twice, once per band, prefer 5 GHz (faster, far less crowded) whenever its signal is decent; the 2.4 GHz band carries further but is where every neighbour, microwave and baby monitor lives. The suggested channel only counts strong networks; weak ones barely matter.</p>
+  <p><strong>Linux / macOS:</strong> <code>nmcli dev wifi list</code>; on macOS hold Option and click the Wi-Fi icon for your own link, or use the Wireless Diagnostics scan.</p>
 </article>
 
 <article class="cmd" id="cmd-getmac">
@@ -974,6 +993,41 @@ vEthernet (WSL)                          NIC        12    12    0
 Dropped in total: 41. The Type and reason columns say which layer dropped them.</pre>
   <p><strong>How to read it:</strong> if drops sit on the <em>NIC</em> row, the adapter or the link itself is losing packets (cable, Wi-Fi signal, driver). If they sit on a <em>Filter</em> row, something in software decided to discard them — "WFP" is the Windows Filtering Platform, i.e. the firewall or a security product; a VPN's own filter shows under its name. Zero drops with a problem still happening means the packets are leaving fine and the fault is beyond this PC.</p>
   <p><strong>Linux / macOS:</strong> <code>ip -s link</code> shows per-adapter packet and drop counters; <code>watch -n1 cat /proc/net/dev</code> updates them live.</p>
+</article>
+
+<article class="cmd" id="cmd-discover">
+  <h4><code>Discover announcing devices</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Instead of probing, it asks: a broadcast over the two "who's here?" protocols home devices use — <strong>SSDP/UPnP</strong> (routers, TVs, media players, printers, NAS boxes) and <strong>mDNS/Bonjour</strong> (Apple and Google devices, Sonos, HomeKit and Matter gadgets, printers, most smart TVs). Devices that support them answer with the name they were given, often a model and maker too, and the services they offer. It listens for about four seconds and needs no admin rights. Anything it learns is remembered for a week, so the <a href="#cmd-lan-scan">network scan</a>'s Name column fills in.</p>
+  <pre>Discovered 6 devices that announce themselves (mDNS/Bonjour + SSDP/UPnP), listening 4 s
+
+IP           Name           Model          Maker       Via       Services
+--           ----           -----          -----       ---       --------
+192.168.7.1  eero           eero Pro       eero inc.   SSDP      UPnP InternetGatewayDevice
+192.168.7.33 Living Room TV Eureka Dongle  Google Inc. SSDP+mDNS _googlecast._tcp, UPnP dial
+192.168.7.51 Office Printer ET-4850        EPSON       mDNS      _ipp._tcp, _printer._tcp, _http._tcp
+192.168.7.72 Kitchen                                   mDNS      _hap._tcp, _companion-link._tcp</pre>
+  <p><strong>How to read it:</strong> only devices that speak these protocols appear — phones mostly do not, and many cheap smart-home gadgets only talk to their cloud — so a short list is normal; the network scan finds everything. <em>Via</em> says which protocol answered. <em>Services</em> is what the device advertises: <code>_googlecast</code> is Cast, <code>_airplay</code>/<code>_raop</code> Apple, <code>_hap</code> HomeKit, <code>_ipp</code>/<code>_printer</code> printing, <code>_smb</code> file sharing. Windows' firewall only lets the system resolver receive multicast replies, so NetDeck asks devices to answer it directly; a device that refuses to (rare) is still found by the scan.</p>
+  <p><strong>Linux / macOS:</strong> <code>avahi-browse -art</code> (Linux) or <code>dns-sd -B _services._dns-sd._udp</code> (macOS).</p>
+</article>
+
+<article class="cmd" id="cmd-device-probe">
+  <h4><code>Device port probe</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>"What is this thing?" Give it one address (or press <strong>probe</strong> on any row of the scan table) and it tries 26 common device ports at once — web pages, printing, casting, AirPlay, file sharing, cameras, remote access, telnet — in about two and a half seconds, then says what the mix looks like. Only probe devices on networks you are responsible for.</p>
+  <pre>Probed 26 common ports on 192.168.7.51 in 2.4 s: 4 open, 22 closed, 0 no answer
+
+ Port Service       State
+ ---- -------       -----
+   80 HTTP          open
+  443 HTTPS         open
+  631 IPP printing  open
+ 9100 Raw printing  open
+   21 FTP           closed
+   …
+
+Looks like: a printer (printing ports open).
+Tip: it has a web page - open http://192.168.7.51 in a browser to identify it for sure.</pre>
+  <p><strong>How to read it:</strong> <em>open</em> means something answered on that port; <em>closed</em> means the device is up but nothing listens there; <em>filtered (no answer)</em> means a firewall dropped the attempt silently — phones and locked-down PCs look like this on every port. The guess at the bottom is from the pattern of open ports (printing ports → printer, 8009 → Google Cast, 3389/445 → Windows PC, 53 alone → a router managed from an app). Telnet (23) open on anything is worth fixing: it is unencrypted and usually means old firmware.</p>
+  <p><strong>Linux / macOS:</strong> <code>nmap -F 192.168.1.20</code>.</p>
 </article>
 
 <article class="cmd" id="cmd-curl">

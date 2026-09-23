@@ -1067,3 +1067,7 @@ body[data-mode="static"] .live-only { display: none !important; }
   .history-panel:not([hidden]) + .panes { display: none; }
   .tab { max-width: 160px; }
 }
+
+/* per-row action button in parsed tables (the scan's "probe") */
+.data-table td.row-action { text-align: right; white-space: nowrap; padding-top: 2px; padding-bottom: 2px; }
+.data-table th.row-action-h { width: 1%; }

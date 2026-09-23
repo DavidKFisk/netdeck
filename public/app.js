@@ -1291,6 +1291,7 @@
       th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sortBy(i); } });
       hr.appendChild(th);
     });
+    if (table.rowAction) { const th = document.createElement('th'); th.className = 'row-action-h'; th.textContent = ''; hr.appendChild(th); }
     thead.appendChild(hr);
     const tbody = document.createElement('tbody');
     tbl.append(thead, tbody);
@@ -1329,6 +1330,17 @@
           if (i === wrapIdx) td.classList.add('wrap');
           tr.appendChild(td);
         });
+        if (table.rowAction && canRun) {
+          const td = document.createElement('td');
+          td.className = 'row-action';
+          const b = document.createElement('button');
+          b.className = 'tbtn tbtn-sm';
+          b.textContent = table.rowAction.label;
+          b.title = table.rowAction.title || '';
+          b.addEventListener('click', () => runRowAction(table.rowAction, table.columns, r));
+          td.appendChild(b);
+          tr.appendChild(td);
+        }
         frag.appendChild(tr);
       });
       tbody.textContent = '';
@@ -1422,6 +1434,15 @@
   }
 
   // Verdict actions are plain data so they survive in history: copy text, run a playbook, or jump to a card.
+  // Row actions come from parsers as plain data: which command to run, and which column fills which parameter.
+  function runRowAction(action, columns, row) {
+    const cmd = byId.get(action.cmd);
+    if (!cmd || !canRun) return;
+    const params = {};
+    for (const [k, col] of Object.entries(action.params || {})) { const i = columns.indexOf(col); if (i !== -1 && row[i]) params[k] = row[i]; }
+    startRun(cmd, params);
+  }
+
   function runVerdictAction(a, btn) {
     if (a.copy) {
       navigator.clipboard.writeText(a.copy).then(() => {

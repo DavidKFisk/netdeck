@@ -1024,6 +1024,16 @@ window.NetDeckPlaybooks = (() => {
       const status = bad(r) ? 'fail' : bad(n) ? 'warn' : ((r && r.jitter >= 10) || n.jitter >= 30) ? 'warn' : 'pass';
       return { status, summary: bits.join(' — '), data: { ...d, badRouter: bad(r), badInternet: bad(n) } };
     },
+    discover(out) {
+      const m = out.match(/^NAMES (\{.*\})\s*$/m);
+      let names = {}; try { names = m ? JSON.parse(m[1]) : {}; } catch (e) { names = {}; }
+      if (window.NetDeckScanLog) window.NetDeckScanLog.rememberNames(names);
+      const count = Number((out.match(/Discovered (\d+) device/) || [])[1] || 0);
+      const list = Object.values(names).slice(0, 6).join(', ');
+      if (!count) return { status: 'info', summary: 'Nothing announced itself — only devices running mDNS/Bonjour or UPnP answer this; the scan below finds the rest', data: { count: 0, names } };
+      return { status: 'pass', summary: `${count} device${count === 1 ? '' : 's'} answered with a name${list ? ': ' + list : ''}${Object.keys(names).length > 6 ? ', …' : ''}`, data: { count, names } };
+    },
+
     lanScan(out) {
       const err = out.match(/SCAN-ERROR:\s*([^\r\n]+)/);
       if (err) return { status: 'fail', summary: err[1] };
@@ -1037,7 +1047,9 @@ window.NetDeckPlaybooks = (() => {
       const unknown = others.filter((d) => !d.maker).length;
       const range = (out.match(/Scanned (\S+) on (.+?) in ([\d.,]+) s/) || []);
       const summary = `${others.length} other device${others.length === 1 ? '' : 's'} on ${range[1] || 'your subnet'}${range[3] ? ` in ${range[3]} s` : ''} — ${silent} ignore ping and were found through ARP`;
-      return { status: 'pass', summary, data: { devices, others, silent, randomised, unknown, range: range[1], adapter: range[2] } };
+      const seenCol = c('Seen');
+      const fresh = seenCol === -1 ? [] : t.rows.filter((r) => r[seenCol] === 'NEW').map((r) => r[c('IP')]);
+      return { status: 'pass', summary, data: { devices, others, silent, randomised, unknown, range: range[1], adapter: range[2], changes: window.NetDeckScanLog ? window.NetDeckScanLog.lastDiff : null, fresh } };
     },
 
     ipv6addr(out, params, ctx) {
@@ -1275,9 +1287,10 @@ window.NetDeckPlaybooks = (() => {
   PLAYBOOKS.push({
     id: 'scan',
     name: 'Scan my network',
-    description: 'Finds every device on your own network: pings all the addresses in your subnet at once, then reads the ARP table for MAC addresses — which also reveals devices that ignore ping — and adds names and manufacturers where it can. Nothing to type; it only ever scans the private network this PC is on.',
+    description: 'Finds every device on your own network: first asks devices to announce themselves (mDNS/UPnP, which gives real names for TVs, speakers, printers and phones), then pings every address in your subnet at once and reads the ARP table for MAC addresses — which also reveals devices that ignore ping. Adds manufacturers, when each device was first seen, and what is new or gone since the last scan. Nothing to type; it only ever scans the private network this PC is on.',
     params: [],
     steps: [
+      { id: 'announce', cmd: 'discover', label: 'Ask devices to announce themselves (mDNS / UPnP)', check: 'discover', table: true, what: 'SSDP M-SEARCH and mDNS service queries; the names come back from the devices themselves' },
       { id: 'scan', cmd: 'lan-scan', label: 'Sweep the subnet and read the ARP table', check: 'lanScan', table: true },
     ],
     verdict(r, p, ctx, R) {
@@ -1290,9 +1303,22 @@ window.NetDeckPlaybooks = (() => {
       const notes = [];
       if (d.randomised) notes.push(`${d.randomised} use a randomised private address — that is what phones, tablets and recent laptops do on Wi-Fi, so they cannot be matched to a manufacturer`);
       if (d.silent) notes.push(`${d.silent} never answered ping but showed up in the ARP table, which is normal for phones, TVs and smart-home devices`);
+      const ch = d.changes;
+      const who = (x) => x.ip + (x.name ? ` (${x.name})` : x.maker ? ` (${x.maker})` : '');
+      let changes = '';
+      if (ch && ch.firstEver) changes = 'This is the first scan NetDeck has recorded here; from now on each scan says what is new, gone or moved since the previous one.';
+      else if (ch) {
+        const parts = [];
+        if (ch.added.length) parts.push(`${ch.added.length} new (never seen before): ${ch.added.map(who).join(', ')}`);
+        if (ch.returned && ch.returned.length) parts.push(`${ch.returned.length} back after missing the last scan: ${ch.returned.map(who).join(', ')}`);
+        if (ch.gone.length) parts.push(`${ch.gone.length} gone: ${ch.gone.map(who).join(', ')}`);
+        if (ch.moved.length) parts.push(`${ch.moved.length} changed address: ${ch.moved.map((x) => `${x.from} → ${x.ip}`).join(', ')}`);
+        changes = `Since the last scan (${ch.prevAgo}, ${ch.prevCount} devices): ${parts.length ? parts.join('; ') : 'no changes'}. Devices that ignore ping drift in and out of the ARP table, so "gone" and "back" are only meaningful when they persist across scans.`;
+      }
+      const named = R.announce?.data?.count || 0;
       return {
-        tone: 'pass',
-        text: `${d.others.length} other devices share ${d.range || 'your network'} with this PC${router ? ` (router: ${router.ip}${router.maker ? `, ${router.maker}` : ''})` : ''}. Press "table" for every address, MAC and manufacturer — sort by manufacturer to group them, and compare against what you expect to own.${notes.length ? ` Note: ${notes.join('; ')}.` : ''}\nBy manufacturer:\n${makers}\nAnything you cannot account for is worth tracking down: the router's own client list usually shows a name for each address.`,
+        tone: ch && !ch.firstEver && ch.added.length ? 'warn' : 'pass',
+        text: `${d.others.length} other devices share ${d.range || 'your network'} with this PC${router ? ` (router: ${router.ip}${router.maker ? `, ${router.maker}` : ''})` : ''}. Press "table" for every address, MAC, manufacturer and when it was first seen — sort by manufacturer to group them, and use "probe" on any row to ask what a device is.${named ? ` ${named} device${named === 1 ? '' : 's'} gave their own names over mDNS/UPnP (Name column).` : ''}${notes.length ? ` Note: ${notes.join('; ')}.` : ''}\n${changes}\nBy manufacturer:\n${makers}\nAnything you cannot account for is worth tracking down: "probe" tells you what it offers, and the router's own client list usually shows a name.`,
       };
     },
   });

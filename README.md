@@ -22,6 +22,10 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **Packet counters (live)** — packets in/out/dropped per second on every adapter for 10/30/60 s, then a per-layer table (adapter, firewall, VPN and other filter drivers) with drop reasons, to locate where packets die. Needs Run as admin.
 - **Speed test** — download/upload against Cloudflare's public test server with a line per second, idle latency, and latency under load with a bufferbloat grade. No account, nothing to install.
 - **Connection stability monitor** — a ping a second to the router and 1.1.1.1 for 1/3/5/10 minutes, a line every 10 s with a delay bar chart, loss runs called out, and a verdict on whether dropouts are local or beyond the router.
+- **Discover announcing devices** — mDNS/Bonjour + SSDP/UPnP discovery: devices answer with their own names, models and services; names feed the scan table for a week.
+- **Device port probe** — 26 common device ports on one address in 2.5 s with a plain-English guess at what it is; a "probe" button sits on every scan row.
+- **Scan log** — each scan is remembered locally: the table shows when a device was first seen, and the verdict lists what is new, gone or moved since the last scan.
+- **Wi-Fi survey** — every access point in range with band/channel/signal/security, channel-load table, and a suggested quieter channel.
 - **Playbooks** — guided diagnostics that run a sequence of commands, check each result, and give a verdict naming the broken link. Twenty-three of them, shown in four groups (Connectivity · DNS & email · Security & exposure · This PC & local network) with group chips, and filtered by the same search box (name, description and the commands they run):
   - *Can't reach the internet?* — IP lease → gateway → raw connectivity → DNS → HTTPS
   - *Does my connection drop out?* — the 3-minute stability monitor with a verdict: local link vs. beyond the router vs. jitter.
