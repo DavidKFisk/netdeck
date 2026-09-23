@@ -722,11 +722,11 @@ async fn open_doc(app: AppHandle, page: String, anchor: Option<String>) -> Resul
     Ok(())
 }
 
-/// Open MDI Advantage's website in the user's default browser. The address is fixed here, so the page
+/// Open the author's website in the user's default browser. The address is fixed here, so the page
 /// cannot use this command to open anything else.
 #[tauri::command]
 fn open_site() -> Result<(), String> {
-    const SITE: &str = "https://mdiadvantage.com";
+    const SITE: &str = "https://davidkfisk.com";
     let (exe, args): (&str, Vec<String>) = if cfg!(windows) {
         ("rundll32.exe", vec!["url.dll,FileProtocolHandler".into(), SITE.into()])
     } else if cfg!(target_os = "macos") {
