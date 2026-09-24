@@ -974,6 +974,36 @@
     }
   },
   {
+    "id": "vpn-status",
+    "name": "VPN adapters and default route",
+    "category": "Connectivity & Routing",
+    "purpose": "Which VPN adapters are up, their address, MTU and DNS, and whether the default route goes through one (full tunnel) or not (split tunnel)",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-NetAdapter + Get-NetRoute 0.0.0.0/0 + Get-NetIPInterface (MTU) + Get-DnsClientServerAddress",
+    "unix": [
+      "ip route show default",
+      "ip link show",
+      "resolvectl status"
+    ],
+    "help": {
+      "ps": "Get-NetRoute"
+    },
+    "helpUnix": [
+      "ip",
+      "route",
+      "help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "VPN adapters → default routes by metric → full or split tunnel",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$vpnRx = 'VPN|WireGuard|Tailscale|NetBird|OpenVPN|TAP-Windows|Wintun|ZeroTier|Cisco AnyConnect|Fortinet|GlobalProtect|Mullvad|NordLynx|Proton|ExpressVPN|Surfshark|WAN Miniport \\((PPTP|L2TP|SSTP|IKEv2)\\)'\n$adapters = @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' })\n$vpn = @($adapters | Where-Object { $_.InterfaceDescription -match $vpnRx -or $_.Name -match 'VPN|^wt\\d|tailscale|^zt|Mullvad|Proton|Nord' })\n$vpnIdx = @($vpn | ForEach-Object { [int]$_.ifIndex })\n$mtu = @{}; foreach ($i in @(Get-NetIPInterface -AddressFamily IPv4)) { $mtu[[int]$i.ifIndex] = [int]$i.NlMtu }\n$ipOf = @{}; foreach ($a in @(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' })) { if (-not $ipOf.ContainsKey([int]$a.InterfaceIndex)) { $ipOf[[int]$a.InterfaceIndex] = [string]$a.IPAddress } }\n$dnsOf = @{}; foreach ($d in @(Get-DnsClientServerAddress -AddressFamily IPv4)) { $dnsOf[[int]$d.InterfaceIndex] = ($d.ServerAddresses -join ', ') }\n'1. VPN adapters that are up'\n$vpnRows = @($vpn | ForEach-Object { [pscustomobject]@{ Adapter = $_.Name; Description = $_.InterfaceDescription; IP = $ipOf[[int]$_.ifIndex]; MTU = $mtu[[int]$_.ifIndex]; DNS = $dnsOf[[int]$_.ifIndex] } })\nif ($vpnRows.Count) { ($vpnRows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   None. (If a VPN app says it is connected, its adapter may use a name NetDeck does not recognise - the routes below still tell the truth.)' }\n''\n'2. Default routes, best first (the lowest metric carries everything not on your local network)'\n$routes = @()\nforeach ($r in @(Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric, InterfaceMetric)) {\n  $ad = $adapters | Where-Object { [int]$_.ifIndex -eq [int]$r.InterfaceIndex } | Select-Object -First 1\n  if (-not $ad) { continue }\n  $routes += [pscustomobject]@{ Adapter = $ad.Name; 'Next hop' = [string]$r.NextHop; Metric = ([int]$r.RouteMetric + [int]$r.InterfaceMetric); VPN = ($vpnIdx -contains [int]$r.InterfaceIndex) }\n}\nif ($routes.Count) { ($routes | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   No default route at all.' }\n$best = $null; if ($routes.Count) { $best = $routes[0] }\n$viaVpn = [bool]($best -and $best.VPN)\n$split = 0\nif ($vpnIdx.Count) { $split = @(Get-NetRoute -AddressFamily IPv4 | Where-Object { $vpnIdx -contains [int]$_.InterfaceIndex -and $_.DestinationPrefix -ne '0.0.0.0/0' -and $_.DestinationPrefix -notmatch '/32$' -and $_.DestinationPrefix -notlike '224.*' -and $_.DestinationPrefix -notlike '255.*' -and $_.DestinationPrefix -notlike '127.*' }).Count }\n$bestMtu = 0; if ($viaVpn) { $bv = $vpn | Where-Object { $_.Name -eq $best.Adapter } | Select-Object -First 1; if ($bv) { $bestMtu = $mtu[[int]$bv.ifIndex] } }\n''\n'3. Verdict'\nif (-not $vpn.Count) { 'No VPN adapter is connected. Traffic leaves through ' + (& { if ($best) { $best.Adapter + ' via ' + $best.'Next hop' } else { 'no route' } }) + '.' }\nelseif ($viaVpn) { 'Full tunnel: the default route goes through ' + $best.Adapter + ' (MTU ' + $bestMtu + '). Everything not on your local network travels inside the VPN.' + (& { $under = $routes | Where-Object { -not $_.VPN } | Select-Object -First 1; if ($under) { ' The underlying route via ' + $under.'Next hop' + ' is still there with a higher metric, which is normal.' } else { '' } }) }\nelse { 'Split tunnel: the VPN is up but the default route still goes through ' + $best.Adapter + ' via ' + $best.'Next hop' + '. Only ' + $split + ' route' + (& { if ($split -ne 1) { 's point' } else { ' points' } }) + ' into the VPN, so most traffic leaves the ordinary way. Corporate VPNs do this on purpose (only work addresses go through the tunnel); a privacy VPN in this state is not protecting you.' }\n'SUMMARY ' + ([pscustomobject]@{ vpn = @($vpnRows | ForEach-Object { [pscustomobject]@{ name = $_.Adapter; desc = $_.Description; ip = $_.IP; mtu = $_.MTU; dns = $_.DNS } }); best = (& { if ($best) { [pscustomobject]@{ adapter = $best.Adapter; nexthop = $best.'Next hop'; metric = $best.Metric; vpn = $best.VPN } } else { $null } }); viaVpn = $viaVpn; vpnRoutes = $split; vpnMtu = $bestMtu } | ConvertTo-Json -Compress -Depth 3)"
+    }
+  },
+  {
     "id": "route-add",
     "name": "route add · delete",
     "category": "Connectivity & Routing",
@@ -1240,6 +1270,35 @@
         "{host}",
         "{port}"
       ]
+    }
+  },
+  {
+    "id": "stun-test",
+    "name": "STUN — NAT type and public address",
+    "category": "Connections & Ports",
+    "purpose": "Asks two public STUN servers what address and port they see you as. Same port from both = endpoint-independent NAT (calls and games connect directly); different = symmetric NAT (they fall back to relays)",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Two small UDP packets to stun.l.google.com and stun.cloudflare.com; nothing about you is sent beyond the request itself.",
+    "win": "STUN binding request over UDP (PowerShell), RFC 5389",
+    "unix": [
+      "stunclient stun.l.google.com 19302",
+      "pystun3"
+    ],
+    "help": {
+      "ps": "Get-NetNat"
+    },
+    "helpUnix": [
+      "stunclient",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "UDP STUN binding request → two servers → NAT type",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n# One STUN \"Binding Request\" (RFC 5389) to each of two public servers, from the same local port. Each answers with\n# the public address:port it saw. Same port from both = endpoint-independent NAT (good); different = symmetric NAT.\nfunction Stun-Query($udp, $server, $port) {\n  $ip = $null; try { $ip = ([Net.Dns]::GetHostAddresses($server) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | Select-Object -First 1) } catch { }\n  if (-not $ip) { return $null }\n  $req = New-Object byte[] 20\n  $req[0] = 0; $req[1] = 1; $req[2] = 0; $req[3] = 0\n  $req[4] = 0x21; $req[5] = 0x12; $req[6] = 0xA4; $req[7] = 0x42\n  $rnd = New-Object Random; for ($i = 8; $i -lt 20; $i++) { $req[$i] = [byte]$rnd.Next(0, 256) }\n  $ep = New-Object Net.IPEndPoint($ip, $port)\n  $resp = $null\n  for ($try = 0; $try -lt 2 -and -not $resp; $try++) { [void]$udp.Send($req, 20, $ep); $from = New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0); try { $resp = $udp.Receive([ref]$from) } catch { $resp = $null } }\n  if (-not $resp -or $resp.Length -lt 20) { return $null }\n  for ($i = 8; $i -lt 20; $i++) { if ([int]$resp[$i] -ne [int]$req[$i]) { return $null } }\n  $len = ([int]$resp[2] -shl 8) + [int]$resp[3]\n  $pos = 20\n  while (($pos + 4) -le (20 + $len) -and ($pos + 4) -le $resp.Length) {\n    $type = ([int]$resp[$pos] -shl 8) + [int]$resp[$pos + 1]; $alen = ([int]$resp[$pos + 2] -shl 8) + [int]$resp[$pos + 3]\n    if (($type -eq 32 -or $type -eq 1) -and $alen -ge 8 -and [int]$resp[$pos + 5] -eq 1) {\n      $p = ([int]$resp[$pos + 6] -shl 8) + [int]$resp[$pos + 7]\n      $oct = @([int]$resp[$pos + 8], [int]$resp[$pos + 9], [int]$resp[$pos + 10], [int]$resp[$pos + 11])\n      if ($type -eq 32) { $p = $p -bxor 0x2112; $oct[0] = $oct[0] -bxor 0x21; $oct[1] = $oct[1] -bxor 0x12; $oct[2] = $oct[2] -bxor 0xA4; $oct[3] = $oct[3] -bxor 0x42 }\n      return [pscustomobject]@{ server = $server; ip = ($oct -join '.'); port = $p }\n    }\n    $pos += 4 + $alen + ((4 - ($alen % 4)) % 4)\n  }\n  return $null\n}\n$udp = New-Object Net.Sockets.UdpClient; $udp.Client.Bind((New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0))); $udp.Client.ReceiveTimeout = 1500\n$localPort = ([Net.IPEndPoint]$udp.Client.LocalEndPoint).Port\n$a = Stun-Query $udp 'stun.l.google.com' 19302\n$b = Stun-Query $udp 'stun.cloudflare.com' 3478\n$udp.Close()\n'STUN: \"what address and port do you see me as?\" - asked from local UDP port ' + $localPort + ' to two different servers'\n'   stun.l.google.com:19302    ' + (& { if ($a) { $a.ip + ':' + $a.port } else { 'no answer' } })\n'   stun.cloudflare.com:3478   ' + (& { if ($b) { $b.ip + ':' + $b.port } else { 'no answer' } })\n''\n$nat = 'unknown'; $pub = ''\nif ($a -and $b) { $pub = $a.ip; if ($a.ip -eq $b.ip -and $a.port -eq $b.port) { $nat = 'cone' } else { $nat = 'symmetric' } }\nelseif ($a -or $b) { $pub = (& { if ($a) { $a.ip } else { $b.ip } }); $nat = 'one-server' }\nif ($nat -eq 'cone') { 'NAT type: endpoint-independent (\"cone\") - both servers saw the same public port' + (& { if ($a.port -eq $localPort) { ', and it matches the local port (no NAT, or a port-preserving one)' } else { '' } }) + '. Calls and games can connect directly. This is the good case.' }\nelseif ($nat -eq 'symmetric') { 'NAT type: SYMMETRIC - the router used a different public port for each server. Direct peer-to-peer connections (calls, games, file transfers) often cannot be set up and fall back to a relay, which adds delay, or fail outright. Common behind CGNAT and strict corporate firewalls.' }\nelseif ($nat -eq 'one-server') { 'Only one STUN server answered, so the NAT type could not be classified. Public address as seen from outside: ' + $pub }\nelse { 'No STUN server answered over UDP. Either outbound UDP is blocked on this network (real-time calls will struggle, since they are UDP) or a firewall dropped the replies.' }\n'SUMMARY ' + ([pscustomobject]@{ localPort = $localPort; a = $a; b = $b; nat = $nat; publicIp = $pub } | ConvertTo-Json -Compress -Depth 3)"
     }
   },
   {
@@ -1689,6 +1748,42 @@
     }
   },
   {
+    "id": "name-resolve",
+    "name": "Resolve a name every way Windows does",
+    "category": "DNS Lookups",
+    "purpose": "Tries DNS, LLMNR/NetBIOS and mDNS (.local) separately and says which one knows the name — the difference between \"DNS is wrong\" and \"the LAN answered\"",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Resolve-DnsName <host> -DnsOnly / -LlmnrNetbiosOnly / <host>.local",
+    "unix": [
+      "getent hosts <host>",
+      "avahi-resolve -n <host>.local",
+      "nmblookup <host>"
+    ],
+    "help": {
+      "ps": "Resolve-DnsName"
+    },
+    "helpUnix": [
+      "getent",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Resolve-DnsName {host}: DNS only, LLMNR/NetBIOS only, mDNS",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$name = '{host}'\nif ($name -match '^\\d+\\.\\d+\\.\\d+\\.\\d+$') { $name + ' is already an IP address - nothing to resolve.'; 'SUMMARY ' + ([pscustomobject]@{ host = $name; ip = $name; how = 'ip'; dns = @($name); lb = @(); mdns = @() } | ConvertTo-Json -Compress); exit 0 }\n# (anything a function writes to the pipeline becomes its return value, so the line is printed by the caller)\nfunction Try-Resolve($sb) {\n  $sw = [Diagnostics.Stopwatch]::StartNew(); $ips = @()\n  try { $ips = @(& $sb | Where-Object { $_.Type -eq 'A' -or $_.Type -eq 'AAAA' } | ForEach-Object { [string]$_.IPAddress } | Where-Object { $_ } | Sort-Object -Unique) } catch { }\n  return [pscustomobject]@{ ips = $ips; ms = [int]$sw.ElapsedMilliseconds }\n}\nfunction Show-Line($label, $r) { '   ' + $label.PadRight(34) + (& { if ($r.ips.Count) { ($r.ips -join ', ') + '  (' + $r.ms + ' ms)' } else { 'no answer  (' + $r.ms + ' ms)' } }) }\n'Resolving \"' + $name + '\" every way Windows tries:'\n$rd = Try-Resolve { Resolve-DnsName -Name $name -DnsOnly -ErrorAction Stop }; Show-Line 'DNS (your DNS servers)' $rd; $dns = @($rd.ips)\n$rl = Try-Resolve { Resolve-DnsName -Name $name -LlmnrNetbiosOnly -ErrorAction Stop }; Show-Line 'LLMNR / NetBIOS (asking the LAN)' $rl; $lb = @($rl.ips)\n$mname = (& { if ($name -match '\\.local$') { $name } else { $name + '.local' } })\n$rm = Try-Resolve { Resolve-DnsName -Name $mname -ErrorAction Stop }; Show-Line ('mDNS (' + $mname + ')') $rm; $mdns = @($rm.ips)\n''\n# (a one-element array unrolls to a string on the way out of a script block, so wrap the result in @() before indexing)\n$v4 = { param($list) @($list | Where-Object { $_ -match '^\\d+\\.\\d+\\.\\d+\\.\\d+$' }) }\n$d4 = @(& $v4 $dns); $l4 = @(& $v4 $lb); $m4 = @(& $v4 $mdns)\n$how = ''; $ip = ''\nif ($d4.Count) { $how = 'dns'; $ip = $d4[0] } elseif ($l4.Count) { $how = 'llmnr/netbios'; $ip = $l4[0] } elseif ($m4.Count) { $how = 'mdns'; $ip = $m4[0] }\nelseif ($dns.Count) { $how = 'dns'; $ip = $dns[0] } elseif ($lb.Count) { $how = 'llmnr/netbios'; $ip = $lb[0] } elseif ($mdns.Count) { $how = 'mdns'; $ip = $mdns[0] }\nif (-not $ip) { 'PROBLEM: nothing on this network knows the name \"' + $name + '\". Check the spelling (the other PC''s name is in its Settings > System > About), or use its IP address instead; if it is on Wi-Fi with \"client isolation\" or on another subnet, names never cross.' }\nelseif ($how -eq 'dns') { 'Found by DNS: ' + $ip + '. The name is known network-wide.' }\nelse { 'Found by ' + $how + ': ' + $ip + '. Your DNS server does not know the name (normal on a home network) - Windows found it by asking the local network directly, which only works on the same subnet.' }\n'SUMMARY ' + ([pscustomobject]@{ host = $name; ip = $ip; how = $how; dns = $dns; lb = $lb; mdns = $mdns } | ConvertTo-Json -Compress)",
+      "params": [
+        {
+          "key": "host",
+          "placeholder": "e.g. OFFICE-PC",
+          "type": "host"
+        }
+      ]
+    }
+  },
+  {
     "id": "nbtstat",
     "name": "nbtstat -a",
     "category": "Windows Networking & Sharing",
@@ -1827,6 +1922,83 @@
           ]
         }
       ]
+    }
+  },
+  {
+    "id": "sharing-check",
+    "name": "Sharing readiness (this PC)",
+    "category": "Windows Networking & Sharing",
+    "purpose": "Network profile (Public hides everything), the services discovery and sharing need, the File and Printer Sharing firewall rules, and the SMB client settings that block guest shares",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Read-only, no admin. Says separately whether this PC can reach others and whether others can reach it.",
+    "win": "Get-NetConnectionProfile + Get-Service + Get-NetFirewallRule + Get-SmbClientConfiguration, assessed",
+    "unix": [
+      "smbclient -L localhost",
+      "systemctl status smbd nmbd avahi-daemon"
+    ],
+    "help": {
+      "ps": "Get-NetConnectionProfile"
+    },
+    "helpUnix": [
+      "smbclient",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "network profile → sharing services → firewall rules → SMB client settings",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n# 1. the network profile of every connected adapter - Windows hides this PC and refuses sharing on Public\n$profiles = @(Get-NetConnectionProfile | ForEach-Object { [pscustomobject]@{ Adapter = $_.InterfaceAlias; Network = $_.Name; Profile = [string]$_.NetworkCategory; Internet = [string]$_.IPv4Connectivity } })\n'1. Network profile (discovery and sharing are off on Public networks)'\nif ($profiles.Count) { ($profiles | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   No connected network.' }\n$public = @($profiles | Where-Object { $_.Profile -eq 'Public' })\n$active = @($profiles | ForEach-Object { $_.Profile -replace 'DomainAuthenticated', 'Domain' } | Sort-Object -Unique)\n''\n# 2. the services that discovery and sharing depend on\n$svcNames = @(@('LanmanWorkstation', 'Workstation (reaches other PCs'' shares)'), @('LanmanServer', 'Server (offers this PC''s shares)'), @('FDResPub', 'Function Discovery Resource Publication (makes this PC visible)'), @('fdPHost', 'Function Discovery Provider Host (finds other devices)'), @('SSDPSRV', 'SSDP Discovery'), @('upnphost', 'UPnP Device Host'), @('Dnscache', 'DNS Client (also answers .local and NetBIOS names)'))\n$svcRows = @(foreach ($s in $svcNames) { $svc = Get-Service -Name $s[0]; [pscustomobject]@{ Service = $s[1]; Status = (& { if ($svc) { [string]$svc.Status } else { 'not present' } }); 'Start type' = (& { if ($svc) { [string]$svc.StartType } else { '' } }) } })\n'2. Discovery and sharing services'\n($svcRows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd()\n# Workstation and DNS Client are needed to reach anything; Server and FDResPub only to be reached; fdPHost/SSDP/UPnP start on demand\n$stopped = @($svcRows | Where-Object { $_.Status -ne 'Running' -and $_.Service -match '^(Workstation|DNS Client)' } | ForEach-Object { $_.Service })\n$notVisible = @($svcRows | Where-Object { $_.Status -ne 'Running' -and $_.Service -match '^(Server|Function Discovery Resource)' } | ForEach-Object { $_.Service })\n''\n# 3. the firewall rules that let other PCs in\n$fw = @(Get-NetFirewallRule -DisplayGroup 'File and Printer Sharing' -Direction Inbound | Where-Object { $_.DisplayName -match 'SMB-In|NB-Session-In|ICMPv4-In' } | ForEach-Object { [pscustomobject]@{ Rule = $_.DisplayName; Enabled = [string]$_.Enabled; Profile = [string]$_.Profile } })\n'3. Firewall rules for sharing (inbound)'\nif ($fw.Count) { ($fw | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   The \"File and Printer Sharing\" rule group was not found.' }\n$smbInActive = @($fw | Where-Object { $_.Rule -match 'SMB-In' -and $_.Enabled -eq 'True' } | Where-Object { $rule = $_; @($active | Where-Object { $rule.Profile -eq 'Any' -or $rule.Profile -match $_ }).Count -gt 0 })\n''\n# 4. SMB client settings that quietly block NAS boxes and old devices\n$cli = Get-SmbClientConfiguration\n$guest = (& { if ($cli) { [bool]$cli.EnableInsecureGuestLogons } else { $false } })\n'4. SMB client on this PC'\nif ($cli) { '   Guest (no-password) shares: ' + (& { if ($guest) { 'allowed' } else { 'BLOCKED - the Windows default since 2017. A NAS or old device share that needs no password fails with \"You can''t access this shared folder\"; give the share a user and password, or allow insecure guest logons in Group Policy.' } }); '   SMB signing required: ' + [string]$cli.RequireSecuritySignature } else { '   Could not read the SMB client configuration.' }\n''\n'5. This PC''s side of it'\nif ($public.Count) { 'PROBLEM: ' + (($public | ForEach-Object { $_.Adapter }) -join ', ') + ' is set to Public. On a Public network Windows neither looks for other devices nor lets them in. Fix: Settings > Network & internet > (your connection) > Network profile type > Private.' }\nelseif ($stopped.Count) { 'PROBLEM: not running - ' + ($stopped -join '; ') + '. Nothing on the network can be reached by name without it (services.msc: set to Automatic and start it).' }\nelse { 'Reaching other PCs: ready (' + ($active -join '/') + ' profile, Workstation and DNS Client running).' }\n$seen = @(); if ($notVisible.Count) { $seen += ($notVisible -join '; ') + ' not running' }; if (-not $smbInActive.Count) { $seen += 'no inbound SMB firewall rule enabled for the ' + ($active -join '/') + ' profile' }\nif ($seen.Count) { 'Being reached by others: NOT possible - ' + ($seen -join '; ') + '. Only matters if other PCs should open shares on this PC (Settings > Network & internet > Advanced sharing settings > File and printer sharing: On).' } else { 'Being reached by others: ready (Server service up, SMB allowed in).' }\n'SUMMARY ' + ([pscustomobject]@{ profiles = $profiles; public = ($public.Count -gt 0); publicAdapters = @($public | ForEach-Object { $_.Adapter }); stopped = $stopped; notVisible = $notVisible; smbIn = ($smbInActive.Count -gt 0); guest = $guest; active = ($active -join ',') } | ConvertTo-Json -Compress -Depth 3)"
+    }
+  },
+  {
+    "id": "printers",
+    "name": "Printers, spooler and queues",
+    "category": "Windows Networking & Sharing",
+    "purpose": "The Print Spooler service, every installed printer with its kind (network, WSD, USB, virtual), address, status and stuck jobs — and which network printer to test",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "win": "Get-Service Spooler + Get-Printer + Get-PrinterPort + Get-PrintJob",
+    "unix": [
+      "lpstat -p -d",
+      "lpq -a"
+    ],
+    "help": {
+      "ps": "Get-Printer"
+    },
+    "helpUnix": [
+      "lpstat",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "spooler → printers and ports → queues",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$sp = Get-Service -Name Spooler\n'1. Print Spooler service: ' + (& { if ($sp) { [string]$sp.Status + ' (' + [string]$sp.StartType + ')' } else { 'not found' } }) + (& { if ($sp -and $sp.Status -ne 'Running') { '  -> nothing prints while the spooler is stopped (services.msc: start it, or restart the PC)' } else { '' } })\n''\n$ports = @{}; foreach ($p in @(Get-PrinterPort)) { $ports[$p.Name] = $p }\n$def = [string](Get-CimInstance Win32_Printer | Where-Object { $_.Default } | Select-Object -First 1).Name\n$rows = @(); $list = @()\nforeach ($pr in @(Get-Printer)) {\n  $port = $ports[$pr.PortName]; $hostAddr = ''; $pnum = ''; $proto = ''\n  if ($port) { $hostAddr = [string]$port.PrinterHostAddress; $pnum = [string]$port.PortNumber; $proto = [string]$port.Protocol }\n  if (-not $hostAddr -and $pr.PortName -match '(\\d+\\.\\d+\\.\\d+\\.\\d+)') { $hostAddr = $Matches[1] }\n  $jobs = @(Get-PrintJob -PrinterName $pr.Name); $stuck = @($jobs | Where-Object { [string]$_.JobStatus -match 'Error|Paused|Offline|PaperOut|UserIntervention|Blocked' })\n  $kind = (& { if ([string]$pr.Type -eq 'Connection') { 'shared from another PC' } elseif ($hostAddr) { 'network' } elseif ($pr.PortName -match '^(USB|LPT|COM)') { 'local (' + $pr.PortName + ')' } elseif ($pr.PortName -match 'PORTPROMPT|nul|SHRFAX|XPS|PDF|OneNote|Microsoft' -or $pr.DriverName -match 'Virtual|Print To PDF|OneNote|Fax|XPS|PDF') { 'virtual' } elseif ($pr.PortName -match '^WSD' -or ($port -and [string]$port.Description -match 'WSD')) { 'network (WSD, auto-discovered)' } else { 'network (' + [string]$pr.PortName + ')' } })\n  $rows += [pscustomobject]@{ Printer = $pr.Name + (& { if ($pr.Name -eq $def) { ' (default)' } else { '' } }); Kind = $kind; Address = $hostAddr; Status = [string]$pr.PrinterStatus; Jobs = $jobs.Count; Stuck = $stuck.Count; Driver = $pr.DriverName }\n  $list += [pscustomobject]@{ name = $pr.Name; kind = $kind; host = $hostAddr; port = $pnum; protocol = $proto; status = [string]$pr.PrinterStatus; jobs = $jobs.Count; stuck = $stuck.Count; default = ($pr.Name -eq $def); virtual = ($kind -eq 'virtual') }\n}\n'2. Printers on this PC'\nif ($rows.Count) { ($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   No printers are installed.' }\n$net = @($list | Where-Object { $_.host })\n$target = $null; foreach ($n in $net) { if ($n.default) { $target = $n } }; if (-not $target -and $net.Count) { $target = $net[0] }\n$stuckTotal = 0; foreach ($l in $list) { $stuckTotal += $l.stuck }\n''\nif ($target) { 'Network printer to test: ' + $target.name + ' at ' + $target.host + (& { if ($target.port) { ' (port ' + $target.port + ', ' + $target.protocol + ')' } else { '' } }) } else { 'No network printer is installed on this PC (only local, virtual or shared-from-another-PC printers). Nothing on the network to test.' }\nif ($stuckTotal) { $stuckTotal.ToString() + ' job' + (& { if ($stuckTotal -ne 1) { 's are' } else { ' is' } }) + ' stuck in a queue - cancel them (Settings > Bluetooth & devices > Printers > the printer > Open print queue) before trying again.' }\n'SUMMARY ' + ([pscustomobject]@{ spooler = (& { if ($sp) { [string]$sp.Status } else { '' } }); printers = $list; target = (& { if ($target) { $target.name } else { '' } }); targetHost = (& { if ($target) { $target.host } else { '' } }); targetPort = (& { if ($target) { $target.port } else { '' } }); stuck = $stuckTotal } | ConvertTo-Json -Compress -Depth 3)"
+    }
+  },
+  {
+    "id": "rdp-status",
+    "name": "Remote Desktop host status",
+    "category": "Windows Networking & Sharing",
+    "purpose": "Whether this PC can accept Remote Desktop: edition, the enabled setting, the service, the listening port, the firewall rules for the current network profile, and who may connect",
+    "platforms": [
+      "powershell"
+    ],
+    "safe": true,
+    "note": "Read-only registry and service reads; no admin needed to look. Changing any of it needs an administrator.",
+    "win": "registry (Terminal Server) + Get-Service TermService + Get-NetTCPConnection + Get-NetFirewallRule (Remote Desktop)",
+    "help": {
+      "ps": "Get-NetFirewallRule"
+    },
+    "run": {
+      "kind": "ps",
+      "display": "edition → enabled → service → listening → firewall → users",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n$os = Get-CimInstance Win32_OperatingSystem\n$edition = [string]$os.Caption\n$isHome = [bool]($edition -match ' Home')   # ($home is PowerShell's own variable for the profile folder)\n$ts = Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server'\n$deny = -1; if ($ts -and $null -ne $ts.fDenyTSConnections) { $deny = [int]$ts.fDenyTSConnections }\n$tcp = Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp'\n$nla = -1; if ($tcp -and $null -ne $tcp.UserAuthentication) { $nla = [int]$tcp.UserAuthentication }\n$port = 3389; if ($tcp -and $tcp.PortNumber) { $port = [int]$tcp.PortNumber }\n$svc = Get-Service -Name TermService\n$listen = @(Get-NetTCPConnection -State Listen -LocalPort $port)\n$fw = @(Get-NetFirewallRule -DisplayGroup 'Remote Desktop' -Direction Inbound | ForEach-Object { [pscustomobject]@{ Rule = $_.DisplayName; Enabled = [string]$_.Enabled; Profile = [string]$_.Profile } })\n$profiles = @(Get-NetConnectionProfile | ForEach-Object { [pscustomobject]@{ Adapter = $_.InterfaceAlias; Profile = [string]$_.NetworkCategory } })\n$active = @($profiles | ForEach-Object { $_.Profile -replace 'DomainAuthenticated', 'Domain' } | Sort-Object -Unique)\n$fwOk = @($fw | Where-Object { $_.Enabled -eq 'True' -and $_.Rule -match 'TCP-In' } | Where-Object { $rule = $_; @($active | Where-Object { $rule.Profile -eq 'Any' -or $rule.Profile -match $_ }).Count -gt 0 })\n$members = @(net localgroup \"Remote Desktop Users\" 2>$null | Where-Object { $_ -and $_ -notmatch '^(Alias name|Comment|Members|-+$|The command completed)' } | ForEach-Object { $_.Trim() })\n$me = [Security.Principal.WindowsIdentity]::GetCurrent()\n$adminGroup = [bool](($me.Groups | ForEach-Object { $_.Value }) -contains 'S-1-5-32-544')\n$ips = @(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' } | ForEach-Object { [string]$_.IPAddress })\n'1. Windows edition: ' + $edition + (& { if ($isHome) { '   -> Home editions cannot HOST Remote Desktop (they can connect out, not accept connections)' } else { '' } })\n'2. Remote Desktop enabled: ' + (& { if ($deny -eq 0) { 'yes' } elseif ($deny -eq 1) { 'NO   (Settings > System > Remote Desktop > On)' } else { 'unknown' } }) + '   Network Level Authentication required: ' + (& { if ($nla -eq 1) { 'yes' } elseif ($nla -eq 0) { 'no' } else { 'unknown' } }) + '   Port: ' + $port + (& { if ($port -ne 3389) { ' (non-standard: connect to ' + $env:COMPUTERNAME + ':' + $port + ')' } else { '' } })\n'3. Remote Desktop Services (TermService): ' + (& { if ($svc) { [string]$svc.Status + ' (' + [string]$svc.StartType + ')' } else { 'not found' } })\n'4. Listening on TCP ' + $port + ': ' + (& { if ($listen.Count) { 'yes (' + (@($listen | ForEach-Object { [string]$_.LocalAddress } | Sort-Object -Unique) -join ', ') + ')' } else { 'NO' } })\n'5. Firewall rules (Remote Desktop group, inbound):'\nif ($fw.Count) { ($fw | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   none found' }\n'   Active network profile: ' + ($active -join ', ') + '   -> ' + (& { if ($fwOk.Count) { 'an enabled Remote Desktop rule covers it' } else { 'NO enabled Remote Desktop rule covers it' } })\n'6. Who may connect: members of Administrators' + (& { if ($members.Count) { ', plus Remote Desktop Users: ' + ($members -join ', ') } else { ' (the Remote Desktop Users group is empty)' } }) + '.  You are ' + (& { if ($adminGroup) { 'an administrator' } else { 'NOT an administrator' } }) + '.'\n'7. This PC: ' + $env:COMPUTERNAME + ' at ' + ($ips -join ', ')\n'SUMMARY ' + ([pscustomobject]@{ edition = $edition; home = $isHome; enabled = ($deny -eq 0); enabledKnown = ($deny -ne -1); nla = ($nla -eq 1); port = $port; service = (& { if ($svc) { [string]$svc.Status } else { '' } }); listening = ($listen.Count -gt 0); fwRule = ($fwOk.Count -gt 0); profiles = ($active -join ','); rdpUsers = $members; admin = $adminGroup; computer = $env:COMPUTERNAME; ips = $ips } | ConvertTo-Json -Compress -Depth 3)"
     }
   },
   {
@@ -2019,6 +2191,35 @@
       "kind": "ps",
       "display": "gateway → port probe → admin page/TLS → UPnP forwards → verdict",
       "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }\n[Net.ServicePointManager]::SecurityProtocol = 'Tls12,Tls11,Tls'\n$gw = ''; foreach ($r in @(Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric, InterfaceMetric)) { $a = @(Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.AddressState -eq 'Preferred' }); if ($a.Count) { $gw = $r.NextHop; break } }\nif (-not $gw) { 'ROUTER-ERROR: no default gateway (router) was found on an active adapter.'; exit 1 }\nif ($gw -notmatch '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)') { 'ROUTER-ERROR: the gateway ' + $gw + ' is not a private address; NetDeck only checks routers on your own network.'; exit 1 }\n$mac = (Get-NetNeighbor -IPAddress $gw -AddressFamily IPv4 | Select-Object -First 1).LinkLayerAddress\n'Router: ' + $gw + (& { if ($mac) { ' (' + $mac + ')' } else { '' } })\n''\n# 1. management ports\n$ports = @(@(80, 'HTTP admin page'), @(443, 'HTTPS admin page'), @(22, 'SSH'), @(23, 'TELNET'), @(53, 'DNS'), @(8080, 'HTTP alt'), @(8443, 'HTTPS alt'), @(7547, 'TR-069 (ISP remote management)'), @(5000, 'UPnP/other web'), @(2000, 'SCCP/other'), @(8291, 'MikroTik Winbox'), @(10000, 'Webmin'))\n$jobs = foreach ($p in $ports) { $c = New-Object Net.Sockets.TcpClient; [pscustomobject]@{ Port = $p[0]; What = $p[1]; Client = $c; Task = $c.ConnectAsync($gw, $p[0]) } }\ntry { [void][System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]@($jobs | ForEach-Object { $_.Task }), 2500) } catch { }\n$open = @(); $rows = foreach ($j in $jobs) { $st = 'no answer'; if ($j.Task.Status -eq 'RanToCompletion' -and $j.Client.Connected) { $st = 'OPEN'; $open += $j.Port } elseif ($j.Task.Status -eq 'Faulted') { $st = 'closed' }; $j.Client.Close(); [pscustomobject]@{ Port = $j.Port; Purpose = $j.What; State = $st } }\n'1. Management ports on the LAN side'\n($rows | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd()\n''\n# 2. web admin page and its certificate\nAdd-Type -AssemblyName System.Net.Http\n$handler = New-Object System.Net.Http.HttpClientHandler; $handler.ServerCertificateCustomValidationCallback = { param($msg, $cert, $chain, $errors) $true }\n$hc = New-Object System.Net.Http.HttpClient($handler); $hc.Timeout = [TimeSpan]::FromSeconds(4)\n$server = ''; $title = ''; $adminUrl = ''\nforeach ($u in @('http://' + $gw + '/', 'https://' + $gw + '/')) { try { $resp = $hc.GetAsync($u).Result; if ($resp) { $adminUrl = $u; $server = [string]$resp.Headers.Server; $html = $resp.Content.ReadAsStringAsync().Result; if ($html -match '<title>\\s*([^<]{1,80})') { $title = $Matches[1].Trim() }; break } } catch { } }\n$cert = ''; $certNote = ''\nif ($open -contains 443) {\n  try { $tcp = New-Object Net.Sockets.TcpClient($gw, 443); $ssl = New-Object Net.Security.SslStream($tcp.GetStream(), $false, { $true }); $ssl.AuthenticateAsClient($gw); $c = New-Object Security.Cryptography.X509Certificates.X509Certificate2($ssl.RemoteCertificate); $cert = $c.Subject + ' issued by ' + $c.Issuer + ', expires ' + $c.NotAfter.ToString('yyyy-MM-dd'); if ($c.Subject -eq $c.Issuer) { $certNote = 'self-signed (normal for a router: your browser will warn, that is expected)' } elseif ($c.NotAfter -lt (Get-Date)) { $certNote = 'EXPIRED' }; $ssl.Close(); $tcp.Close() } catch { $cert = 'could not read (' + $_.Exception.GetBaseException().Message + ')' }\n}\n'2. Admin page'\nif (-not $adminUrl -and ($open -contains 443 -or $open -contains 80)) { $adminUrl = (& { if ($open -contains 443) { 'https://' + $gw + '/' } else { 'http://' + $gw + '/' } }); $title = '(page did not load in 4 s - the port is open, so an admin page is there)' }\nif ($adminUrl) { '   ' + $adminUrl + (& { if ($title) { ' - \"' + $title + '\"' } else { '' } }) + (& { if ($server) { ' (server: ' + $server + ')' } else { '' } }) } else { '   No web page answered on 80 or 443' + (& { if ($open.Count -eq 0 -or ($open.Count -eq 1 -and $open -contains 53)) { ' - this router is managed from an app or the cloud (mesh systems such as eero, Google Wifi, Deco)' } else { '' } }) }\nif ($cert) { '   Certificate: ' + $cert + (& { if ($certNote) { ' - ' + $certNote } else { '' } }) }\n''\n# 3. UPnP: is it on, and what port forwards has it opened\n$upnpOn = $false; $forwards = @(); $igdLoc = ''\ntry {\n  $udp = New-Object Net.Sockets.UdpClient; $udp.Client.Bind((New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0))); $udp.Client.ReceiveTimeout = 400\n  $ms = \"M-SEARCH * HTTP/1.1`r`nHOST: 239.255.255.250:1900`r`nMAN: `\"ssdp:discover`\"`r`nMX: 2`r`nST: urn:schemas-upnp-org:device:InternetGatewayDevice:1`r`n`r`n\"; $b = [Text.Encoding]::ASCII.GetBytes($ms); $ep = New-Object Net.IPEndPoint([Net.IPAddress]::Parse('239.255.255.250'), 1900)\n  [void]$udp.Send($b, $b.Length, $ep); Start-Sleep -Milliseconds 200; [void]$udp.Send($b, $b.Length, $ep)\n  $sw = [Diagnostics.Stopwatch]::StartNew()\n  while ($sw.Elapsed.TotalSeconds -lt 2.5 -and -not $igdLoc) { $from = New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0); try { $d = $udp.Receive([ref]$from) } catch { continue }; $t = [Text.Encoding]::ASCII.GetString($d); if ($from.Address.ToString() -eq $gw -and $t -match '(?im)^LOCATION:\\s*(\\S+)') { $igdLoc = $Matches[1] } }\n  $udp.Close()\n} catch { }\nif ($igdLoc) {\n  $upnpOn = $true\n  try {\n    $xml = [xml]($hc.GetStringAsync($igdLoc).Result); $base = ([uri]$igdLoc).GetLeftPart('Authority')\n    $svc = $xml.SelectNodes('//*[local-name()=\"service\"]') | Where-Object { $_.serviceType -match 'WAN(IP|PPP)Connection' } | Select-Object -First 1\n    if ($svc) {\n      $ctl = [string]$svc.controlURL; if ($ctl -notmatch '^http') { $ctl = $base + $ctl }\n      $stype = [string]$svc.serviceType\n      for ($i = 0; $i -lt 50; $i++) {\n        $body = '<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body><u:GetGenericPortMappingEntry xmlns:u=\"' + $stype + '\"><NewPortMappingIndex>' + $i + '</NewPortMappingIndex></u:GetGenericPortMappingEntry></s:Body></s:Envelope>'\n        $content = New-Object Net.Http.StringContent($body, [Text.Encoding]::UTF8, 'text/xml'); $content.Headers.Add('SOAPAction', '\"' + $stype + '#GetGenericPortMappingEntry\"')\n        $r = $hc.PostAsync($ctl, $content).Result; if (-not $r -or -not $r.IsSuccessStatusCode) { break }\n        $x = $r.Content.ReadAsStringAsync().Result\n        $ext = (& { if ($x -match '<NewExternalPort>(\\d+)') { $Matches[1] } else { '' } }); $int = (& { if ($x -match '<NewInternalPort>(\\d+)') { $Matches[1] } else { '' } }); $cli = (& { if ($x -match '<NewInternalClient>([^<]+)') { $Matches[1] } else { '' } }); $proto = (& { if ($x -match '<NewProtocol>([^<]+)') { $Matches[1] } else { '' } }); $desc = (& { if ($x -match '<NewPortMappingDescription>([^<]*)') { $Matches[1] } else { '' } })\n        if (-not $ext) { break }\n        $forwards += [pscustomobject]@{ 'External port' = $ext; Proto = $proto; 'Goes to' = $cli + ':' + $int; Description = $desc }\n      }\n    }\n  } catch { }\n}\n'3. UPnP (programs opening ports on the router automatically)'\nif (-not $upnpOn) { '   UPnP gateway service not offered on the LAN: programs cannot open ports on this router by themselves. Good.' }\nelse { '   UPnP is ON (' + $igdLoc + ').'; if ($forwards.Count) { '   Port forwards currently open from the internet:'; ($forwards | Format-Table -AutoSize | Out-String -Width 4096).TrimEnd() } else { '   No port forwards are open right now.' } }\n''\n# verdict\n$bad = @(); $warn = @()\nif ($open -contains 23) { $bad += 'TELNET (23) is open on the router - an unencrypted login from the 1990s; disable it in the router settings or replace the router' }\nif ($open -contains 7547) { $warn += 'TR-069 (7547) answers on the LAN side - the ISP''s remote-management channel; normal on ISP-supplied routers, worth knowing about' }\nif ($forwards.Count) { $warn += $forwards.Count.ToString() + ' UPnP port forward' + (& { if ($forwards.Count -ne 1) { 's' } else { '' } }) + ' expose' + (& { if ($forwards.Count -eq 1) { 's' } else { '' } }) + ' devices on your network to the internet (' + (($forwards | Select-Object -First 4 | ForEach-Object { $_.'External port' + '->' + $_.'Goes to' }) -join ', ') + '). If you do not recognise them, turn UPnP off in the router' }\nif ($certNote -eq 'EXPIRED') { $warn += 'the admin page''s certificate has expired' }\nif ($adminUrl -like 'http://*' -and $open -notcontains 443) { $warn += 'the admin page is plain HTTP: the password crosses the Wi-Fi unencrypted when you log in - fine at home, avoid on shared networks' }\nif ($bad.Count) { 'PROBLEM: ' + ($bad -join '. ') + '.' + (& { if ($warn.Count) { ' Also: ' + ($warn -join '; ') + '.' } else { '' } }) }\nelseif ($warn.Count) { 'Attention: ' + ($warn -join '; ') + '.' }\nelse { 'Healthy: no telnet, ' + (& { if ($upnpOn) { 'UPnP on but nothing forwarded' } else { 'UPnP not offered' } }) + ', ' + (& { if ($adminUrl) { 'admin page present' } else { 'app-managed (no web admin page on the LAN)' } }) + '. Keep the router''s firmware updated and its admin password unique - NetDeck cannot check either from here.' }\n''\n'SUMMARY ' + ([pscustomobject]@{ gw = $gw; open = ($open -join ','); telnet = ($open -contains 23); tr069 = ($open -contains 7547); admin = $adminUrl; title = $title; server = $server; cert = $certNote; upnp = $upnpOn; forwards = $forwards.Count } | ConvertTo-Json -Compress)"
+    }
+  },
+  {
+    "id": "router-wan",
+    "name": "Router WAN address (UPnP)",
+    "category": "Scanning, Capture & Transfer",
+    "purpose": "Asks your router, over UPnP, what address it has on its internet side. A private address there means a second router in front of it (double NAT); a 100.64.x address means carrier-grade NAT",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Only your own gateway on a private address; one read-only UPnP request (GetExternalIPAddress). Routers with UPnP off cannot be asked.",
+    "win": "SSDP M-SEARCH → IGD description → GetExternalIPAddress (PowerShell)",
+    "unix": [
+      "upnpc -s",
+      "upnpc -l"
+    ],
+    "help": {
+      "ps": "Get-NetRoute"
+    },
+    "helpUnix": [
+      "upnpc",
+      "-h"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "gateway → UPnP discovery → GetExternalIPAddress",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }\n# the best default route whose adapter is actually up with a real address (a disconnected adapter can keep a stale route)\n$gw = ''\nforeach ($r in @(Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric, InterfaceMetric)) {\n  $ad = Get-NetAdapter -InterfaceIndex $r.InterfaceIndex; if (-not $ad -or $ad.Status -ne 'Up') { continue }\n  $a = @(Get-NetIPAddress -InterfaceIndex $r.InterfaceIndex -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.254.*' }); if ($a.Count) { $gw = [string]$r.NextHop; break }\n}\nif (-not $gw) { 'ROUTER-ERROR: no default gateway (router) was found on an active adapter.'; exit 1 }\nif ($gw -notmatch '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)') { 'ROUTER-ERROR: the gateway ' + $gw + ' is not a private address; NetDeck only asks routers on your own network.'; exit 1 }\n'Router: ' + $gw\n# UPnP: find the Internet Gateway Device and ask it what its WAN (internet-side) address is\n$igdLoc = ''\ntry {\n  $udp = New-Object Net.Sockets.UdpClient; $udp.Client.Bind((New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0))); $udp.Client.ReceiveTimeout = 400\n  $ms = \"M-SEARCH * HTTP/1.1`r`nHOST: 239.255.255.250:1900`r`nMAN: `\"ssdp:discover`\"`r`nMX: 2`r`nST: urn:schemas-upnp-org:device:InternetGatewayDevice:1`r`n`r`n\"; $b = [Text.Encoding]::ASCII.GetBytes($ms); $ep = New-Object Net.IPEndPoint([Net.IPAddress]::Parse('239.255.255.250'), 1900)\n  [void]$udp.Send($b, $b.Length, $ep); Start-Sleep -Milliseconds 200; [void]$udp.Send($b, $b.Length, $ep)\n  $sw = [Diagnostics.Stopwatch]::StartNew()\n  while ($sw.Elapsed.TotalSeconds -lt 2.5 -and -not $igdLoc) { $from = New-Object Net.IPEndPoint([Net.IPAddress]::Any, 0); try { $d = $udp.Receive([ref]$from) } catch { continue }; $t = [Text.Encoding]::ASCII.GetString($d); if ($from.Address.ToString() -eq $gw -and $t -match '(?im)^LOCATION:\\s*(\\S+)') { $igdLoc = $Matches[1] } }\n  $udp.Close()\n} catch { }\n$wan = ''; $upnp = [bool]$igdLoc\nif ($igdLoc) {\n  try {\n    Add-Type -AssemblyName System.Net.Http -ErrorAction SilentlyContinue\n    $hc = New-Object Net.Http.HttpClient; $hc.Timeout = [TimeSpan]::FromSeconds(4)\n    $xml = [xml]($hc.GetStringAsync($igdLoc).Result); $base = ([uri]$igdLoc).GetLeftPart('Authority')\n    $svc = $xml.SelectNodes('//*[local-name()=\"service\"]') | Where-Object { $_.serviceType -match 'WAN(IP|PPP)Connection' } | Select-Object -First 1\n    if ($svc) {\n      $ctl = [string]$svc.controlURL; if ($ctl -notmatch '^http') { $ctl = $base + $ctl }\n      $stype = [string]$svc.serviceType\n      $body = '<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body><u:GetExternalIPAddress xmlns:u=\"' + $stype + '\"></u:GetExternalIPAddress></s:Body></s:Envelope>'\n      $content = New-Object Net.Http.StringContent($body, [Text.Encoding]::UTF8, 'text/xml'); $content.Headers.Add('SOAPAction', '\"' + $stype + '#GetExternalIPAddress\"')\n      $r = $hc.PostAsync($ctl, $content).Result\n      if ($r -and $r.IsSuccessStatusCode) { $x = $r.Content.ReadAsStringAsync().Result; if ($x -match '<NewExternalIPAddress>([^<]+)') { $wan = $Matches[1].Trim() } }\n    }\n  } catch { }\n}\n$kind = ''\nif ($wan -match '^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)') { $kind = 'private' } elseif ($wan -match '^100\\.(6[4-9]|[7-9]\\d|1[01]\\d|12[0-7])\\.') { $kind = 'cgnat' } elseif ($wan -match '^\\d+\\.\\d+\\.\\d+\\.\\d+$' -and $wan -ne '0.0.0.0') { $kind = 'public' }\n'UPnP: ' + (& { if ($upnp) { 'on (' + $igdLoc + ')' } else { 'not offered on the LAN - the router cannot be asked for its WAN address this way' } })\nif ($wan) { 'WAN address the router reports: ' + $wan + '  (' + (& { if ($kind -eq 'private') { 'a PRIVATE address - this router sits behind another router' } elseif ($kind -eq 'cgnat') { 'a carrier-grade NAT address (100.64-127.x) - the ISP shares one public address between customers' } elseif ($kind -eq 'public') { 'a public address - this router is directly on the internet' } else { 'not an address' } }) + ')' }\nelseif ($upnp) { 'WAN address: the router did not answer GetExternalIPAddress.' }\n'SUMMARY ' + ([pscustomobject]@{ gw = $gw; upnp = $upnp; wan = $wan; wanKind = $kind } | ConvertTo-Json -Compress)"
     }
   },
   {
@@ -2389,6 +2590,16 @@
             "15",
             "{url}"
           ]
+        },
+        {
+          "key": "body",
+          "label": "-s — fetch the page body (playbooks use this)",
+          "args": [
+            "-sS",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
         }
       ]
     },
@@ -2445,6 +2656,16 @@
           "args": [
             "-6",
             "-sSI",
+            "--max-time",
+            "15",
+            "{url}"
+          ]
+        },
+        {
+          "key": "body",
+          "label": "-s — fetch the page body (playbooks use this)",
+          "args": [
+            "-sS",
             "--max-time",
             "15",
             "{url}"

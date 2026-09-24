@@ -21,6 +21,7 @@ const RUNS = [
   { id: 'pchealth' }, { id: 'timesync' }, { id: 'routing' }, { id: 'dhcp' }, { id: 'lan', openTable: 1 }, { id: 'ipv6' },
   { id: 'scan', openTables: [1] },
   { id: 'dnshonest' }, { id: 'routercheck' }, { id: 'dropouts' },
+  { id: 'share', vals: { host: '__self__' } }, { id: 'printer' }, { id: 'vpncheck' }, { id: 'calls' }, { id: 'doublenat', openTable: 0 }, { id: 'rdphost' },
 ];
 const ONLY = process.argv.slice(3);
 const SELECTED = ONLY.length ? RUNS.filter((r) => ONLY.includes(r.id)) : RUNS;
@@ -108,6 +109,8 @@ const CAPTURE_CSS = `
   await sleep(1500);
   await evalJs(`(async () => { for (let i = 0; i < 80 && !document.querySelector('#grid .card'); i++) await new Promise(r => setTimeout(r, 250)); await new Promise(r => setTimeout(r, 2500)); document.querySelector('.vtab[data-view="playbooks"]').click(); return true; })()`);
 
+  // the real computer name, read before the scrub renames it on the page (runs that target this PC need it)
+  const realHost = await evalJs(`(document.querySelector('[data-ctx="hostname"]')?.textContent || '').trim()`);
   // 1. Overview of the grouped Playbooks page (skipped when specific playbooks were asked for).
   await evalJs(SCRUB);
   if (!ONLY.length || ONLY.includes('overview')) await shoot('playbooks-overview', { x: 0, y: 0, width: 900, height: 1000 });
@@ -119,7 +122,7 @@ const CAPTURE_CSS = `
     const state = await evalJs(`(async () => {
       const c = document.querySelector('.card[data-pb="${run.id}"]');
       const vals = ${JSON.stringify(run.vals || {})};
-      for (const [k, v] of Object.entries(vals)) c.querySelector('#pb-${run.id}-' + k).value = v;
+      for (const [k, v] of Object.entries(vals)) c.querySelector('#pb-${run.id}-' + k).value = v === '__self__' ? ${JSON.stringify(realHost)} : v;
       c.querySelector('.run-btn').click();
       for (let i = 0; i < 1000; i++) { if (document.querySelector('.pane:not([hidden]) .pb-verdict:not([hidden])')) break; await new Promise(r => setTimeout(r, 250)); }
       const pane = document.querySelector('.pane:not([hidden])');

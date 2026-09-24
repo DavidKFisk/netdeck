@@ -250,7 +250,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.25.4</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.26.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook; arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>&#x263D; / &#x2600;</div><div>Switches between dark and light themes. Your choice is remembered.</div>
@@ -380,7 +380,7 @@
 
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
-<p>There are twenty-five, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, is my DNS honest, router check-up, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, PC health, clock, routing and adapters, DHCP and address conflicts, who's on my network, IPv6. Pinned playbooks move to the front of their group.</p>
+<p>There are thirty-one, arranged in four groups. <strong>Connectivity</strong>: can't reach the internet, a website won't load, everything is slow, does it drop out, are packets being dropped, where the path breaks, is a port open, service sweep, MTU, Wi-Fi health, is my VPN really working, will my video calls be OK, double NAT or CGNAT. <strong>DNS &amp; email</strong>: DNS health, DNS propagation, email delivery. <strong>Security &amp; exposure</strong>: what this PC exposes, who it's talking to, is my DNS honest, router check-up, proxy and HTTPS inspection. <strong>This PC &amp; local network</strong>: scan my network, who's on my network, can't see the other PC, printer won't print, can't Remote Desktop to this PC, PC health, clock, routing and adapters, DHCP and address conflicts, IPv6. Pinned playbooks move to the front of their group.</p>
 <figure class="shot"><img src="manual-img/playbooks-overview.webp" width="1350" height="1500" alt="The Playbooks view, grouped, with the group chips and search box" loading="lazy"><figcaption>The Playbooks view: group chips under the view switch, a count, then each group with its playbooks. A “?” after a step number marks a step that only runs when an earlier result calls for it.</figcaption></figure>
 
 <p class="shots-note">The screenshots in this chapter are real runs. The computer name, public IP addresses and the second half of MAC addresses have been replaced with placeholders.</p>
@@ -570,6 +570,53 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <!-- ============================================================ -->
 <figure class="shot"><img src="manual-img/pb-ipv6.webp" width="1350" height="668" alt="Result of the “IPv6 check” playbook" loading="lazy"><figcaption>A network with no IPv6 route to the internet: the only IPv6 address is a private one from a VPN, so the IPv6 tests are skipped.</figcaption></figure>
 
+
+<h3 id="pb-share">Can't see the other PC / shared folder</h3>
+<p>The most common Windows networking complaint, and one with a short list of causes that the error messages never name. Type the other PC's name (or address) and the playbook checks both ends in the order the failures actually happen.</p>
+<p><strong>Step 1 — this PC.</strong> Windows keeps a <em>network profile</em> for every connection: <strong>Private</strong> (home or office: look for other devices, let them in) or <strong>Public</strong> (café: hide, refuse everything). A Wi-Fi network that was joined once as Public stays Public, and on a Public network discovery and sharing are off in <em>both</em> directions — you cannot see them and they cannot see you. The step reads the profile of every connected adapter, then the services that sharing depends on (Workstation to reach shares, Server to offer them, Function Discovery to appear in Network view, DNS Client to answer names), then the inbound <em>File and Printer Sharing</em> firewall rules for the profile you are on, and finally the SMB client setting that blocks password-less shares. It reports two things separately: whether this PC can reach others, and whether others can reach it — most people only need the first.</p>
+<p><strong>Step 2 — the name.</strong> Windows resolves a PC name three ways, one after another, and the playbook tries each separately so you can see which one knows it: your DNS server (a home router usually does not), LLMNR/NetBIOS (a shout on the local network: "who is OFFICE-PC?"), and mDNS (<code>OFFICE-PC.local</code>). All three fail when the name is misspelt, when the two PCs are on different subnets, or when the Wi-Fi keeps its clients apart (a guest network, or "client isolation" — common on hotel and office Wi-Fi). If a name fails but the address works, the name is the only problem.</p>
+<p><strong>Steps 3 and 4 — the other PC.</strong> A ping, then a connection to <strong>port 445</strong>, which is what <code>\\PC\share</code> actually opens. The two together separate the cases: nothing answers (it is off, asleep, elsewhere, or itself set to Public); ping answers but 445 is refused (its Server service is off — sharing disabled); ping answers but 445 is ignored (its firewall drops the connection — again usually the Public profile). The verdict names the setting on the right PC.</p>
+<p><strong>What it cannot see.</strong> Permissions. If the share opens but Windows asks for a user name or says "You can't access this shared folder", the network is fine: the share needs an account that exists on that PC, because Windows blocks password-less guest shares by default (step 1 tells you whether this PC allows them). Old NAS boxes that only speak SMB1 are the other case; NetDeck cannot enable SMB1 and you should think twice before doing so.</p>
+<figure class="shot"><img src="manual-img/pb-share.webp" width="1350" height="861" alt="Result of the “Can't see the other PC / shared folder” playbook" loading="lazy"><figcaption>Both ends checked: this PC is on a Private profile with its services running, the other PC is found by asking the LAN directly (DNS does not know it, which is normal at home), and port 445 answers.</figcaption></figure>
+
+<h3 id="pb-printer">Printer won't print</h3>
+<p>Printing fails at one of four places, and Windows tells you almost nothing about which: the spooler on this PC, the queue, the network path to the printer, or the printer itself. The playbook needs no input — it finds your network printer among the printers installed on this PC (the default one if it is a network printer, otherwise the first).</p>
+<p><strong>Step 1 — this PC.</strong> The Print Spooler service (when it is stopped, nothing prints and every printer shows as unavailable), every installed printer with its kind — <em>network</em> with an address, <em>WSD</em> (found by broadcast, with no fixed address), <em>USB</em>, <em>shared from another PC</em>, or <em>virtual</em> (PDF, OneNote) — the status Windows shows for it, and the number of jobs waiting and stuck. A stuck job at the head of a queue blocks everything behind it; cancelling it is often the whole fix.</p>
+<p><strong>Steps 2 to 6 — the printer.</strong> A ping to its address, then its printing ports: <strong>9100</strong> (raw, also called JetDirect — what most Windows drivers use), <strong>631</strong> (IPP, what AirPrint and modern drivers use), <strong>515</strong> (LPR, older), and <strong>80</strong> for the printer's own web page. A printer that answers ping but opens none of the ports is awake but not accepting work — starting up, in an error state, or with network printing switched off. One that answers on a different port from the one Windows is configured to use is a port-configuration problem, and the verdict says which protocol to switch to.</p>
+<p><strong>The usual culprit.</strong> Home routers hand addresses out by DHCP, and after a reboot a printer can come back with a different one while Windows still points at the old. If the ping fails, the playbook looks in the scan log — the record <a href="#pb-scan">Scan my network</a> keeps — for a device whose name matches the printer's, and if it finds one at another address it says so. The lasting fix is a fixed address for the printer, set in the router (a DHCP reservation) rather than on the printer. WSD printers are the other version of the same problem: Windows finds them by broadcast, which breaks when the printer moves network or sleeps deeply; adding the printer again by IP address gives a connection that survives.</p>
+<figure class="shot"><img src="manual-img/pb-printer.webp" width="1350" height="867" alt="Result of the “Printer won't print” playbook" loading="lazy"><figcaption>The office printer is installed here but this PC is at home now: it does not answer, and the verdict says what that usually means and where to look.</figcaption></figure>
+
+<h3 id="pb-vpncheck">Is my VPN really working?</h3>
+<p>A VPN app shows "Connected" when its tunnel is up. That is not the same as your traffic going through it, and the difference is invisible without looking at the route table. This playbook looks.</p>
+<p><strong>Step 1 — the route.</strong> Every packet not addressed to your own network follows the <em>default route</em>, and when several exist Windows takes the one with the lowest metric. A working privacy VPN puts its adapter's default route first: a <strong>full tunnel</strong>. A <strong>split tunnel</strong> leaves the ordinary default route in charge and adds only specific routes for the VPN — what corporate VPNs do on purpose (only work addresses go through) and what a privacy VPN should never do. The step lists VPN-looking adapters (WireGuard, OpenVPN, Tailscale, the built-in Windows VPN types and most commercial apps) with their address, MTU and DNS server, then the default routes in metric order, and says which kind of tunnel you have.</p>
+<p><strong>Step 2 — the address the internet sees.</strong> A request to Cloudflare's trace endpoint returns the public address and country your connection appears from. Through a full tunnel that is the VPN server's, not yours.</p>
+<p><strong>Step 3 — DNS leak.</strong> The tunnel can carry your traffic while your name lookups still go to the ISP's resolver, which then sees every site you visit. This step is the same egress test as <a href="#pb-dnshonest">Is my DNS honest?</a>, read with the VPN in mind; the fix is the VPN's own DNS server (most apps have a setting) or an encrypted resolver.</p>
+<p><strong>Steps 4 and 5 — MTU.</strong> A VPN wraps every packet in another, so fewer bytes fit: a tunnel adapter's MTU is typically 1400 to 1420 instead of 1500. When a packet is too big and the path refuses to say so, connections stall — the classic "VPN connects, most things work, but some sites hang and uploads freeze". The playbook sends don't-fragment pings of 1372 bytes and, if those fail, 1272, through the tunnel; the verdict gives the MTU to set and the command that sets it.</p>
+<figure class="shot"><img src="manual-img/pb-vpncheck.webp" width="1350" height="854" alt="Result of the “Is my VPN really working?” playbook" loading="lazy"><figcaption>No VPN connected when this was taken: the playbook says so, shows the route the traffic takes instead and the public address the internet sees, and skips the tunnel tests.</figcaption></figure>
+
+<h3 id="pb-calls">Will my video calls be OK?</h3>
+<p>A call needs something different from a download: not much bandwidth, but a <em>steady</em> path, in both directions, over UDP. This playbook measures each of those.</p>
+<p><strong>Steps 1 and 2 — jitter and loss.</strong> Twenty pings to the router and twenty to the internet. The average matters less than the <em>jitter</em> (how much the delay varies from ping to ping) and any lost replies: a call has to play audio at a steady rate, so variation turns into stutter and loss into gaps. Jitter under 10 ms on the local link and under 30 ms beyond it is comfortable. High jitter to the router with a clean internet leg means the Wi-Fi is the problem.</p>
+<p><strong>Step 3 — Wi-Fi.</strong> Signal, band, radio mode and link rate, when you are on Wi-Fi. A weak signal or a crowded 2.4 GHz channel shows up as jitter in step 1; a cable for the call is the single biggest improvement.</p>
+<p><strong>Step 4 — NAT type.</strong> Calls try to connect the two ends directly. To do that, each side asks a public <em>STUN</em> server "what address and port do you see me as?" and tells the other side. The playbook asks two servers from the same local port: if both see the same public port, your router keeps a stable mapping (endpoint-independent, or "cone" NAT) and direct connections work; if each sees a different port (<em>symmetric</em> NAT), the other side can never guess the right one and the call falls back to a relay, adding delay — or fails. No answer at all means UDP is blocked outbound, which is the worst case for calls.</p>
+<p><strong>Step 5 — speed and bufferbloat.</strong> The speed test, read for calls: upload matters more than download (HD video wants about 3 Mbit/s up, a group call more), and the <em>bufferbloat</em> grade tells you what happens when someone else in the house starts a download — a router that queues too much lets the latency climb by hundreds of milliseconds under load, and the call stutters until the download ends. Grade A or B is fine; C or D is fixed by a router with smart queue management (SQM / "QoS"), not by a faster line.</p>
+<figure class="shot"><img src="manual-img/pb-calls.webp" width="1350" height="824" alt="Result of the “Will my video calls be OK?” playbook" loading="lazy"><figcaption>Steady links, an endpoint-independent NAT so calls connect directly, and a healthy speed test — good for calls.</figcaption></figure>
+
+<h3 id="pb-doublenat">Am I behind double NAT or CGNAT?</h3>
+<p>NAT (network address translation) is what lets every device in your home share one public address: your router rewrites the addresses on the way out and back. Once is normal. Twice breaks things — port forwarding, remote access, game consoles reporting "strict NAT", some VPN and VoIP setups — and it happens two ways.</p>
+<p><strong>Double NAT</strong> is two routers in a row, typically the ISP's modem/router with your own router behind it. Your router forwards a port to your PC faithfully, but the outer router knows nothing about it and drops the connection. <strong>Carrier-grade NAT (CGNAT)</strong> is the ISP doing the second translation inside its own network, sharing one public address between many customers; your router's "WAN address" is then a special range, <code>100.64.0.0/10</code>, and nothing you forward is reachable from outside. Mobile and satellite connections almost always use it, and cable and fibre ISPs increasingly do.</p>
+<p><strong>Step 1 — the first hops.</strong> A short trace to 1.1.1.1 and a count of the private routers on the way out: one (yours) is normal, two in a row is double NAT, and a hop in the 100.64 range is CGNAT.</p>
+<p><strong>Step 2 — the router's own view.</strong> Over UPnP, the router is asked for its internet-side address. A private address there (10.x, 192.168.x, 172.16–31.x) means another router in front of it; a 100.64 address means CGNAT; a public address means it is directly on the internet. Routers with UPnP off cannot be asked, and the verdict then rests on the other two steps.</p>
+<p><strong>Step 3 — the address the internet sees.</strong> If the router's WAN address is public but differs from what the internet sees, something is translating in between.</p>
+<p><strong>Fixes.</strong> Double NAT: put the outer device into <em>bridge mode</em> so only your router routes (the usual answer for an ISP modem/router), or add your router's WAN address to the outer router's DMZ, or forward the same ports on both. CGNAT: there is nothing to change on your side — ask the ISP for a public address (some sell it as a static IP), use IPv6 where the service supports it, or reach home devices through an overlay service (Tailscale, Cloudflare Tunnel) that needs no forwarding.</p>
+<figure class="shot"><img src="manual-img/pb-doublenat.webp" width="1350" height="1388" alt="Result of the “Am I behind double NAT or CGNAT?” playbook" loading="lazy"><figcaption>A real case: the home router reports a private WAN address and the trace shows two private routers in a row — the ISP gateway is still routing in front of it.</figcaption></figure>
+
+<h3 id="pb-rdphost">Can't Remote Desktop to this PC</h3>
+<p>Remote Desktop has a client side and a host side, and the host side is where it goes wrong: five separate things have to be on, on the PC you are trying to reach, and Windows reports all failures with the same "can't connect" message. Run this playbook <em>on the PC you want to reach</em>.</p>
+<p><strong>Step 1 — the host, in order.</strong> First the edition: <strong>Home</strong> editions of Windows can connect out but cannot accept Remote Desktop at all, and no setting changes that. Then the Remote Desktop switch (Settings › System › Remote Desktop), which is read from the registry without changing it. Then the <em>Remote Desktop Services</em> service, then whether anything is actually listening on the port (3389 unless it has been changed — the playbook reads the configured port). Then the firewall: the built-in "Remote Desktop" rules exist on every PC but are only enabled when the feature is turned on, and they apply per network profile — a PC on a <strong>Public</strong> network drops the connection even with everything else right. Finally who may connect: administrators always, plus the members of the <em>Remote Desktop Users</em> group; the step says which you are.</p>
+<p><strong>Step 2 — a real connection.</strong> When the settings look right, the playbook connects to this PC's own port. A failure there, with everything above in order, points at a third-party firewall or security suite standing in front of Windows'.</p>
+<p><strong>The verdict</strong> names the first thing that is off and where to turn it on, then tells you what to type on the other PC (this PC's name and address, and which account). Two things it cannot check: that the other PC can reach this address at all (same network, or a VPN — Remote Desktop should never be exposed to the internet directly), and that this PC is awake: a sleeping PC accepts nothing, and Settings › System › Power decides that.</p>
+<figure class="shot"><img src="manual-img/pb-rdphost.webp" width="1350" height="530" alt="Result of the “Can't Remote Desktop to this PC” playbook" loading="lazy"><figcaption>Remote Desktop is off on this PC, so the verdict stops at the first switch and says where it is — and what to type on the other PC once it is on.</figcaption></figure>
 <h2 id="commands">Command reference</h2>
 <p>Every card in the app, explained. Each entry says what the command is for in everyday terms, shows a trimmed example of what it prints, and points out the lines worth reading. <span class="tag run">runnable</span> means it has a run button; <span class="tag copy">copy only</span> means you'd run it yourself in a terminal.</p>
 
@@ -818,6 +865,25 @@ route delete 10.0.0.0</pre>
 </article>
 
 <!-- ---------- Connections & ports ---------- -->
+<article class="cmd" id="cmd-vpn-status">
+  <h4><code>VPN adapters and default route</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Which VPN adapters are up — WireGuard, OpenVPN, Tailscale, the built-in Windows VPN types and most commercial apps are recognised by name — with their address, MTU and DNS server; then every default route in metric order, marking which belong to a VPN. The lowest metric wins, so this shows at a glance whether the tunnel carries everything (full tunnel) or only its own routes (split tunnel). Used by <a href="#pb-vpncheck">Is my VPN really working?</a>.</p>
+  <pre>1. VPN adapters that are up
+
+Adapter   Description        IP          MTU  DNS
+-------   -----------        --          ---  ---
+WireGuard WireGuard Tunnel   10.8.0.2    1420 10.8.0.1
+
+2. Default routes, best first (the lowest metric carries everything not on your local network)
+
+Adapter   Next hop      Metric   VPN
+-------   --------      ------   ---
+WireGuard 0.0.0.0            5  True
+Wi-Fi     192.0.2.1         35 False
+
+3. Verdict
+Full tunnel: the default route goes through WireGuard (MTU 1420). …</pre>
+</article>
 <h3 id="c-ports">Connections &amp; ports</h3>
 
 <article class="cmd" id="cmd-netstat-ano">
@@ -886,6 +952,15 @@ Millis : 1012</pre>
 </article>
 
 <!-- ---------- ARP ---------- -->
+<article class="cmd" id="cmd-stun-test">
+  <h4><code>STUN — NAT type and public address</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Sends one STUN <em>binding request</em> (the protocol video calls and games use to discover their public address) to each of two public servers, from the same local UDP port, and compares the answers. Same public port from both: your router keeps a stable mapping — endpoint-independent, or "cone", NAT — and peers can connect to you directly. Different ports: <em>symmetric</em> NAT, where every destination gets a new mapping, so peers can never guess it and calls fall back to relays. No answer: outbound UDP is blocked. Two 20-byte packets; nothing about you is sent. Used by <a href="#pb-calls">Will my video calls be OK?</a>.</p>
+  <pre>STUN: "what address and port do you see me as?" - asked from local UDP port 58186 to two different servers
+   stun.l.google.com:19302    203.0.113.10:58186
+   stun.cloudflare.com:3478   203.0.113.10:58186
+
+NAT type: endpoint-independent ("cone") - both servers saw the same public port, and it matches the local port (no NAT, or a port-preserving one). Calls and games can connect directly. This is the good case.</pre>
+</article>
 <h3 id="c-arp">Address resolution (ARP)</h3>
 
 <article class="cmd" id="cmd-arp-a">
@@ -989,6 +1064,16 @@ github.com           A    60   Answer  <span class="hl">140.82.112.3</span></pre
 </article>
 
 <!-- ---------- Windows sharing ---------- -->
+<article class="cmd" id="cmd-name-resolve">
+  <h4><code>Resolve a name every way Windows does</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Windows turns a PC name into an address three ways, in turn: DNS (your DNS server), LLMNR/NetBIOS (a query broadcast on the local network), and mDNS (<code>name.local</code>). This runs each separately and says which one knows the name, with the time it took — so "DNS is wrong" and "the LAN answered directly" are told apart, and a name that nothing knows is clearly that. Used by <a href="#pb-share">Can't see the other PC</a>.</p>
+  <pre>Resolving "OFFICE-PC" every way Windows tries:
+   DNS (your DNS servers)            no answer  (200 ms)
+   LLMNR / NetBIOS (asking the LAN)  192.0.2.73, fd12:3456:789a::1f  (11 ms)
+   mDNS (OFFICE-PC.local)            192.0.2.73, fd12:3456:789a::1f  (1 ms)
+
+Found by llmnr/netbios: 192.0.2.73. Your DNS server does not know the name (normal on a home network) - Windows found it by asking the local network directly, which only works on the same subnet.</pre>
+</article>
 <h3 id="c-win">Windows networking &amp; sharing</h3>
 
 <article class="cmd" id="cmd-nbtstat">
@@ -1049,6 +1134,48 @@ Guest                    WDAGUtilityAccount</pre>
 </article>
 
 <!-- ---------- Tools ---------- -->
+<article class="cmd" id="cmd-sharing-check">
+  <h4><code>Sharing readiness (this PC)</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Everything on <em>this</em> PC that file sharing depends on, read without changing anything: the network profile of each connection (Public switches discovery and sharing off both ways), the services — Workstation, Server, Function Discovery, DNS Client — the inbound <em>File and Printer Sharing</em> firewall rules for the profile you are on, and the SMB client setting that blocks password-less guest shares. Reports separately whether this PC can reach others and whether others can reach it. Used by <a href="#pb-share">Can't see the other PC</a>.</p>
+  <pre>1. Network profile (discovery and sharing are off on Public networks)
+
+Adapter Network      Profile Internet
+------- -------      ------- --------
+Wi-Fi   HomeNet      Private Internet
+…
+5. This PC's side of it
+Reaching other PCs: ready (Private profile, Workstation and DNS Client running).
+Being reached by others: NOT possible - no inbound SMB firewall rule enabled for the Private profile. Only matters if other PCs should open shares on this PC …</pre>
+</article>
+<article class="cmd" id="cmd-printers">
+  <h4><code>Printers, spooler and queues</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>The Print Spooler service, then every installed printer with its kind (network with an address, WSD auto-discovered, USB, shared from another PC, or virtual), address, port and protocol, the status Windows shows, and the jobs waiting and stuck in its queue — and which network printer a test should target (the default printer if it is one, else the first). Used by <a href="#pb-printer">Printer won't print</a>.</p>
+  <pre>1. Print Spooler service: Running (Automatic)
+
+2. Printers on this PC
+
+Printer                        Kind                   Address       Status  Jobs Stuck Driver
+-------                        ----                   -------       ------  ---- ----- ------
+Microsoft Print to PDF         virtual                              Normal     0     0 Microsoft Print To PDF
+Office Laser (default)         network                192.0.2.35    Normal     0     0 Universal PCL
+
+Network printer to test: Office Laser at 192.0.2.35 (port 9100, RAW)</pre>
+</article>
+<article class="cmd" id="cmd-rdp-status">
+  <h4><code>Remote Desktop host status</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Whether this PC can accept a Remote Desktop connection, checked in the order Windows needs it: the edition (Home cannot host), the Remote Desktop switch and Network Level Authentication setting (read from the registry), the configured port, the Remote Desktop Services service, whether anything listens on the port, the "Remote Desktop" firewall rules against the current network profile, and who may connect (administrators plus the Remote Desktop Users group). Read-only; changing any of it needs an administrator. Used by <a href="#pb-rdphost">Can't Remote Desktop to this PC</a>.</p>
+  <pre>1. Windows edition: Microsoft Windows 11 Pro
+2. Remote Desktop enabled: NO   (Settings > System > Remote Desktop > On)   Network Level Authentication required: yes   Port: 3389
+3. Remote Desktop Services (TermService): Stopped (Manual)
+4. Listening on TCP 3389: NO
+5. Firewall rules (Remote Desktop group, inbound):
+
+Rule                                Enabled Profile
+----                                ------- -------
+Remote Desktop - User Mode (TCP-In) False   Any
+…
+7. This PC: OFFICE-PC at 192.0.2.73</pre>
+</article>
 <h3 id="c-tools">Scanning, capture &amp; transfer</h3>
 <p>These are cross-platform tools rather than built-in Windows commands. Most aren't installed by default, and several need a target you're allowed to probe — so they're reference entries.</p>
 
@@ -1265,6 +1392,13 @@ TrustedByWindows : True</pre>
 </article>
 
 <!-- ---------- System ---------- -->
+<article class="cmd" id="cmd-router-wan">
+  <h4><code>Router WAN address (UPnP)</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Finds your router over UPnP (an SSDP search for an Internet Gateway Device) and sends it one read-only request, <code>GetExternalIPAddress</code>: what address does it have on its internet side? A private address there means a second router in front of it — double NAT; an address in <code>100.64.0.0/10</code> means carrier-grade NAT; a public address means the router is directly on the internet. Only your own gateway, only on a private address; a router with UPnP off cannot be asked. Used by <a href="#pb-doublenat">Am I behind double NAT or CGNAT?</a>.</p>
+  <pre>Router: 192.0.2.1
+UPnP: on (http://192.0.2.1:1900/igd.xml)
+WAN address the router reports: 10.0.0.47  (a PRIVATE address - this router sits behind another router)</pre>
+</article>
 <h3 id="c-sys">System &amp; process info</h3>
 
 <article class="cmd" id="cmd-tasklist">
@@ -1382,6 +1516,12 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
   <tr><td>"What's on my network?" / unknown device</td><td>Playbook <strong>Scan my network</strong> → table</td><td>Sort by Manufacturer; check anything you can't account for against your router's client list.</td></tr>
   <tr><td>IP address starts with 169.254</td><td>Check the cable / Wi-Fi</td><td><code>ipconfig /release</code> then <code>/renew</code> in a terminal.</td></tr>
   <tr><td>Can't see a shared folder</td><td><code>net view</code>, <code>nbtstat -a &lt;host&gt;</code></td><td><code>Test-NetConnection &lt;host&gt; -Port 445</code>.</td></tr>
+  <tr><td>Can't open \\OtherPC or see it in Network</td><td>Playbook <strong>Can't see the other PC / shared folder</strong></td><td>Usually a Public network profile on one side; the verdict says which.</td></tr>
+  <tr><td>Printer won't print</td><td>Playbook <strong>Printer won't print</strong></td><td>Stuck job, spooler, or a printer that changed address — it names the one.</td></tr>
+  <tr><td>VPN says connected but you're not sure</td><td>Playbook <strong>Is my VPN really working?</strong></td><td>Full or split tunnel, DNS leak, MTU.</td></tr>
+  <tr><td>Calls stutter or drop</td><td>Playbook <strong>Will my video calls be OK?</strong></td><td>Jitter, NAT type, upload, bufferbloat — each with its fix.</td></tr>
+  <tr><td>Port forwarding / remote access never works</td><td>Playbook <strong>Am I behind double NAT or CGNAT?</strong></td><td>Bridge the outer router, or ask the ISP for a public address.</td></tr>
+  <tr><td>Can't Remote Desktop to a PC</td><td>Playbook <strong>Can't Remote Desktop to this PC</strong> (on that PC)</td><td>It stops at the first switch that is off.</td></tr>
 </table></div>
 
 <!-- ============================================================ -->
@@ -1428,7 +1568,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.25.4</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.26.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this licence text go with it — and it comes with no warranty of any kind. The full text:</p>

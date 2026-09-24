@@ -51,6 +51,8 @@ window.NetDeckPlaybooks = (() => {
     };
   }
 
+  const summaryJson = (out) => { const m = out.match(/^SUMMARY (\{.*\})\s*$/m); if (!m) return null; try { return JSON.parse(m[1]); } catch (e) { return null; } };
+
   const CHECKS = {
     /* Looks at YOUR adapter (from the detected context), not the first address found anywhere:
        virtual adapters (Hyper-V, Docker, VPN) otherwise mask a dead real one. */
@@ -1081,6 +1083,97 @@ window.NetDeckPlaybooks = (() => {
       return { status: 'pass', summary, data: { devices, others, silent, randomised, unknown, range: range[1], adapter: range[2], changes: window.NetDeckScanLog ? window.NetDeckScanLog.lastDiff : null, fresh } };
     },
 
+
+    /* ---- shares, printers, VPN, calls, NAT, Remote Desktop ---- */
+    sharingCheck(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The check did not finish (no summary line)' };
+      if (d.public) return { status: 'fail', summary: `${(d.publicAdapters || []).join(', ') || 'This network'} is set to Public — Windows neither looks for other devices nor lets them in`, data: d };
+      if (d.stopped && d.stopped.length) return { status: 'fail', summary: `${d.stopped.join('; ')} not running`, data: d };
+      const unseen = (d.notVisible && d.notVisible.length) || !d.smbIn;
+      return { status: 'pass', summary: `${d.active} network, ready to reach other PCs${unseen ? ' (this PC itself cannot be reached by others — fine unless it should share)' : ' and to be reached by them'}`, data: d };
+    },
+    nameResolve(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The lookup did not finish' };
+      if (!d.ip) return { status: 'fail', summary: `Nothing on this network knows the name "${d.host}"`, data: d };
+      if (d.how === 'ip') return { status: 'pass', summary: `${d.ip} — an address, nothing to resolve`, data: d, capture: { target: d.ip } };
+      if (d.how === 'dns') return { status: 'pass', summary: `${d.ip} via DNS`, data: d, capture: { target: d.ip } };
+      return { status: 'pass', summary: `${d.ip} via ${d.how === 'mdns' ? 'mDNS' : 'LLMNR/NetBIOS'} — DNS does not know the name; the LAN answered directly`, data: d, capture: { target: d.ip } };
+    },
+    printers(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'Could not list the printers' };
+      if (d.spooler !== 'Running') return { status: 'fail', summary: `The Print Spooler service is ${d.spooler || 'missing'} — nothing prints until it runs`, data: d };
+      const real = (d.printers || []).filter((p) => !p.virtual);
+      const tgt = (d.printers || []).find((p) => p.name === d.target);
+      const stuck = d.stuck ? `, ${d.stuck} job${d.stuck === 1 ? '' : 's'} stuck` : '';
+      if (!d.targetHost) return { status: 'info', summary: `${real.length} printer${real.length === 1 ? '' : 's'} (${real.map((p) => `${p.name}: ${p.kind}`).join('; ') || 'none'}) — none with a network address to test${stuck}`, data: d };
+      return { status: d.stuck || (tgt && /Offline|Error/i.test(tgt.status)) ? 'warn' : 'pass', summary: `${d.target} at ${d.targetHost}${tgt && tgt.status ? ` — Windows shows it ${tgt.status}` : ''}${stuck}`, data: d, capture: { printerHost: d.targetHost } };
+    },
+    vpnStatus(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The VPN check did not finish' };
+      if (!d.vpn || !d.vpn.length) return { status: 'info', summary: `No VPN adapter is connected — traffic leaves via ${d.best ? `${d.best.adapter} (${d.best.nexthop})` : 'no route'}`, data: d };
+      if (d.viaVpn) return { status: 'pass', summary: `Full tunnel: default route via ${d.best.adapter}, MTU ${d.vpnMtu}${d.vpn[0].dns ? `, DNS ${d.vpn[0].dns}` : ''}`, data: d };
+      return { status: 'warn', summary: `Split tunnel: ${d.vpn.map((v) => v.name).join(', ')} up, but the default route still goes via ${d.best ? d.best.adapter : '?'} — ${d.vpnRoutes} route${d.vpnRoutes === 1 ? '' : 's'} into the VPN`, data: d };
+    },
+    stun(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The STUN test did not finish' };
+      const seen = d.a || d.b;
+      if (d.nat === 'cone') return { status: 'pass', summary: `Endpoint-independent ("cone") NAT — both servers saw ${d.a.ip}:${d.a.port}`, data: d };
+      if (d.nat === 'symmetric') return { status: 'warn', summary: `Symmetric NAT — ${d.a.ip}:${d.a.port} to one server, ${d.b.ip}:${d.b.port} to the other; direct peer-to-peer connections will often fail`, data: d };
+      if (d.nat === 'one-server') return { status: 'info', summary: `Only one STUN server answered (${seen.server}: ${seen.ip}:${seen.port}) — NAT type unknown`, data: d };
+      return { status: 'fail', summary: 'No STUN server answered over UDP — outbound UDP may be blocked', data: d };
+    },
+    speed(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The speed test did not finish (no summary line)' };
+      const n = (x) => (Number.isFinite(+x) && +x >= 0 ? +x : null);
+      const down = n(d.downMbps), up = n(d.upMbps), idle = n(d.idleMs), bloat = n(d.bloatMs), grade = String(d.grade || '').charAt(0);
+      const problems = [];
+      if (up != null && up < 3) problems.push(`upload only ${up} Mbit/s (HD video calls want 3 or more)`);
+      if (down != null && down < 5) problems.push(`download only ${down} Mbit/s`);
+      if (grade === 'C' || grade === 'D') problems.push(`bufferbloat grade ${grade} (+${bloat} ms under load — calls stutter while something downloads)`);
+      const summary = `down ${down == null ? '?' : down} / up ${up == null ? '?' : up} Mbit/s, idle ${idle == null ? '?' : idle} ms, bufferbloat ${grade || '?'}${bloat != null ? ` (+${bloat} ms)` : ''}${d.colo ? ` · via ${d.colo}` : ''}`;
+      return { status: problems.length ? 'warn' : 'pass', summary: problems.length ? `${summary} — ${problems.join('; ')}` : summary, data: { down, up, idle, bloat, grade, problems, colo: d.colo } };
+    },
+    cfTrace(out) {
+      const get = (k) => ((out.match(new RegExp(`^${k}=(.+)$`, 'm')) || [])[1] || '').trim();
+      const ip = get('ip');
+      if (!ip) return { status: 'fail', summary: 'Could not read the public address (no answer from cloudflare.com)' };
+      const loc = get('loc'), colo = get('colo'), warp = get('warp');
+      return { status: 'pass', summary: `${ip}${loc ? ` (${loc})` : ''}${colo ? `, nearest Cloudflare site ${colo}` : ''}${warp && warp !== 'off' ? `, Cloudflare WARP ${warp}` : ''}`, data: { ip, loc, colo, warp, v6: ip.includes(':') }, capture: { publicIp: ip } };
+    },
+    routerWan(out) {
+      const err = out.match(/ROUTER-ERROR:\s*([^\r\n]+)/); if (err) return { status: 'fail', summary: err[1] };
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'The router did not answer' };
+      if (!d.upnp) return { status: 'info', summary: `Router ${d.gw} does not offer UPnP, so it cannot be asked for its WAN address`, data: d };
+      if (!d.wan) return { status: 'info', summary: `Router ${d.gw} offers UPnP but did not report a WAN address`, data: d };
+      if (d.wanKind === 'private') return { status: 'warn', summary: `Router ${d.gw} reports WAN address ${d.wan} — a private address, so it sits behind another router`, data: d };
+      if (d.wanKind === 'cgnat') return { status: 'warn', summary: `Router ${d.gw} reports WAN address ${d.wan} — a carrier-grade NAT address shared with other customers`, data: d };
+      return { status: 'pass', summary: `Router ${d.gw} reports WAN address ${d.wan} — a public address`, data: d };
+    },
+    natHops(out) {
+      const { hops } = readTracert(out);
+      if (!hops.length) return { status: 'info', summary: 'No hops recorded' };
+      const kinds = hops.map((h) => (h.addr ? P.classifyIp(h.addr) : 'silent'));
+      let privateHops = 0;
+      for (const k of kinds) { if (k === 'private') privateHops++; else if (k === 'silent') continue; else break; }
+      const cgnat = hops.filter((h, i) => kinds[i] === 'cgnat').map((h) => h.addr);
+      const firstPublic = hops.find((h, i) => kinds[i] === 'public');
+      const data = { hops: hops.slice(0, 6), privateHops, cgnat, firstPublic: firstPublic ? firstPublic.addr : '' };
+      if (privateHops >= 2) return { status: 'warn', summary: `Two private routers in a row (${hops.slice(0, 2).map((h) => h.addr).join(' → ')}) — double NAT${privateHops > 2 ? `; the ${privateHops - 2} further private hop${privateHops === 3 ? '' : 's'} (${hops.slice(2, privateHops).map((h) => h.addr).join(', ')}) ${privateHops === 3 ? 'is' : 'are'} usually the ISP's own internal network, which is normal` : ''}`, data };
+      if (cgnat.length) return { status: 'warn', summary: `Hop ${hops[kinds.indexOf('cgnat')].n} is ${cgnat[0]}, a carrier-grade NAT address — the ISP shares one public address between customers`, data };
+      return { status: 'pass', summary: `One router (${hops[0].addr || '?'}) then straight out${firstPublic ? ` — first public hop ${firstPublic.addr}` : ''}`, data };
+    },
+    rdpHost(out) {
+      const d = summaryJson(out); if (!d) return { status: 'fail', summary: 'Could not read the Remote Desktop settings' };
+      const capture = { rdpPort: String(d.port || 3389) };
+      if (d.home) return { status: 'fail', summary: `${d.edition} cannot host Remote Desktop (Home editions only connect out)`, data: d, capture };
+      if (!d.enabled) return { status: 'fail', summary: 'Remote Desktop is turned off (Settings › System › Remote Desktop)', data: d, capture };
+      if (d.service !== 'Running') return { status: 'fail', summary: `Remote Desktop Services is ${d.service || 'missing'}`, data: d, capture };
+      if (!d.listening) return { status: 'fail', summary: `Nothing is listening on port ${d.port}`, data: d, capture };
+      if (!d.fwRule) return { status: 'fail', summary: `The firewall has no enabled Remote Desktop rule for the ${d.profiles} profile`, data: d, capture };
+      if (/Public/.test(d.profiles)) return { status: 'warn', summary: 'Remote Desktop is on and reachable, but the network is set to Public', data: d, capture };
+      return { status: 'pass', summary: `Remote Desktop is on: ${d.computer} at ${(d.ips || []).join(', ')}, port ${d.port}${d.nla ? ', NLA required' : ''}`, data: d, capture };
+    },
+
     ipv6addr(out, params, ctx) {
       let globals;
       if (isWindows(ctx)) {
@@ -1444,12 +1537,189 @@ window.NetDeckPlaybooks = (() => {
     },
   });
 
+
+  PLAYBOOKS.push({
+    id: 'share',
+    name: "Can't see the other PC / shared folder",
+    description: "The classic Windows sharing failure, checked from both ends: this PC's network profile (Public hides everything), the services and firewall rules sharing needs, then the other PC by name — DNS, LLMNR/NetBIOS and mDNS in turn — a ping, and port 445, which is what \\\\PC\\share actually connects to. The verdict says which side is wrong and names the setting.",
+    params: [{ key: 'host', placeholder: 'the other PC: e.g. OFFICE-PC or 192.168.1.20', type: 'host' }],
+    steps: [
+      { id: 'me', cmd: 'sharing-check', label: 'This PC: network profile, sharing services, firewall', check: 'sharingCheck', what: 'Get-NetConnectionProfile, Get-Service, Get-NetFirewallRule (File and Printer Sharing), Get-SmbClientConfiguration' },
+      { id: 'name', cmd: 'name-resolve', label: 'Find the other PC by name', params: { host: '{host}' }, check: 'nameResolve', what: 'Resolve-DnsName three ways: DNS only, LLMNR/NetBIOS only, mDNS (.local)' },
+      { id: 'ping', cmd: 'ping', label: 'Ping it', params: { host: '{target}' }, check: 'ping', when: (R) => ok(R.name) },
+      { id: 'smb', cmd: 'tcp-probe', label: 'Port 445 — what \\\\PC\\share connects to', params: { host: '{target}', port: '445' }, check: 'tcpProbe', when: (R) => ok(R.name) },
+    ],
+    verdict(r, p, ctx, R) {
+      const me = R.me?.data || {};
+      const open = { label: `Copy: open \\\\${p.host} in Explorer`, copy: `explorer \\\\${p.host}` };
+      if (failed(R.me)) return { tone: 'fail', text: `Fix this PC first: ${R.me.summary}. ${me.public ? 'On a Public network Windows switches discovery and sharing off in both directions. Settings › Network & internet › your connection › Network profile type › Private.' : 'Start the service (services.msc) and try again.'}` };
+      if (failed(R.name)) return { tone: 'fail', text: `Nothing on this network answered to the name "${p.host}" — not your DNS server, not the LAN (LLMNR/NetBIOS), not mDNS. Check the spelling (the other PC's name is in its Settings › System › About), then try its IP address instead; if that works, the name is the only problem. Names never cross subnets or Wi-Fi "client isolation" (guest networks): both PCs must be on the same network.` };
+      const ip = R.name?.data?.ip;
+      if (failed(R.ping) && failed(R.smb)) return { tone: 'fail', text: `"${p.host}" resolves to ${ip}, but that address answers nothing — no ping, no port 445. Either the other PC is off, asleep or on a different network; or it is set to Public itself, which makes it ignore everything (on that PC: Settings › Network & internet › connection › Private); or the Wi-Fi keeps clients apart (guest network / client isolation).` };
+      if (failed(R.smb)) return { tone: 'fail', text: `${ip} answers ping but ${R.smb?.data?.kind === 'refused' ? 'refuses' : 'ignores'} port 445, so file sharing is off or firewalled on the other PC. On that PC: Settings › Network & internet › Advanced sharing settings › File and printer sharing: On (for its current profile), and make sure its profile is Private. ${R.smb?.data?.kind === 'refused' ? 'A refusal means its Server service is not running.' : 'No answer at all means its firewall drops the connection.'}` };
+      const guest = me.guest === false ? ' If Explorer then says "You can\'t access this shared folder" or asks for credentials, that is permissions, not networking: the share needs a user name and password that exist on that PC (Windows blocks password-less guest shares by default).' : '';
+      const unseen = (me.notVisible && me.notVisible.length) || me.smbIn === false ? ' (The other way round — that PC opening a share on this one — would not work: this PC is not sharing. Only matters if it should.)' : '';
+      const how = R.name?.data?.how;
+      return { tone: 'pass', text: `${p.host} (${ip}) is reachable and accepts file-sharing connections on port 445. \\\\${p.host} should open in Explorer${how && how !== 'dns' && how !== 'ip' ? `; if the name is slow to open, \\\\${ip} is instant` : ''}.${guest}${unseen}`, actions: [open] };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'printer',
+    name: "Printer won't print",
+    description: 'Finds your network printer among the printers installed on this PC, then checks the Print Spooler, stuck jobs in the queue, whether the printer answers at its address, and which of its printing ports are open — 9100 (raw), 631 (IPP), 515 (LPR) — plus its own web page. Catches the usual culprit: a printer whose address changed after a router reboot, which the scan log can often place.',
+    params: [],
+    steps: [
+      { id: 'list', cmd: 'printers', label: 'Spooler, installed printers, queues', check: 'printers', what: 'Get-Service Spooler, Get-Printer, Get-PrinterPort, Get-PrintJob' },
+      { id: 'ping', cmd: 'ping', label: 'Ping the printer', params: { host: '{printerHost}' }, check: 'ping', when: (R) => Boolean(R.list?.data?.targetHost) },
+      { id: 'raw', cmd: 'tcp-probe', label: 'Port 9100 (raw / JetDirect)', params: { host: '{printerHost}', port: '9100' }, check: 'tcpProbe', when: (R) => Boolean(R.list?.data?.targetHost) },
+      { id: 'ipp', cmd: 'tcp-probe', label: 'Port 631 (IPP)', params: { host: '{printerHost}', port: '631' }, check: 'tcpProbe', when: (R) => Boolean(R.list?.data?.targetHost) },
+      { id: 'lpr', cmd: 'tcp-probe', label: 'Port 515 (LPR)', params: { host: '{printerHost}', port: '515' }, check: 'tcpProbe', when: (R) => Boolean(R.list?.data?.targetHost) },
+      { id: 'web', cmd: 'tcp-probe', label: "Port 80 (the printer's own web page)", params: { host: '{printerHost}', port: '80' }, check: 'tcpProbe', when: (R) => Boolean(R.list?.data?.targetHost) },
+    ],
+    verdict(r, p, ctx, R) {
+      const d = R.list?.data;
+      if (!d) return { tone: 'fail', text: R.list?.summary || 'Could not read the printers.' };
+      if (d.spooler !== 'Running') return { tone: 'fail', text: `The Print Spooler service is ${d.spooler || 'missing'}: nothing prints until it runs. Start it (services.msc › Print Spooler › Start) or restart the PC; if it keeps stopping, a corrupt job is usually crashing it — as administrator, stop the spooler, empty C:\\Windows\\System32\\spool\\PRINTERS, start it again.` };
+      const log = window.NetDeckScanLog && window.NetDeckScanLog.latest ? window.NetDeckScanLog.latest() : null;
+      const tgt = (d.printers || []).find((x) => x.name === d.target);
+      const named = (name) => { if (!log) return null; const words = String(name).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !/^(series|network|universal|printer|pcl|the|desktop)$/.test(w)); return log.devices.find((dev) => dev.name && words.some((w) => dev.name.toLowerCase().includes(w))) || null; };
+      const stuckNote = d.stuck ? ` ${d.stuck} job${d.stuck === 1 ? ' is' : 's are'} stuck in a queue — cancel them first (Settings › Bluetooth & devices › Printers & scanners › the printer › Open print queue).` : '';
+      if (!d.targetHost) {
+        const real = (d.printers || []).filter((x) => !x.virtual);
+        if (!real.length) return { tone: 'warn', text: 'No printer is installed on this PC apart from virtual ones (PDF, OneNote). Add the printer first: Settings › Bluetooth & devices › Printers & scanners › Add device.' };
+        const disc = real.find((x) => /network/i.test(x.kind));
+        const hit = disc ? named(disc.name) : null;
+        return { tone: 'warn', text: `${real.map((x) => `${x.name} (${x.kind})`).join(', ')} — none has a fixed network address NetDeck can test.${disc ? ` ${disc.name} is a discovered printer: Windows finds it by broadcast, which breaks when the printer moves network, sleeps deeply, or the PC is on Wi-Fi with client isolation.${hit ? ` The scan log knows a device called "${hit.name}" at ${hit.ip} — very likely this printer. Adding it again by address (Add printer › Add a printer using an IP address, ${hit.ip}) gives a connection that survives.` : ' Run "Scan my network" to see where it is now.'}` : ''}${stuckNote}` };
+      }
+      if (failed(R.ping)) {
+        const hit = named(d.target);
+        const moved = hit && hit.ip !== d.targetHost ? ` The scan log knows a device called "${hit.name}" at ${hit.ip} — the printer has almost certainly changed address (routers hand out new ones after a reboot). Point the printer port at ${hit.ip} (Printer properties › Ports › Configure Port), or give the printer a fixed address in the router.` : ' Run "Scan my network" to see whether it is on the network under another address.';
+        return { tone: 'fail', text: `${d.target} is set up at ${d.targetHost}, but nothing answers there. The printer is off, asleep, disconnected from Wi-Fi, or its address changed.${moved}${stuckNote}` };
+      }
+      const names = { raw: '9100', ipp: '631', lpr: '515' };
+      const open = ['raw', 'ipp', 'lpr'].filter((k) => R[k] && R[k].status === 'pass');
+      const cfgPort = tgt && tgt.port ? Number(tgt.port) : null;
+      const cfgStep = cfgPort === 9100 ? R.raw : cfgPort === 631 ? R.ipp : cfgPort === 515 ? R.lpr : null;
+      const web = R.web && R.web.status === 'pass' ? ` Its status page is at http://${d.targetHost}/.` : '';
+      if (!open.length) return { tone: 'fail', text: `${d.target} answers ping at ${d.targetHost} but none of the printing ports are open (9100, 631, 515). It is awake but not accepting print jobs — a printer still starting up, in an error state (paper, cover, ink), or one whose network printing is switched off. Check its panel.${web}${stuckNote}` };
+      if (cfgStep && cfgStep.status !== 'pass') return { tone: 'warn', text: `${d.target} is up, but the port Windows is configured to use (${cfgPort}, ${tgt.protocol}) is closed while ${open.map((k) => names[k]).join('/')} answers. Change the port's protocol in Printer properties › Ports › Configure Port (RAW for 9100, LPR for 515), or remove and re-add the printer.${web}${stuckNote}` };
+      if (d.stuck) return { tone: 'warn', text: `${d.target} is reachable at ${d.targetHost} and accepts jobs (${open.map((k) => names[k]).join(', ')} open), so the network is fine — but stuck jobs block everything queued behind them.${stuckNote}` };
+      return { tone: 'pass', text: `${d.target} is reachable at ${d.targetHost} and accepts print jobs (${open.map((k) => names[k]).join(', ')} open)${tgt && /Offline/i.test(tgt.status) ? ' — yet Windows shows it Offline, which is a stale status: in Printer properties untick "Use Printer Offline", or remove and re-add the printer' : ''}. If it still will not print, the fault is on this PC — the driver or the queue: remove the printer and add it again.${web}` };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'vpncheck',
+    name: 'Is my VPN really working?',
+    description: 'What a VPN app cannot tell you: whether the tunnel actually carries your traffic. Finds the VPN adapter and checks the default route points into it (full tunnel) rather than past it (split tunnel), reads your public address as the internet sees it, tests whether DNS lookups leak to your ISP, and sends don\'t-fragment packets through the tunnel to catch the MTU problem behind "connected, but some sites hang".',
+    params: [],
+    steps: [
+      { id: 'vpn', cmd: 'vpn-status', label: 'VPN adapters, and which way the default route points', check: 'vpnStatus', what: 'Get-NetAdapter, Get-NetRoute (0.0.0.0/0), Get-NetIPInterface (MTU), Get-DnsClientServerAddress' },
+      { id: 'ip', cmd: 'curl', preset: 'body', label: 'Your public address, as the internet sees it', params: { url: 'https://www.cloudflare.com/cdn-cgi/trace' }, check: 'cfTrace' },
+      { id: 'dns', cmd: 'dns-check', label: 'Where DNS lookups leave from (leak test)', check: 'dnsHonest', when: (R) => Boolean(R.vpn?.data?.vpn?.length) },
+      { id: 'mtu', cmd: 'ping', preset: 'mtu-1372', size: 1372, label: "1372-byte packet through the tunnel, don't fragment", params: { host: '1.1.1.1' }, check: 'mtu', when: (R) => Boolean(R.vpn?.data?.viaVpn) },
+      { id: 'mtu2', cmd: 'ping', preset: 'mtu-1272', size: 1272, label: '1272-byte packet', params: { host: '1.1.1.1' }, check: 'mtu', when: (R) => R.mtu?.data?.fits === false },
+    ],
+    verdict(r, p, ctx, R) {
+      const v = R.vpn?.data, ip = R.ip?.data;
+      const where = ip ? `Your public address is ${ip.ip}${ip.loc ? ` (${ip.loc})` : ''}.` : '';
+      if (!v) return { tone: 'fail', text: R.vpn?.summary || 'The VPN check did not run.' };
+      if (!v.vpn.length) return { tone: 'pass', text: `No VPN is connected: traffic leaves through ${v.best ? `${v.best.adapter} via ${v.best.nexthop}` : 'no route'}. ${where} Connect the VPN and run this again to confirm the tunnel carries everything.` };
+      const leak = Boolean(R.dns?.data?.vpnLeak);
+      if (!v.viaVpn) return { tone: 'warn', text: `Split tunnel. ${v.vpn.map((x) => x.name).join(', ')} is up, but the default route still goes through ${v.best.adapter} via ${v.best.nexthop}: only ${v.vpnRoutes} route${v.vpnRoutes === 1 ? '' : 's'} point into the VPN, everything else leaves the ordinary way. ${where} A corporate VPN does this on purpose (only work addresses go through the tunnel). A privacy VPN in this state is not hiding anything — look for a "full tunnel" or "route all traffic" option in its settings.${leak ? ' Its DNS also goes to your ISP.' : ''}` };
+      if (leak) return { tone: 'fail', text: `DNS leak. The tunnel carries your traffic (default route via ${v.best.adapter}${ip ? `, public address ${ip.ip}` : ''}), but name lookups still go to ${R.dns.data.egressOwner || R.dns.data.egress}: the VPN hides where you connect while your ISP still sees every name you look up. Set the VPN's own DNS server in its settings (${v.vpn[0].dns ? `the adapter has ${v.vpn[0].dns}, but Windows is using another adapter's` : 'the VPN adapter has no DNS server'}), or use an encrypted resolver.`, actions: [{ label: 'Run "Is my DNS honest?"', playbook: 'dnshonest' }] };
+      const small = R.mtu?.data?.fits === false;
+      const tiny = R.mtu2?.data?.fits === false;
+      if (small) {
+        const mtu = tiny ? 1280 : 1380;
+        const cmd = `netsh interface ipv4 set subinterface "${v.vpn[0].name}" mtu=${mtu} store=persistent`;
+        return { tone: 'warn', text: `The tunnel works (default route via ${v.best.adapter}, DNS inside it${ip ? `, public address ${ip.ip}` : ''}), but ${tiny ? 'even 1272-byte' : '1372-byte'} packets are too big for it, and the VPN adapter's MTU is ${v.vpnMtu}. That is the classic "VPN connects but some sites hang or uploads stall". Lower the VPN adapter's MTU to ${mtu} or below — many VPN apps have an MTU setting; otherwise, as administrator: ${cmd}`, actions: [{ label: 'Copy: set the MTU (admin)', copy: cmd }] };
+      }
+      return { tone: 'pass', text: `The VPN is doing its job: everything not on your local network goes through ${v.best.adapter} (MTU ${v.vpnMtu}), DNS lookups leave via ${R.dns?.data?.egressOwner || R.dns?.data?.egress || 'the tunnel'}, and 1400-byte packets pass unfragmented. ${where}` };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'calls',
+    name: 'Will my video calls be OK?',
+    description: 'Everything a call needs, measured: jitter and loss to the router and to the internet (twenty pings each), the Wi-Fi link if you are on one, your NAT type (whether calls can connect directly or must relay), and the speed test — upload rate and latency under load, the bufferbloat that makes calls stutter whenever something else downloads.',
+    params: [],
+    steps: [
+      { id: 'gw', cmd: 'ping', preset: 'x20', label: '20 pings to your router (jitter on the local link)', params: { host: '{gateway}' }, check: 'ping', warnMs: 30 },
+      { id: 'net', cmd: 'ping', preset: 'x20', label: '20 pings to the internet (jitter beyond it)', params: { host: '1.1.1.1' }, check: 'ping', warnMs: 100 },
+      { id: 'wifi', cmd: 'netsh', label: 'Wi-Fi signal and link rate', check: 'wlan', when: (R, p, ctx) => /wi-?fi|wireless|wlan/i.test(ctx.adapter || '') },
+      { id: 'nat', cmd: 'stun-test', label: 'NAT type — can calls connect directly?', check: 'stun', what: 'one STUN binding request to each of two public servers, over UDP' },
+      { id: 'speed', cmd: 'speed-test', label: 'Speed, and latency under load (bufferbloat)', check: 'speed', what: 'speed.cloudflare.com: idle pings, 25 MB downloads, uploads, pings during each' },
+    ],
+    verdict(r, p, ctx, R) {
+      const g = R.gw?.data, n = R.net?.data, s = R.speed?.data, w = R.wifi?.data, nat = R.nat?.data;
+      const bad = [], notes = [];
+      if (g && (g.loss > 0 || g.jitter > 10)) bad.push(`the local link is unsteady (router: ${g.loss ? `${g.loss}% loss, ` : ''}jitter ${g.jitter} ms)${w && w.wifi ? ' — that is the Wi-Fi' : ''}`);
+      if (n && (n.loss > 0 || n.jitter > 30)) bad.push(`the internet leg is unsteady (${n.loss ? `${n.loss}% loss, ` : ''}jitter ${n.jitter} ms)`);
+      if (w && w.wifi && w.signal < 55) bad.push(`weak Wi-Fi signal (${w.signal}%)`);
+      if (s && s.up != null && s.up < 3) bad.push(`upload only ${s.up} Mbit/s (HD video needs about 3, group calls more)`);
+      if (s && (s.grade === 'C' || s.grade === 'D')) bad.push(`bufferbloat grade ${s.grade}: latency rises +${s.bloat} ms when the line is busy, so calls stutter whenever something downloads`);
+      if (R.nat?.status === 'fail') bad.push('UDP seems blocked outbound — calls run over UDP and will struggle, or fall back to slow relays');
+      if (nat && nat.nat === 'symmetric') notes.push('symmetric NAT: calls will go through a relay server instead of connecting directly, which adds delay; a router with UPnP, or a less strict NAT mode, fixes it');
+      const stats = `Router ${g ? `${g.avg} ms, jitter ${g.jitter} ms` : '—'} · internet ${n ? `${n.avg} ms, jitter ${n.jitter} ms` : '—'}${s ? ` · ${s.down} down / ${s.up} up Mbit/s · idle ${s.idle} ms · bufferbloat ${s.grade}` : ''}${nat && nat.nat === 'cone' ? ' · NAT: direct connections OK' : ''}.`;
+      if (bad.length) return { tone: 'warn', text: `Calls will have trouble: ${bad.join('; ')}. ${stats}${notes.length ? ` Also: ${notes.join('; ')}.` : ''}${w && w.wifi ? ' On Wi-Fi, a cable for the call is the single biggest improvement.' : ''}` };
+      return { tone: 'pass', text: `Good for calls: steady latency, low jitter, no loss${s ? `, ${s.up} Mbit/s upload and bufferbloat grade ${s.grade}` : ''}. ${stats}${notes.length ? ` One thing: ${notes.join('; ')}.` : ''}` };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'doublenat',
+    name: 'Am I behind double NAT or CGNAT?',
+    description: 'Why port forwarding, remote access and some games do not work: a second router in front of yours (double NAT — often the ISP modem), or your ISP sharing one public address between customers (carrier-grade NAT). Counts the private routers on the way out, asks your router for its internet-side address over UPnP, and compares with the address the internet actually sees you as.',
+    params: [],
+    steps: [
+      { id: 'trace', cmd: 'tracert', preset: 'quick', label: 'The first hops out — how many private routers?', params: { host: '1.1.1.1' }, check: 'natHops', table: true },
+      { id: 'wan', cmd: 'router-wan', label: 'Ask the router for its WAN address (UPnP)', check: 'routerWan', what: 'SSDP discovery of the gateway, then one UPnP GetExternalIPAddress request' },
+      { id: 'ip', cmd: 'curl', preset: 'body', label: 'Your public address, as the internet sees it', params: { url: 'https://www.cloudflare.com/cdn-cgi/trace' }, check: 'cfTrace' },
+    ],
+    verdict(r, p, ctx, R) {
+      const t = R.trace?.data, w = R.wan?.data, pub = R.ip?.data?.ip || '';
+      const hops = t ? t.hops : [];
+      const second = hops[1] && hops[1].addr;
+      const dbl = (w && w.wanKind === 'private') || (t && t.privateHops >= 2);
+      const cg = (w && w.wanKind === 'cgnat') || (t && t.cgnat.length) || (w && w.wanKind === 'public' && pub && !pub.includes(':') && w.wan !== pub);
+      if (dbl) return { tone: 'warn', text: `Double NAT. Your router ${ctx.gateway || ''}${w && w.wan ? ` has WAN address ${w.wan}, a private one` : ''}${second ? `; the next router out is ${second}` : ''} — two routers in a row, each translating addresses. Consequences: port forwarding and UPnP on your router do not reach the internet (the outer router knows nothing about them), games and consoles report "strict" or "type 3" NAT, and remote access to home devices fails. Fixes, best first: put the outer device (usually the ISP modem/router) into bridge mode so only your router routes; or give your router's WAN address a DMZ entry on the outer router; or forward the same ports on both. ${pub ? `Your public address is ${pub}.` : ''}` };
+      if (cg) return { tone: 'warn', text: `Carrier-grade NAT. ${w && w.wan ? `Your router's WAN address is ${w.wan}` : `A hop on the way out is ${t && t.cgnat[0]}`}${pub ? `, while the internet sees you as ${pub}` : ''}: the ISP shares one public address between many customers and translates inside its own network. Nothing you forward on your router is reachable from outside, and there is no fix on your side — ask the ISP for a public address (some sell it as a static IP), use IPv6 where the service supports it, or reach home devices through a relay or overlay service (Tailscale, Cloudflare Tunnel) instead of port forwarding.` };
+      return { tone: 'pass', text: `Single NAT: your router${w && w.wan ? ` holds the public address ${w.wan}` : ` is the only private hop${t && t.firstPublic ? `, and the next hop (${t.firstPublic}) is already on the internet` : ''}`}${pub ? (w && w.wan === pub ? ', which matches what the internet sees' : `; the internet sees ${pub}`) : ''}. Port forwarding, UPnP and remote access work the normal way${w && !w.upnp ? ' (UPnP is off on the router, so forwards must be made by hand)' : ''}.` };
+    },
+  });
+
+  PLAYBOOKS.push({
+    id: 'rdphost',
+    name: "Can't Remote Desktop to this PC",
+    description: 'The host side of Remote Desktop, checked in the order Windows needs it: an edition that can host at all (Home cannot), the Remote Desktop switch, the service, the listening port, the firewall rules for the network profile you are on, who is allowed to connect — then a real connection to this PC\'s own port. The verdict names the first thing that is off and where to turn it on.',
+    params: [],
+    steps: [
+      { id: 'rdp', cmd: 'rdp-status', label: 'Remote Desktop settings, service, port, firewall, users', check: 'rdpHost', what: 'registry (Terminal Server), Get-Service TermService, Get-NetTCPConnection, Get-NetFirewallRule (Remote Desktop), Get-NetConnectionProfile, net localgroup' },
+      { id: 'self', cmd: 'tcp-probe', label: "Connect to this PC's own Remote Desktop port", params: { host: '127.0.0.1', port: '{rdpPort}' }, check: 'tcpProbe', when: (R) => Boolean(R.rdp?.data?.enabled && R.rdp?.data?.listening) },
+    ],
+    verdict(r, p, ctx, R) {
+      const d = R.rdp?.data;
+      if (!d) return { tone: 'fail', text: R.rdp?.summary || 'Could not read the Remote Desktop settings.' };
+      const who = `From the other PC, connect to ${d.computer}${d.port !== 3389 ? `:${d.port}` : ''} (or ${(d.ips || []).join(' / ')}) with ${d.admin ? 'your account' : 'an administrator account, or add your account to the Remote Desktop Users group'}.`;
+      if (d.home) return { tone: 'fail', text: `${d.edition} cannot accept Remote Desktop connections — only Pro, Enterprise and Education editions host RDP; Home can still connect out to other PCs. To reach this PC instead: Chrome Remote Desktop, Quick Assist, or an upgrade to Pro.` };
+      if (!d.enabled) return { tone: 'fail', text: `Remote Desktop is turned off on this PC. Settings › System › Remote Desktop › On (an administrator has to do it). Turning it on also starts the service and enables the firewall rules. ${who}` };
+      if (d.service !== 'Running') return { tone: 'fail', text: `Remote Desktop is enabled but the Remote Desktop Services service is ${d.service || 'missing'}. Start it (services.msc › Remote Desktop Services), or toggle Remote Desktop off and on in Settings. ${who}` };
+      if (!d.listening) return { tone: 'fail', text: `The service runs but nothing listens on port ${d.port}. Usually another program has taken the port, or the RDP listener is disabled; toggling Remote Desktop off and on in Settings recreates it. ${who}` };
+      if (!d.fwRule) return { tone: 'fail', text: `Remote Desktop is on and listening, but the firewall has no enabled "Remote Desktop" rule for the ${d.profiles} profile, so connections are dropped silently. Enable the rule group as administrator, or toggle Remote Desktop off and on in Settings, which re-enables it. ${who}`, actions: [{ label: 'Copy: enable the rules (admin PowerShell)', copy: 'Enable-NetFirewallRule -DisplayGroup "Remote Desktop"' }] };
+      if (/Public/.test(d.profiles)) return { tone: 'warn', text: `Everything on this PC is ready, but the network is set to Public, where Windows drops most incoming connections. Settings › Network & internet › your connection › Network profile type › Private. ${who}` };
+      if (failed(R.self)) return { tone: 'fail', text: `Settings, service, port and firewall all look right, yet a connection to this PC's own port ${d.port} fails (${R.self.summary}). Something in between — a third-party firewall or security suite — is blocking it. ${who}` };
+      return { tone: 'pass', text: `This PC is ready to accept Remote Desktop: enabled, service running, listening on ${d.port}, firewall rule active for the ${d.profiles} profile${d.nla ? ', Network Level Authentication on (the other side needs a current Remote Desktop client)' : ''}. ${who} If it still fails from the other PC: that PC must be able to reach ${(d.ips || [])[0] || 'this address'} (same network or a VPN — RDP is never exposed to the internet directly), and this PC must not be asleep (Settings › System › Power › Sleep: Never while you need it).` };
+    },
+  });
+
   /* ================= groups (order here is the order on the page) ================= */
   const GROUPS = [
-    ['Connectivity', ['internet', 'website', 'slow', 'dropouts', 'drops', 'path', 'port', 'services', 'mtu', 'wifi']],
+    ['Connectivity', ['internet', 'website', 'slow', 'dropouts', 'drops', 'path', 'port', 'services', 'mtu', 'wifi', 'vpncheck', 'calls', 'doublenat']],
     ['DNS & email', ['dns', 'propagation', 'email']],
     ['Security & exposure', ['exposure', 'outbound', 'dnshonest', 'routercheck', 'proxy']],
-    ['This PC & local network', ['scan', 'lan', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],
+    ['This PC & local network', ['scan', 'lan', 'share', 'printer', 'rdphost', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],
   ];
   for (const [group, ids] of GROUPS) ids.forEach((id, i) => { const pb = PLAYBOOKS.find((p) => p.id === id); if (pb) { pb.group = group; pb.order = i; } });
   PLAYBOOKS.forEach((pb) => { if (!pb.group) { pb.group = 'Other'; pb.order = 99; } });
