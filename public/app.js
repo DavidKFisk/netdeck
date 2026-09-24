@@ -2093,7 +2093,27 @@ ${body}
   function filterPalette() {
     const q = paletteInput.value.trim().toLowerCase();
     const terms = q.split(/\s+/).filter(Boolean);
-    paletteItems = paletteEntries().filter((e) => terms.every((t) => e.hay.includes(t))).slice(0, 12);
+    const all = paletteEntries();
+    if (terms.length) {
+      paletteItems = all.filter((e) => terms.every((t) => e.hay.includes(t))).slice(0, 40);
+    } else {
+      // nothing typed: pinned first, then what you ran recently, then every playbook, then every command
+      const key = (e) => `${e.kind}:${e.id}`;
+      const pinned = all.filter((e) => e.pinned);
+      const taken = new Set(pinned.map(key));
+      const recent = [];
+      for (const h of history) {
+        const k = h.kind === 'run' ? `cmd:${h.cmdId}` : `pb:${h.pbId}`;
+        if (taken.has(k)) continue;
+        const e = all.find((x) => key(x) === k);
+        if (!e) continue;
+        taken.add(k);
+        recent.push({ ...e, cat: 'recent' });
+        if (recent.length >= 6) break;
+      }
+      const rest = all.filter((e) => !taken.has(key(e)));
+      paletteItems = [...pinned, ...recent, ...rest.filter((e) => e.kind === 'pb'), ...rest.filter((e) => e.kind === 'cmd')];
+    }
     paletteIdx = 0;
     paletteList.textContent = '';
     paletteItems.forEach((e, i) => {
