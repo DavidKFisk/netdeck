@@ -49,6 +49,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.</pre>
+<p>The desktop installer shows this licence before installing; the same text ships as <code>LICENSE</code> with the source.</p>
 <p>NetDeck runs diagnostic commands on your own computer and network. Its verdicts are aids to judgement, not guarantees: a clean result does not prove a network is secure.</p>
 
 <h3 id="third-party">Third-party components</h3>
