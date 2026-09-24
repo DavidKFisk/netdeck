@@ -1102,7 +1102,10 @@ body[data-mode="static"] .live-only { display: none !important; }
 
 /* ================= dashboard ================= */
 .dash-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.dash-tools { display: inline-flex; gap: 6px; }
+.dash-tools { display: inline-flex; gap: 6px; align-items: center; }
+.dash-manual { width: 22px; height: 22px; padding: 0; }
+.dash-tools .dash-manual { width: 26px; height: 26px; }
+.dash-manual:hover { color: var(--bright); }
 .dash-age { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .dash-checks .dash-check-stack { grid-template-columns: 10px minmax(0, 1fr) auto; align-items: start; }
 .dash-check-stack .dash-dot { margin-top: 5px; }

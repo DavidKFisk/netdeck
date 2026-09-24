@@ -68,6 +68,8 @@ window.NetDeckDashboard = (() => {
 
   /* Any button on the dashboard that names a command or playbook runs it in the terminal, visibly. */
   function onClick(e) {
+    const man = e.target.closest('[data-manual]');
+    if (man) { if (D.openDoc) D.openDoc('manual.html', man.dataset.manual); return; }
     const fold = e.target.closest('[data-collapse]');
     if (fold) { toggleCollapse(fold.dataset.collapse); return; }
     const clear = e.target.closest('[data-clear]');
@@ -300,8 +302,11 @@ window.NetDeckDashboard = (() => {
     return out;
   }
 
+  /* The same book icon as the command and playbook cards: opens the manual at this card's row. */
+  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic' };
+  const manualBtn = (anchor) => `<button type="button" class="icon-btn manual-btn dash-manual" data-manual="${esc(anchor)}" title="Open the manual at this card" aria-label="Open the manual at this card">${D.bookSvg || ''}</button>`;
   function card(title, meta, body, foot, cls) {
-    return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="card-cat">${esc(meta || '')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
+    return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="dash-head-tools"><span class="card-cat">${esc(meta || '')}</span>${manualBtn(MANUAL_ROW[title] || 'dashboard')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
   }
   const btn = (label, run, params, preset) => `<button type="button" class="tbtn tbtn-sm" data-run="${esc(run)}" data-params="${esc(JSON.stringify(params || {}))}"${preset ? ` data-preset="${esc(preset)}"` : ''}>${esc(label)}</button>`;
   const pbBtn = (label, id) => `<button type="button" class="tbtn tbtn-sm" data-pb="${esc(id)}">${esc(label)}</button>`;
@@ -538,11 +543,11 @@ window.NetDeckDashboard = (() => {
     if (folded) {
       const c = latencyChart(Date.now());
       const one = (label, s) => (s && s.avg != null ? `${label} ${s.avg} ms${s.lossPct ? ` (${s.lossPct}% lost)` : ''}` : `${label} —`);
-      return `<article class="card dash-card dash-wide is-collapsed" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-collapsed-sum">${esc(one('router', c.g))} · ${esc(one('internet', c.n))} · last ${esc(range)}</span>${collapseBtn('latency')}</header></article>`;
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-collapsed-sum">${esc(one('router', c.g))} · ${esc(one('internet', c.n))} · last ${esc(range)}</span>${manualBtn('d-latency')}${collapseBtn('latency')}</header></article>`;
     }
     const ranges = Object.keys(RANGES).map((r) => `<button type="button" class="tbtn tbtn-sm${r === range ? ' is-on' : ''}" data-range="${r}" aria-pressed="${r === range}">${r}</button>`).join('');
     const foot = `<span>router and internet ping every 10 s while NetDeck is open · hover the chart for a moment's figures</span><span class="dash-links">${pbBtn('Does my connection drop out?', 'dropouts')}${pbBtn('Why is everything slow?', 'slow')}</span>`;
-    return `<article class="card dash-card dash-wide" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-head-tools"><span class="dash-ranges" role="group" aria-label="Range">${ranges}</span>${collapseBtn('latency')}</span></header><div id="dash-latency-body">${latencyBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+    return `<article class="card dash-card dash-wide" id="dash-latency"><header class="card-head"><h2 class="card-name">Latency &amp; loss</h2><span class="dash-head-tools"><span class="dash-ranges" role="group" aria-label="Range">${ranges}</span>${manualBtn('d-latency')}${collapseBtn('latency')}</span></header><div id="dash-latency-body">${latencyBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
   }
 
   const GRADE = { A: 'ok', B: 'ok', C: 'warn', D: 'err' };
@@ -658,10 +663,10 @@ window.NetDeckDashboard = (() => {
       const name = (trafficLatest && ((trafficLatest.adapters.find((a) => a.name === ctx.adapter) || trafficLatest.adapters[0]) || {}).name) || ctx.adapter;
       const last = name ? series.traffic.filter((x) => x[1] === name).slice(-1)[0] : null;
       const sum = last ? `${esc(name)} ↓ ${esc(fmtBps(last[2]))} · ↑ ${esc(fmtBps(last[3]))} · ${esc(ago(last[0]))} · sampling paused` : 'sampling paused — expand to read the adapter';
-      return `<article class="card dash-card dash-wide is-collapsed" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-collapsed-sum">${sum}</span>${collapseBtn('traffic')}</header></article>`;
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-collapsed-sum">${sum}</span>${manualBtn('d-traffic')}${collapseBtn('traffic')}</header></article>`;
     }
     const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
-    return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+    return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${manualBtn('d-traffic')}${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
   }
 
   /* ================= security posture: the live firewall state plus the latest run of each security check ================= */

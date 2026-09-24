@@ -2323,6 +2323,7 @@ ${body}
     buildPlaybookGroupChips();
     DASH.init({
       $, byId, PB, P, execute, startRun, runPlaybook, isWin, saveFile, anonymiser: makeAnonymiser,
+      bookSvg: BOOK_SVG, openDoc: (page, anchor) => BACKEND.openDoc(page, anchor).catch(() => {}),
       context: () => context, health: () => health, history: () => history, canRun: () => canRun,
     });
     render();
