@@ -1121,10 +1121,20 @@
     if (notifyOn && (await BACKEND.notifyPermission()) !== 'granted') notifyOn = false;
     writePref('netdeck.notify', notifyOn ? 'on' : 'off');
     syncNotifyButton();
+    // a test one, so it is obvious whether they reach the desktop
+    if (notifyOn) {
+      const body = 'Notifications are on. A run or playbook that finishes while this window is behind another one will show up like this.';
+      if (BACKEND.notify) BACKEND.notify('NetDeck', body).catch(() => {});
+      else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('NetDeck', { body, tag: 'netdeck-test' });
+    }
   });
 
+  // "In the background" = this window is not the one being used: hidden (minimised, other tab) or simply not focused
+  // (behind another window). document.hidden alone only covers the minimised case in the desktop app.
+  const inBackground = () => document.hidden || !document.hasFocus();
+
   function notifyFinished(tab) {
-    if (!notifyOn || !document.hidden) return;
+    if (!notifyOn || !inBackground()) return;
     const body = tab.kind === 'playbook'
       ? (tab.els.pane.querySelector('.pb-verdict-text')?.textContent || 'finished')
       : { done: 'finished', warn: `finished with exit ${tab.exitCode}`, error: 'could not run', stopped: 'stopped' }[tab.state] || 'finished';
