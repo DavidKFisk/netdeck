@@ -31,7 +31,14 @@ const SCRUB = `(() => {
   const allow = [/^1\\.1\\.1\\.1$/, /^1\\.0\\.0\\.1$/, /^8\\.8\\.8\\.8$/, /^8\\.8\\.4\\.4$/, /^9\\.9\\.9\\.9$/, /^140\\.82\\./, /^127\\./, /^0\\.0\\.0\\.0$/, /^255\\./, /^22[4-9]\\./, /^23\\d\\./, /^203\\.0\\.113\\./];
   const isPrivate = (ip) => { const [a, b] = ip.split('.').map(Number); return a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127); };
   window.__ipMap = window.__ipMap || new Map();
-  const mapIp = (ip) => { if (isPrivate(ip) || allow.some((r) => r.test(ip))) return ip; if (!window.__ipMap.has(ip)) window.__ipMap.set(ip, '203.0.113.' + (10 + window.__ipMap.size)); return window.__ipMap.get(ip); };
+  // private addresses become 192.168.1.<last octet> (next free octet on a clash), public ones 203.0.113.<n>
+  window.__privMap = window.__privMap || new Map(); window.__privUsed = window.__privUsed || new Set();
+  const mapPrivate = (ip) => {
+    if (ip.startsWith('192.168.1.')) return ip;
+    if (!window.__privMap.has(ip)) { let n = Number(ip.split('.')[3]); while (window.__privUsed.has(n)) n = (n % 254) + 1; window.__privUsed.add(n); window.__privMap.set(ip, '192.168.1.' + n); }
+    return window.__privMap.get(ip);
+  };
+  const mapIp = (ip) => { if (allow.some((r) => r.test(ip))) return ip; if (isPrivate(ip)) return mapPrivate(ip); if (!window.__ipMap.has(ip)) window.__ipMap.set(ip, '203.0.113.' + (10 + window.__ipMap.size)); return window.__ipMap.get(ip); };
   // Device names found by a scan can be personal ("Anna's iPhone"): replace every value in a table's Name column.
   window.__nameMap = window.__nameMap || new Map();
   document.querySelectorAll('table.data-table').forEach((tbl) => {

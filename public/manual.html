@@ -255,6 +255,7 @@
 
 <p>NetDeck runs on Windows, Linux and macOS. The reference is the same everywhere; on Linux or macOS the run button moves to the L/M row and runs that platform's equivalent (<code>ip addr</code> for <code>ipconfig /all</code>, <code>ss -tulpn</code> for <code>netstat -ano</code>, <code>nc -zv</code> for <code>Test-NetConnection</code>). Windows-only commands such as <code>net view</code> are shown for reference there.</p>
 
+<div class="callout"><span class="lbl">Addresses in this manual are examples</span><p>Every address you see here is a placeholder, not a real network: <code>192.168.1.x</code> stands for your own local network (yours may be 192.168.0.x, 10.x.x.x or something else — the <a href="#s-context">context strip</a> shows the real one), <code>203.0.113.x</code> for a public address that is not a named service, and <code>10.0.0.x</code> for a network in front of yours. Screenshots are taken from a real network and then anonymised the same way: the computer name becomes OFFICE-PC, local addresses are renumbered into 192.168.1.x, public ones into 203.0.113.x, and the device half of every MAC address is hidden.</p></div>
 <div class="callout ok"><span class="lbl">Safe by design</span><p>Only read-only, "look but don't touch" commands can be run from the page. Commands that change settings (clearing caches, adding routes, ending processes) are shown for reference with a copy button and an orange note explaining why you'd run them yourself in a terminal.</p></div>
 
 <!-- ============================================================ -->
@@ -262,7 +263,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.26.4</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.26.5</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>&#x263D; / &#x2600;</div><div>Switches between dark and light themes. Your choice is remembered.</div>
@@ -284,7 +285,7 @@
 <div class="ui">
   <div>HOST</div><div>Your computer's name on the network.</div>
   <div>ADAPTER</div><div>The network connection currently carrying your internet traffic — usually <code>Wi-Fi</code> or <code>Ethernet</code>. If you have several, NetDeck picks the one that actually has a working address.</div>
-  <div>IP</div><div>Your computer's address on the local network, e.g. <code>192.168.7.45</code>. Other devices in your home or office reach you at this address.</div>
+  <div>IP</div><div>Your computer's address on the local network, e.g. <code>192.168.1.45</code>. Other devices in your home or office reach you at this address.</div>
   <div>GATEWAY</div><div>The address of your router — the device that connects your local network to the internet. Almost always ends in <code>.1</code> or <code>.254</code>. If the gateway doesn't answer a ping, nothing beyond your own network will work.</div>
   <div>DNS</div><div>The servers that turn names like <code>google.com</code> into addresses. Often the router itself, or your internet provider's servers.</div>
   <div>GATEWAY PING / INTERNET PING</div><div>Two tiny live charts. Every 10 seconds NetDeck pings your router and Cloudflare's <code>1.1.1.1</code> once and plots the reply time, so a problem shows up before you go looking for it. The number beside each is the latest reply: green is normal, amber is slow (over 50 ms to the router, over 100 ms to the internet), red is very slow or no reply at all; a red tick in the chart marks a missed reply. A steady low line is what healthy looks like; a line that climbs when you start a download is congestion; gaps are drop-outs. Hover for the max over the last few minutes.</div>
@@ -319,8 +320,8 @@
   <div><span class="btn">?</span> help</div><div>Runs the command's own built-in help (<code>netstat /?</code>, <code>Get-Help Test-NetConnection</code>, or <code>--help</code> on Linux/macOS) and shows it in a terminal tab — the full list of switches, straight from the tool. Available on every card, including copy-only ones.</div>
   <div><span class="btn run">&#x25B6; run</span></div><div>Runs the command on this computer and opens the terminal drawer with live output. Only appears on read-only commands. On a Linux or macOS machine the button sits on the L/M row instead and runs that platform's equivalent.</div>
   <div>VARIANT <span class="btn">default — ping &lt;host&gt; ▾</span></div><div>A drop-down of vetted flag combinations for the command — <code>ping -t</code> (continuous, stop with Stop), <code>ping -n 20</code>, <code>tracert -h 15</code>, <code>nslookup -type=MX</code>, <code>netstat -anob</code>, <code>whoami /groups</code>, and so on. Picking one updates the command shown on the row and the input boxes it needs; run works the same. It's still a fixed list — there's no free-form flag entry, on purpose.</div>
-  <div>host — e.g. …</div><div>An input box appears when the command needs a target. Type a computer name (<code>github.com</code>) or an address (<code>192.168.7.1</code>); a red border means the value isn't valid (spaces and special characters aren't allowed). Press <kbd>Enter</kbd> in the box to run.</div>
-  <div>FILL <span class="btn pick">192.168.7.1<small>gateway</small></span></div><div>One-click chips that fill the host box with your router, your DNS server, Cloudflare's <code>1.1.1.1</code>, <code>localhost</code>, or a host you used recently.</div>
+  <div>host — e.g. …</div><div>An input box appears when the command needs a target. Type a computer name (<code>github.com</code>) or an address (<code>192.168.1.1</code>); a red border means the value isn't valid (spaces and special characters aren't allowed). Press <kbd>Enter</kbd> in the box to run.</div>
+  <div>FILL <span class="btn pick">192.168.1.1<small>gateway</small></span></div><div>One-click chips that fill the host box with your router, your DNS server, Cloudflare's <code>1.1.1.1</code>, <code>localhost</code>, or a host you used recently.</div>
   <div>Orange note</div><div>Explains why a command has no run button — it changes settings, needs admin rights, is interactive, or usually isn't installed.</div>
 </div>
 
@@ -374,7 +375,7 @@
 
 <h2 id="dashboard">Dashboard</h2>
 <p>The third view is one screen that answers "how is the network right now?" without running anything by hand. Nothing on it is measured in a new way: every figure comes from a command or playbook check that exists elsewhere in NetDeck. The dashboard runs the quick ones itself, in a few seconds, and for the slow ones (a network scan, the DNS honesty check, the router check-up) it shows the most recent run and how old it is. That is also what makes it honest — any number can be traced back to real output: click a tile, or the <span class="btn">run</span> beside a row, and the command runs in the terminal drawer. The book icon in each card's corner (and beside <span class="btn">Refresh</span>) opens this section at that card, as it does on command and playbook cards.</p>
-<figure class="shot"><img src="manual-img/dashboard.webp" width="1860" height="3432" alt="The Dashboard view: eight status tiles and the This computer, Connection and Network cards" loading="lazy"><figcaption>A healthy office network. Green tiles across the top; this computer's addresses, the connection checks with their one-line verdict, and the network as the last scan saw it; then the speed tests kept so far, the path to 1.1.1.1 hop by hop and the security checks with how each last came out; and at the bottom the two chart cards, latency over the last ten minutes and the traffic through the adapter, which start folded and are shown open here.</figcaption></figure>
+<figure class="shot"><img src="manual-img/dashboard.webp" width="1860" height="3465" alt="The Dashboard view: eight status tiles and the This computer, Connection and Network cards" loading="lazy"><figcaption>A healthy office network. Green tiles across the top; this computer's addresses, the connection checks with their one-line verdict, and the network as the last scan saw it; then the speed tests kept so far, the path to 1.1.1.1 hop by hop and the security checks with how each last came out; and at the bottom the two chart cards, latency over the last ten minutes and the traffic through the adapter, which start folded and are shown open here.</figcaption></figure>
 
 <h3 id="d-reading">Reading the dashboard</h3>
 <p><strong>Colours.</strong> Every tile has a coloured left edge, and every check row a coloured dot. <span style="color:var(--ok)">Green</span> means the check passed and the figure is in a healthy range. <span style="color:var(--warn)">Amber</span> means it works but something is off — slow, weak, or worth a look. <span style="color:var(--err)">Red</span> means it failed. Grey means not checked yet, or not applicable (Wi-Fi on a wired PC). Amber is the colour to read most carefully: it is where the dashboard has an opinion and the explanation is in the small text.</p>
@@ -410,10 +411,10 @@
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
   <tr><td><strong>host</strong></td><td>This computer's name on the network — what other PCs can type to reach it.</td><td>Set in Settings › System › About.</td></tr>
   <tr><td><strong>adapter</strong></td><td>The connection carrying your internet traffic, and in small text the hardware behind it (the network card or Wi-Fi chip).</td><td>"Ethernet" for a cable, "Wi-Fi" for wireless. If it names a VPN or virtual adapter, that adapter has taken over the default route.</td></tr>
-  <tr><td><strong>ip</strong> — e.g. 192.168.7.73, mask 255.255.255.0</td><td>Your address on the local network, and the mask that says how big that network is. 255.255.255.0 means the last number varies: 254 possible devices. 255.255.252.0 means four such blocks: about a thousand.</td><td>A private address: 192.168.x.x, 10.x.x.x, or 172.16–31.x.x. An address starting 169.254 means no router handed one out (see the DHCP playbook).</td></tr>
+  <tr><td><strong>ip</strong> — e.g. 192.168.1.73, mask 255.255.255.0</td><td>Your address on the local network, and the mask that says how big that network is. 255.255.255.0 means the last number varies: 254 possible devices. 255.255.252.0 means four such blocks: about a thousand.</td><td>A private address: 192.168.x.x, 10.x.x.x, or 172.16–31.x.x. An address starting 169.254 means no router handed one out (see the DHCP playbook).</td></tr>
   <tr><td><strong>gateway</strong></td><td>Your router's address — the device every packet leaving your network goes through.</td><td>Usually the first or last address in your range, e.g. .1 or .254. Same as the Router tile pings.</td></tr>
   <tr><td><strong>dns</strong></td><td>The servers that turn names into addresses for you.</td><td>Often the router itself, or your ISP's or a public resolver (1.1.1.1, 8.8.8.8). The <a href="#pb-dnshonest">DNS honesty</a> playbook says who really answers.</td></tr>
-  <tr><td><strong>dhcp</strong> — e.g. 192.168.7.1, 4 h of lease left</td><td>The server that handed out your address, and how much of the <em>lease</em> is left. A lease is a loan of an address for a fixed time; Windows renews it halfway through, quietly.</td><td>The router, with hours or days left. "static address" if you set the address by hand. An expired lease that was not renewed is a fault the DHCP playbook diagnoses.</td></tr>
+  <tr><td><strong>dhcp</strong> — e.g. 192.168.1.1, 4 h of lease left</td><td>The server that handed out your address, and how much of the <em>lease</em> is left. A lease is a loan of an address for a fixed time; Windows renews it halfway through, quietly.</td><td>The router, with hours or days left. "static address" if you set the address by hand. An expired lease that was not renewed is a fault the DHCP playbook diagnoses.</td></tr>
   <tr><td><strong>mac</strong> — e.g. C4-13-75-…, Dell</td><td>The adapter's hardware address, and the manufacturer looked up from its first half (the IEEE registry).</td><td>Fixed for the life of the adapter. The manufacturer tells you whose chip it is, which is not always the PC's brand.</td></tr>
   <tr><td><strong>wi-fi</strong> — e.g. 72% signal, 5 GHz ch 36, 802.11ax, 866/866 Mbps</td><td>Signal strength, band and channel, the Wi-Fi generation, and the link rate — the speed negotiated between your adapter and the access point <em>right now</em>.</td><td>Signal above 55%, 5 GHz or 6 GHz, 802.11ac or ax, and a link rate well above your internet speed. The link rate is not your internet speed; it is the ceiling for this hop. "details withheld": turn on Location services.</td></tr>
   <tr><td><strong>ipv6</strong></td><td>Your IPv6 address, if the network has one. An address starting fd… is private to your network; 2… or 3… is global.</td><td>Either is fine. See the <a href="#pb-ipv6">IPv6 check</a> for whether it actually works.</td></tr>
@@ -434,7 +435,7 @@
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
   <tr><td><strong>router / internet</strong> — 4/4 replies, avg 3 ms, worst 4 ms</td><td>Four pings: how many answered, the average round trip, and the slowest one. "3 of 4" means a lost packet.</td><td>All four answered, and the worst not far above the average. A large gap between average and worst is jitter — the thing that makes calls stutter.</td></tr>
-  <tr><td><strong>dns</strong> — 2606:4700:…(+3 more) via 10.10.104.2 · 88 ms</td><td>The addresses example.com resolved to (IPv6 first is normal), which server answered, and how long it took.</td><td>Under 100 ms. If "via" is not one of the servers on the This computer card, something is redirecting DNS — the DNS honesty playbook investigates.</td></tr>
+  <tr><td><strong>dns</strong> — 2606:4700:…(+3 more) via 192.168.1.1 · 88 ms</td><td>The addresses example.com resolved to (IPv6 first is normal), which server answered, and how long it took.</td><td>Under 100 ms. If "via" is not one of the servers on the This computer card, something is redirecting DNS — the DNS honesty playbook investigates.</td></tr>
   <tr><td><strong>https</strong> — total 0.16 s — DNS 33 ms · connect 20 ms · TLS 67 ms · server 35 ms · transfer 0 ms</td><td>One request, split into what it spent on each phase: looking up the name (<em>DNS</em>), opening the connection (<em>connect</em>, roughly one round trip), agreeing the encryption (<em>TLS</em>, one or two more), waiting for the server's first byte (<em>server</em>), and downloading (<em>transfer</em>).</td><td>Each phase tens of ms, total under a second. A slow DNS phase points at your resolver; slow connect at a long path; slow TLS at an old or interfering device; slow server at the far end, not you.</td></tr>
   <tr><td><strong>wi-fi</strong></td><td>The same as the Wi-Fi tile, in full.</td><td>—</td></tr>
 </table></div>
@@ -444,7 +445,7 @@
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
   <tr><td><strong>N seen</strong> (header) / <strong>devices</strong> — e.g. 31 others · 14 with a name</td><td>How many devices answered in the last scan, including this PC; below it, the count without this PC, the range scanned, and how many of them told the scan their name (over mDNS or UPnP — TVs, speakers, printers, phones usually do; PCs and cheap gadgets often do not).</td><td>Whatever you own, plus a few you forgot: smart plugs, a TV, the router. Anything you cannot account for is what the scan table and the <span class="btn">probe</span> button are for.</td></tr>
-  <tr><td><strong>router</strong> — e.g. 192.168.7.1, eero</td><td>The gateway, and its manufacturer from the MAC registry.</td><td>Your router's brand. "ICANN, IANA Department" is a special case: a virtual router address (VRRP/CARP) used by some business firewalls.</td></tr>
+  <tr><td><strong>router</strong> — e.g. 192.168.1.1, eero</td><td>The gateway, and its manufacturer from the MAC registry.</td><td>Your router's brand. "ICANN, IANA Department" is a special case: a virtual router address (VRRP/CARP) used by some business firewalls.</td></tr>
   <tr><td><strong>router check</strong></td><td>The last <a href="#pb-routercheck">Router check-up</a> summary and its age: open management ports, UPnP, admin page.</td><td>"healthy". Telnet open, or UPnP forwards you did not create, deserve attention.</td></tr>
   <tr><td><strong>since last scan</strong> — no change / 2 new · 1 gone · 1 moved</td><td>The difference from the previous scan of the same range. <em>New</em>: never seen in any scan. <em>Gone</em>: seen last time, not now. <em>Moved</em>: same device, different address. Hover for the addresses.</td><td>Phones and laptops come and go; "gone" is only meaningful when it persists. "new" is the one to check — a device that has never been on your network before.</td></tr>
   <tr><td><strong>manufacturer bars</strong></td><td>The devices grouped by who made them, from their MAC addresses. "private address (randomised)" is not a manufacturer: it is what phones, tablets and recent laptops do on Wi-Fi on purpose, so they cannot be tracked between networks.</td><td>A rough inventory. Six Amazon devices and four Wyze cameras is a smart home; twelve "unrecognised" is worth a scan with the table open.</td></tr>
@@ -476,7 +477,7 @@
 <p>A traceroute follows a packet hop by hop — each router it passes through on the way to 1.1.1.1 — and times each one. The card draws the last one as a chain. It is the map behind the Internet tile: <em>where</em> the delay is, not just how much.</p>
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>the chain</strong> — 1 · 1 ms · 192.168.7.1 › 2 · 3 ms · 10.0.0.1 › …</td><td>One box per hop: its number, the round trip <em>to that hop</em> (not the time between hops), and its address. The bar over each box is its delay, so the shape of the bars is the shape of the path.</td><td>Hop 1 is your router at 1–2 ms. The next one or two are your provider's. Then the internet. Eight to fifteen hops and 10–40 ms end to end is typical; a long chain is not a fault by itself.</td></tr>
+  <tr><td><strong>the chain</strong> — 1 · 1 ms · 192.168.1.1 › 2 · 3 ms · 10.0.0.1 › …</td><td>One box per hop: its number, the round trip <em>to that hop</em> (not the time between hops), and its address. The bar over each box is its delay, so the shape of the bars is the shape of the path.</td><td>Hop 1 is your router at 1–2 ms. The next one or two are your provider's. Then the internet. Eight to fifteen hops and 10–40 ms end to end is typical; a long chain is not a fault by itself.</td></tr>
   <tr><td><strong>colours</strong></td><td>Green: inside your own network (a private address). Amber: your provider's access network (carrier-grade NAT addresses, 100.64–127.x). Grey: the internet. An empty box with * is a hop that did not reply.</td><td>Routers are often configured not to answer traceroute; a * with normal hops after it is fine. Two green hops in a row is double NAT — see <a href="#pb-doublenat">the playbook</a>.</td></tr>
   <tr><td><strong>amber underline</strong></td><td>The hop where latency jumps up and <em>stays</em> up for the rest of the path — the point where the delay is added. One slow hop that the later hops do not share is just a router answering slowly, and is not marked.</td><td>None. If there is one and it is hop 1, it is your link; hop 2 or 3, your provider; later, the internet beyond them.</td></tr>
   <tr><td><strong>the verdict line</strong> — Reached in 8 hops, 20 ms end to end · 1 silent hop (normal)</td><td>Whether the trace reached its destination, in how many hops, and the total.</td><td>"Reached". "Path stops after hop N" with the internet still working means a firewall on the way drops traceroute, not traffic.</td></tr>
@@ -568,12 +569,12 @@
   <li><strong>blank</strong> — the prefix is not in the IEEE registry NetDeck carries (the official list of every manufacturer's address blocks, about 54,000 entries, bundled with the app). That is rare for real hardware: it usually means a virtual adapter, a device faking its address, or a very new assignment — the registry is refreshed with each NetDeck release.</li>
 </ul>
 <p>Anything you can't account for is worth tracking down; your router's own client list usually shows a name for each address. <strong>What it will not do:</strong> it only ever scans the private subnet this PC is on, never more than 254 addresses, and refuses to run on a public address — it's a "what's on <em>my</em> network" tool, not a general scanner. Reply times aren't shown, because pinging 254 addresses at once makes them meaningless; use <code>ping</code> on one device for that.</p>
-<figure class="shot"><img src="manual-img/pb-scan.webp" width="1350" height="5076" alt="Result of the “Scan my network” playbook" loading="lazy"><figcaption>The two-step scan: devices that announced themselves first, then the sweep — with Name filled from discovery, a Seen column, and a probe button on every row.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-scan.webp" width="1350" height="2936" alt="Result of the “Scan my network” playbook" loading="lazy"><figcaption>The two-step scan: devices that announced themselves first, then the sweep — with Name filled from discovery, a Seen column, and a probe button on every row.</figcaption></figure>
 
 <h3 id="pb-lan">Who's on my network?</h3>
 <p>Pings your router to freshen the cache, then reads the ARP cache (every device your computer has recently exchanged packets with), counting real devices on your network and ignoring broadcast and multicast entries. Press <strong>table</strong> on that step to see each device's IP and MAC address. The cache only knows devices you've exchanged traffic with, so quiet ones can be missing.</p>
 
-<figure class="shot"><img src="manual-img/pb-lan.webp" width="1350" height="1715" alt="Result of the “Who's on my network?” playbook" loading="lazy"><figcaption>The ARP step with its table opened: one row per device, with interface, IP address, MAC address (last half hidden here) and type.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-lan.webp" width="1350" height="2514" alt="Result of the “Who's on my network?” playbook" loading="lazy"><figcaption>The ARP step with its table opened: one row per device, with interface, IP address, MAC address (last half hidden here) and type.</figcaption></figure>
 
 <h3 id="pb-website">A website won't load</h3>
 <p>The most common complaint, and the hardest to untangle by hand. Give it the site (you can paste a whole address — it keeps just the host). It resolves the name with your DNS <em>and</em> with a public one, connects to port 443, asks for the page headers, times each phase of a real request, and — only if something failed — loads a known-good control site so it can tell "it's them" from "it's you". Possible verdicts:</p>
@@ -625,7 +626,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <h3 id="pb-exposure">What is this PC exposing?</h3>
 <p>Lists every TCP port this machine is listening on with the <em>program</em> behind it, split into <strong>reachable from the network</strong> (listening on all addresses) and <strong>local only</strong> (<code>127.0.0.1</code>, invisible to other machines). It flags remote-access and database services — Remote Desktop, VNC, Telnet, FTP, SQL Server, MySQL, PostgreSQL, Redis, MongoDB, the Docker API — which are the ones worth being sure about, and checks that Windows Firewall is on for every profile. Ports 135, 139 and 445 are standard Windows services, and the block of high ports (49152 and up) are Windows' own; both are summarised rather than listed one by one. "Reachable" means a program is listening; whether the firewall lets outsiders in depends on its rules.</p>
 
-<figure class="shot"><img src="manual-img/pb-exposure.webp" width="1350" height="1445" alt="Result of the “What is this PC exposing?” playbook" loading="lazy"><figcaption>A developer PC: database ports published by Docker are flagged, ordinary Windows services are listed, and the dynamic high ports are summarised in one line.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-exposure.webp" width="1350" height="1005" alt="Result of the “What is this PC exposing?” playbook" loading="lazy"><figcaption>A developer PC: database ports published by Docker are flagged, ordinary Windows services are listed, and the dynamic high ports are summarised in one line.</figcaption></figure>
 
 <h3 id="pb-routing">Routing &amp; adapter sanity</h3>
 <p>For "it works on Wi-Fi until I plug the cable in", half-connected VPNs, and connections that die for no visible reason. It reads the routing table for <em>default routes</em> — the "send everything else this way" rules. One is normal. Several means adapters are competing, and the lowest metric wins; the verdict lists them with the winner marked ▶. The dangerous case is an adapter that holds a default route but has <strong>no valid address</strong> (cable plugged in, DHCP failed): if it wins, your traffic goes nowhere. It also lists which DNS servers each adapter uses — a VPN adapter often takes DNS priority, which is why lookups may go to a server you don't recognise.</p>
@@ -686,7 +687,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <h3 id="pb-routercheck">Router check-up</h3>
 <p>The <a href="#cmd-router-check">router check-up</a> with a verdict: telnet open is a fail, UPnP forwards or TR-069 are worth knowing about, otherwise healthy — with a reminder of the two things it cannot check for you, firmware and the admin password. Only ever your own gateway; read-only.</p>
 
-<figure class="shot"><img src="manual-img/pb-routercheck.webp" width="1350" height="428" alt="Result of the “Router check-up” playbook" loading="lazy"><figcaption>The gateway from the inside: web admin on 80/443 and SSH open, no telnet, no TR-069, UPnP not offered. Healthy — with the two things it cannot check for you spelled out.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-routercheck.webp" width="1350" height="399" alt="Result of the “Router check-up” playbook" loading="lazy"><figcaption>The gateway from the inside: web admin on 80/443 and SSH open, no telnet, no TR-069, UPnP not offered. Healthy — with the two things it cannot check for you spelled out.</figcaption></figure>
 
 <h3 id="pb-proxy">Proxy &amp; HTTPS inspection</h3>
 <p>Shows any proxy configured system-wide or for your account, then connects to a well-known site and reads the certificate it presents <em>to you</em>. Normally that's signed by a public certificate authority. If it's signed by a security product instead — Zscaler, Fortinet, Sophos, an antivirus "web shield" — your HTTPS traffic is being decrypted and re-signed on the way. On a work PC that's usually policy; on a personal one it's worth knowing about.</p>
@@ -713,7 +714,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <p><strong>Step 1 — this PC.</strong> The Print Spooler service (when it is stopped, nothing prints and every printer shows as unavailable), every installed printer with its kind — <em>network</em> with an address, <em>WSD</em> (found by broadcast, with no fixed address), <em>USB</em>, <em>shared from another PC</em>, or <em>virtual</em> (PDF, OneNote) — the status Windows shows for it, and the number of jobs waiting and stuck. A stuck job at the head of a queue blocks everything behind it; cancelling it is often the whole fix.</p>
 <p><strong>Steps 2 to 6 — the printer.</strong> A ping to its address, then its printing ports: <strong>9100</strong> (raw, also called JetDirect — what most Windows drivers use), <strong>631</strong> (IPP, what AirPrint and modern drivers use), <strong>515</strong> (LPR, older), and <strong>80</strong> for the printer's own web page. A printer that answers ping but opens none of the ports is awake but not accepting work — starting up, in an error state, or with network printing switched off. One that answers on a different port from the one Windows is configured to use is a port-configuration problem, and the verdict says which protocol to switch to.</p>
 <p><strong>The usual culprit.</strong> Home routers hand addresses out by DHCP, and after a reboot a printer can come back with a different one while Windows still points at the old. If the ping fails, the playbook looks in the scan log — the record <a href="#pb-scan">Scan my network</a> keeps — for a device whose name matches the printer's, and if it finds one at another address it says so. The lasting fix is a fixed address for the printer, set in the router (a DHCP reservation) rather than on the printer. WSD printers are the other version of the same problem: Windows finds them by broadcast, which breaks when the printer moves network or sleeps deeply; adding the printer again by IP address gives a connection that survives.</p>
-<figure class="shot"><img src="manual-img/pb-printer.webp" width="1350" height="867" alt="Result of the “Printer won't print” playbook" loading="lazy"><figcaption>The office printer is installed here but this PC is at home now: it does not answer, and the verdict says what that usually means and where to look.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-printer.webp" width="1350" height="867" alt="Result of the “Printer won't print” playbook" loading="lazy"><figcaption>The office printer, reached here from home through a split-tunnel VPN: it answers, all three printing ports and its web page are open, so anything left is on this PC — the driver or the queue.</figcaption></figure>
 
 <h3 id="pb-vpncheck">Is my VPN really working?</h3>
 <p>A VPN app shows "Connected" when its tunnel is up. That is not the same as your traffic going through it, and the difference is invisible without looking at the route table. This playbook looks.</p>
@@ -721,7 +722,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <p><strong>Step 2 — the address the internet sees.</strong> A request to Cloudflare's trace endpoint returns the public address and country your connection appears from. Through a full tunnel that is the VPN server's, not yours.</p>
 <p><strong>Step 3 — DNS leak.</strong> The tunnel can carry your traffic while your name lookups still go to the ISP's resolver, which then sees every site you visit. This step is the same egress test as <a href="#pb-dnshonest">Is my DNS honest?</a>, read with the VPN in mind; the fix is the VPN's own DNS server (most apps have a setting) or an encrypted resolver.</p>
 <p><strong>Steps 4 and 5 — MTU.</strong> A VPN wraps every packet in another, so fewer bytes fit: a tunnel adapter's MTU is typically 1400 to 1420 instead of 1500. When a packet is too big and the path refuses to say so, connections stall — the classic "VPN connects, most things work, but some sites hang and uploads freeze". The playbook sends don't-fragment pings of 1372 bytes and, if those fail, 1272, through the tunnel; the verdict gives the MTU to set and the command that sets it.</p>
-<figure class="shot"><img src="manual-img/pb-vpncheck.webp" width="1350" height="854" alt="Result of the “Is my VPN really working?” playbook" loading="lazy"><figcaption>No VPN connected when this was taken: the playbook says so, shows the route the traffic takes instead and the public address the internet sees, and skips the tunnel tests.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-vpncheck.webp" width="1350" height="885" alt="Result of the “Is my VPN really working?” playbook" loading="lazy"><figcaption>A WireGuard office VPN, connected: it is a split tunnel — the default route still goes out through Wi-Fi and only nine routes point into the VPN — which the verdict explains is right for a work VPN and wrong for a privacy one. DNS goes to Cloudflare, and the MTU tests are skipped because the tunnel does not carry ordinary traffic.</figcaption></figure>
 
 <h3 id="pb-calls">Will my video calls be OK?</h3>
 <p>A call needs something different from a download: not much bandwidth, but a <em>steady</em> path, in both directions, over UDP. This playbook measures each of those.</p>
@@ -761,12 +762,12 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
    Description . . . . . . . . . . . : Intel(R) Wi-Fi 6 AX201
    Physical Address. . . . . . . . . : A4-6B-B6-12-34-56
    DHCP Enabled. . . . . . . . . . . : Yes
-   <span class="hl">IPv4 Address. . . . . . . . . . . : 192.168.7.45</span>(Preferred)
+   <span class="hl">IPv4 Address. . . . . . . . . . . : 192.168.1.45</span>(Preferred)
    Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   <span class="hl">Default Gateway . . . . . . . . . : 192.168.7.1</span>
-   DHCP Server . . . . . . . . . . . : 192.168.7.1
-   <span class="hl">DNS Servers . . . . . . . . . . . : 75.75.75.75</span>
-                                       75.75.76.76</pre>
+   <span class="hl">Default Gateway . . . . . . . . . : 192.168.1.1</span>
+   DHCP Server . . . . . . . . . . . : 192.168.1.1
+   <span class="hl">DNS Servers . . . . . . . . . . . : 203.0.113.53</span>
+                                       203.0.113.54</pre>
   <p><strong>How to read it:</strong> find the adapter you're using (Wi-Fi or Ethernet) and check three lines — <em>IPv4 Address</em> (your address; <code>169.254.x.x</code> means DHCP failed), <em>Default Gateway</em> (your router; blank means you can't reach anything), and <em>DNS Servers</em>. "Media disconnected" under an adapter just means nothing is plugged in there.</p>
   <p><strong>Linux / macOS:</strong> <code>ip addr</code> (Linux) or <code>ifconfig</code> (macOS, older Linux).</p>
 </article>
@@ -870,9 +871,9 @@ Approximate round trip times in milli-seconds:
   <pre>Tracing route to one.one.one.one [1.1.1.1]
 over a maximum of 30 hops:
 
-  1     1 ms     1 ms     1 ms  <span class="hl">192.168.7.1</span>          <span class="dim">← your router</span>
-  2    10 ms     9 ms    11 ms  96.120.14.1          <span class="dim">← your provider</span>
-  3    12 ms    11 ms    12 ms  68.85.107.33
+  1     1 ms     1 ms     1 ms  <span class="hl">192.168.1.1</span>          <span class="dim">← your router</span>
+  2    10 ms     9 ms    11 ms  203.0.113.1          <span class="dim">← your provider</span>
+  3    12 ms    11 ms    12 ms  203.0.113.2
   4     *        *        *     Request timed out.   <span class="dim">← a router that hides itself; fine</span>
   5    11 ms    12 ms    11 ms  1.1.1.1
 
@@ -887,11 +888,11 @@ Trace complete.</pre>
   <pre>Computing statistics for 125 seconds...
             Source to Here   This Node/Link
 Hop  RTT    Lost/Sent = Pct  Lost/Sent = Pct  Address
-  0                                           DESKTOP [192.168.7.45]
+  0                                           DESKTOP [192.168.1.45]
                                 0/ 100 =  0%   |
-  1    1ms     0/ 100 =  0%     0/ 100 =  0%  192.168.7.1
+  1    1ms     0/ 100 =  0%     0/ 100 =  0%  192.168.1.1
                                <span class="hl">12/ 100 = 12%</span>   |          <span class="dim">← the link after the router is losing packets</span>
-  2   14ms    12/ 100 = 12%     0/ 100 =  0%  96.120.14.1</pre>
+  2   14ms    12/ 100 = 12%     0/ 100 =  0%  203.0.113.1</pre>
   <p><strong>Linux / macOS:</strong> <code>mtr &lt;host&gt;</code> — the same idea, updating live.</p>
 </article>
 
@@ -931,7 +932,7 @@ Upload (up to 8 s)
 Summary over 3 min
 Target               Sent Lost Loss % Avg ms Max ms Jitter ms Bursts Longest burst
 ------               ---- ---- ------ ------ ------ --------- ------ -------------
-router (192.168.7.1)  180    3    1.7      1    212         2      1             3
+router (192.168.1.1)  180    3    1.7      1    212         2      1             3
 internet (1.1.1.1)    180    3    1.7     19    240         3      1             3
 
 <span class="hl">Dropouts on the local link: the router itself failed to answer 3 of 180 pings (1.7%, 1 run of loss, longest 3 s).</span> That is between this PC and the router…</pre>
@@ -978,9 +979,9 @@ Ethernet 1 Gbps  31.40    0.72   52.11     1.10  58.9 MB 1.3 MB ▂▆▇▇▇�
 ===========================================================================
 Active Routes:
 Network Destination        Netmask          Gateway       Interface  Metric
-          <span class="hl">0.0.0.0          0.0.0.0      192.168.7.1    192.168.7.45     35</span>
+          <span class="hl">0.0.0.0          0.0.0.0      192.168.1.1    192.168.1.45     35</span>
         127.0.0.0        255.0.0.0         On-link         127.0.0.1    331
-      192.168.7.0    255.255.255.0         On-link      192.168.7.45    291</pre>
+      192.168.1.0    255.255.255.0         On-link      192.168.1.45    291</pre>
   <p><strong>How to read it:</strong> "On-link" means "directly reachable, no router needed". Lower <em>Metric</em> wins when two routes match. Table view lets you sort by any column.</p>
   <p><strong>Linux / macOS:</strong> <code>ip route</code> (Linux), <code>netstat -rn</code> (macOS), <code>route -n</code> (older Linux).</p>
 </article>
@@ -988,7 +989,7 @@ Network Destination        Netmask          Gateway       Interface  Metric
 <article class="cmd" id="cmd-route-add">
   <h4><code>route add</code> · <code>route delete</code> <span class="tag">WIN</span> <span class="tag copy">copy only</span></h4>
   <p>Adds or removes a rule in that table — for example, "send everything for 10.0.0.0/8 through the VPN's gateway". Needs admin rights and a wrong rule can cut you off, so it's copy-only.</p>
-  <pre>route add 10.0.0.0 mask 255.0.0.0 192.168.7.254
+  <pre>route add 10.0.0.0 mask 255.0.0.0 192.168.1.254
 route delete 10.0.0.0</pre>
   <p><strong>Linux / macOS:</strong> <code>ip route add …</code> / <code>ip route del …</code>.</p>
 </article>
@@ -1008,7 +1009,7 @@ WireGuard WireGuard Tunnel   10.8.0.2    1420 10.8.0.1
 Adapter   Next hop      Metric   VPN
 -------   --------      ------   ---
 WireGuard 0.0.0.0            5  True
-Wi-Fi     192.0.2.1         35 False
+Wi-Fi     192.168.1.1         35 False
 
 3. Verdict
 Full tunnel: the default route goes through WireGuard (MTU 1420). …</pre>
@@ -1021,8 +1022,8 @@ Full tunnel: the default route goes through WireGuard (MTU 1420). …</pre>
   <pre>  Proto  Local Address          Foreign Address        State           PID
   TCP    0.0.0.0:22             0.0.0.0:0              <span class="hl">LISTENING</span>       5636
   TCP    0.0.0.0:443            0.0.0.0:0              LISTENING       21920
-  TCP    192.168.7.45:52114     140.82.112.22:443      <span class="hl">ESTABLISHED</span>     8840
-  TCP    192.168.7.45:52120     52.96.166.2:443        TIME_WAIT       0
+  TCP    192.168.1.45:52114     140.82.112.22:443      <span class="hl">ESTABLISHED</span>     8840
+  TCP    192.168.1.45:52120     52.96.166.2:443        TIME_WAIT       0
   UDP    0.0.0.0:5353           *:*                                    3204</pre>
   <p><strong>How to read it:</strong> <em>Local Address</em> ends in the port number. <code>LISTENING</code> = a server on your machine waiting for connections; <code>ESTABLISHED</code> = a live connection to the <em>Foreign Address</em>; <code>TIME_WAIT</code> = recently closed, ignore. <code>0.0.0.0</code> means "on every address". Switch to <strong>Table</strong> view: NetDeck adds a <em>Process</em> column so the PID becomes a program name, and you can filter by port or state.</p>
   <p><strong>Linux / macOS:</strong> <code>ss -tulpn</code> (Linux) or <code>netstat -tulpn</code>; on macOS <code>lsof -i -P</code>.</p>
@@ -1033,7 +1034,7 @@ Full tunnel: the default route goes through WireGuard (MTU 1420). …</pre>
   <p>PowerShell's version of <code>netstat</code> for TCP. Same information, but as proper columns that are easier to sort and filter — and in PowerShell scripts you can pipe it to other commands. NetDeck sorts it by state; Table view adds the process name.</p>
   <pre>LocalAddress LocalPort RemoteAddress  RemotePort State       OwningProcess
 ------------ --------- -------------  ---------- -----       -------------
-192.168.7.45     52114 140.82.112.22         443 Established          8840
+192.168.1.45     52114 140.82.112.22         443 Established          8840
 0.0.0.0             22 0.0.0.0                 0 Listen               5636</pre>
   <p><strong>Linux / macOS:</strong> <code>lsof -i</code>.</p>
 </article>
@@ -1045,7 +1046,7 @@ Full tunnel: the default route goes through WireGuard (MTU 1420). …</pre>
 RemoteAddress    : 140.82.112.3
 RemotePort       : 443
 InterfaceAlias   : Wi-Fi
-SourceAddress    : 192.168.7.45
+SourceAddress    : 192.168.1.45
 PingSucceeded    : True
 PingReplyDetails (RTT) : 24 ms
 <span class="hl">TcpTestSucceeded : True</span></pre>
@@ -1072,7 +1073,7 @@ svchost    3320  61 KB    18 KB     190    0%  20.190.160.5:HTTPS
 <article class="cmd" id="cmd-tcp-probe">
   <h4><code>Quick TCP port test</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>The same question as <code>Test-NetConnection</code> — is this port open? — but it gives up after 5 seconds instead of 20–60, and states the answer outright rather than leaving you to infer it. The service-sweep and email playbooks use it for that reason.</p>
-  <pre>Target : 192.168.7.1
+  <pre>Target : 192.168.1.1
 Port   : 443
 <span class="hl">Result : refused</span>
 Millis : 1012</pre>
@@ -1095,12 +1096,12 @@ NAT type: endpoint-independent ("cone") - both servers saw the same public port,
 <article class="cmd" id="cmd-arp-a">
   <h4><code>arp -a</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
   <p>On your local network, computers find each other by MAC address, not IP. The ARP cache is your computer's memory of "IP → MAC" for every device it has talked to recently. Reading it is the quickest way to see what's on your network, and to spot two devices claiming the same IP.</p>
-  <pre>Interface: 192.168.7.45 --- 0x5
+  <pre>Interface: 192.168.1.45 --- 0x5
   Internet Address      Physical Address      Type
-  <span class="hl">192.168.7.1           f8-bb-bf-00-11-22     dynamic</span>    <span class="dim">← router</span>
-  192.168.7.23          e4-c7-67-00-33-44     dynamic
-  192.168.7.26          98-7a-9b-00-55-66     dynamic
-  192.168.7.255         ff-ff-ff-ff-ff-ff     static     <span class="dim">← broadcast; ignore</span>
+  <span class="hl">192.168.1.1           f8-bb-bf-00-11-22     dynamic</span>    <span class="dim">← router</span>
+  192.168.1.23          e4-c7-67-00-33-44     dynamic
+  192.168.1.26          98-7a-9b-00-55-66     dynamic
+  192.168.1.255         ff-ff-ff-ff-ff-ff     static     <span class="dim">← broadcast; ignore</span>
   224.0.0.251           01-00-5e-00-00-fb     static     <span class="dim">← multicast; ignore</span></pre>
   <p><strong>How to read it:</strong> "dynamic" rows are real devices seen in the last few minutes; "static" rows starting with <code>224.</code>, <code>239.</code> or ending in <code>.255</code> are built-in and not devices. The first three pairs of a MAC identify the manufacturer — search "f8-bb-bf OUI" to find out who made it. Table view lets you sort by IP.</p>
   <p><strong>Linux / macOS:</strong> <code>arp -a</code> works on both; <code>ip neigh</code> on Linux.</p>
@@ -1116,7 +1117,7 @@ NAT type: endpoint-independent ("cone") - both servers saw the same public port,
   <h4><code>Get-WinEvent</code> (address conflicts) <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>Searches the Windows System log for event 4199 — "the system detected an address conflict" — which Windows writes when another device turns up using this PC's IP address. The one place a duplicate address leaves evidence after the fact.</p>
   <pre>When    : 2026-07-05 06:56
-Message : The system detected an address conflict for IP address 192.168.7.45
+Message : The system detected an address conflict for IP address 192.168.1.45
           with the system having network hardware address 98-7A-9B-00-55-66.</pre>
   <p><strong>How to read it:</strong> the hardware address in the message is the <em>other</em> device; look it up in <code>arp -a</code> or your router's client list. "No address-conflict events found" is the good answer.</p>
 </article>
@@ -1128,7 +1129,7 @@ Message : The system detected an address conflict for IP address 192.168.7.45
   <h4><code>nslookup &lt;domain&gt;</code> <span class="tag star">&#x2605;</span> <span class="tag">WIN</span> <span class="tag">L/M</span> <span class="tag run">runnable</span></h4>
   <p>Asks your DNS server "what address is this name?" — the phone-book lookup that happens invisibly every time you open a website. Use it when a site won't load to find out whether the problem is the name (DNS) or the connection.</p>
   <pre>Server:  <span class="dim">UnKnown</span>
-Address:  192.168.7.1              <span class="dim">← the DNS server that answered</span>
+Address:  192.168.1.1              <span class="dim">← the DNS server that answered</span>
 
 Non-authoritative answer:
 Name:    example.com
@@ -1198,10 +1199,10 @@ github.com           A    60   Answer  <span class="hl">140.82.112.3</span></pre
   <p>Windows turns a PC name into an address three ways, in turn: DNS (your DNS server), LLMNR/NetBIOS (a query broadcast on the local network), and mDNS (<code>name.local</code>). This runs each separately and says which one knows the name, with the time it took — so "DNS is wrong" and "the LAN answered directly" are told apart, and a name that nothing knows is clearly that. Used by <a href="#pb-share">Can't see the other PC</a>.</p>
   <pre>Resolving "OFFICE-PC" every way Windows tries:
    DNS (your DNS servers)            no answer  (200 ms)
-   LLMNR / NetBIOS (asking the LAN)  192.0.2.73, fd12:3456:789a::1f  (11 ms)
-   mDNS (OFFICE-PC.local)            192.0.2.73, fd12:3456:789a::1f  (1 ms)
+   LLMNR / NetBIOS (asking the LAN)  192.168.1.73, fd12:3456:789a::1f  (11 ms)
+   mDNS (OFFICE-PC.local)            192.168.1.73, fd12:3456:789a::1f  (1 ms)
 
-Found by llmnr/netbios: 192.0.2.73. Your DNS server does not know the name (normal on a home network) - Windows found it by asking the local network directly, which only works on the same subnet.</pre>
+Found by llmnr/netbios: 192.168.1.73. Your DNS server does not know the name (normal on a home network) - Windows found it by asking the local network directly, which only works on the same subnet.</pre>
 </article>
 <h3 id="c-win">Windows networking &amp; sharing</h3>
 
@@ -1286,9 +1287,9 @@ Being reached by others: NOT possible - no inbound SMB firewall rule enabled for
 Printer                        Kind                   Address       Status  Jobs Stuck Driver
 -------                        ----                   -------       ------  ---- ----- ------
 Microsoft Print to PDF         virtual                              Normal     0     0 Microsoft Print To PDF
-Office Laser (default)         network                192.0.2.35    Normal     0     0 Universal PCL
+Office Laser (default)         network                192.168.1.35    Normal     0     0 Universal PCL
 
-Network printer to test: Office Laser at 192.0.2.35 (port 9100, RAW)</pre>
+Network printer to test: Office Laser at 192.168.1.35 (port 9100, RAW)</pre>
 </article>
 <article class="cmd" id="cmd-rdp-status">
   <h4><code>Remote Desktop host status</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
@@ -1303,7 +1304,7 @@ Rule                                Enabled Profile
 ----                                ------- -------
 Remote Desktop - User Mode (TCP-In) False   Any
 …
-7. This PC: OFFICE-PC at 192.0.2.73</pre>
+7. This PC: OFFICE-PC at 192.168.1.73</pre>
 </article>
 <h3 id="c-tools">Scanning, capture &amp; transfer</h3>
 <p>These are cross-platform tools rather than built-in Windows commands. Most aren't installed by default, and several need a target you're allowed to probe — so they're reference entries.</p>
@@ -1311,20 +1312,20 @@ Remote Desktop - User Mode (TCP-In) False   Any
 <article class="cmd" id="cmd-lan-scan">
   <h4><code>Local network scan</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>The command behind the <em>Scan my network</em> playbook: a PowerShell script that pings every address in your own subnet simultaneously, then reads the ARP table (<code>Get-NetNeighbor</code>) to attach MAC addresses and to catch devices that ignore ping. It takes no input — the range comes from your active adapter — scans at most 254 addresses, and refuses to run if the adapter has a public address. Table view adds the <strong>Manufacturer</strong> column.</p>
-  <pre>Scanned 192.168.7.1-254 on Wi-Fi in 6.2 s: 40 devices found
+  <pre>Scanned 192.168.1.1-254 on Wi-Fi in 6.2 s: 40 devices found
 
 IP            Name MAC               Ping     Note
 --            ---- ---               ----     ----
-192.168.7.1        F8-BB-BF-00-11-22 replied  router
-192.168.7.23       E4-C7-67-00-33-44 <span class="hl">no reply</span>
-192.168.7.45       C4-13-75-0A-1B-2C replied  this PC</pre>
+192.168.1.1        F8-BB-BF-00-11-22 replied  router
+192.168.1.23       E4-C7-67-00-33-44 <span class="hl">no reply</span>
+192.168.1.45       C4-13-75-0A-1B-2C replied  this PC</pre>
   <p><strong>How to read it:</strong> every row is a device that exists on your network right now. <em>no reply</em> doesn't mean "off" — it means the device ignores ping but answered ARP, which is normal for phones and smart-home gear.</p>
   <p><strong>Linux / macOS:</strong> <code>nmap -sn 192.168.1.0/24</code> does the same sweep, if nmap is installed; <code>arp -a</code> afterwards lists the MAC addresses.</p>
 </article>
 
 <article class="cmd" id="cmd-nmap">
   <h4><code>nmap &lt;target&gt;</code> <span class="tag">ALL</span> <span class="tag copy">copy only</span></h4>
-  <p>The standard port scanner: it asks a host (or a whole network) which ports are open, and can often guess what service and operating system is behind them. <code>nmap -sn 192.168.7.0/24</code> lists every device on your network; <code>nmap 192.168.7.10</code> shows what that device is running. Only scan networks you own or administer — on someone else's it's treated as hostile.</p>
+  <p>The standard port scanner: it asks a host (or a whole network) which ports are open, and can often guess what service and operating system is behind them. <code>nmap -sn 192.168.1.0/24</code> lists every device on your network; <code>nmap 192.168.1.10</code> shows what that device is running. Only scan networks you own or administer — on someone else's it's treated as hostile.</p>
 </article>
 
 <article class="cmd" id="cmd-pktmon">
@@ -1388,10 +1389,10 @@ api.github.com                  2
 
   # Time         Dir Source              Destination         Proto Bytes Info
   - ----         --- ------              -----------         ----- ----- ----
-  1 20:35:47.192 out 192.168.7.45:52114  140.82.112.22:443   HTTPS    74 Flags [S], seq 1234, win 64240, options [mss 1460], length 0
-  2 20:35:47.230 in  140.82.112.22:443   192.168.7.45:52114  HTTPS  1514 Flags [P.], seq 1:1449, ack 1, win 501, length 1448
-  3 20:35:47.300 out 192.168.7.45:61000  192.168.7.1:53      DNS      70 4321+ A? github.com. (28)
-  4 20:35:47.310 in  192.168.7.1:53      192.168.7.45:61000  DNS      86 4321 1/0/0 A 140.82.112.22 (44)</pre>
+  1 20:35:47.192 out 192.168.1.45:52114  140.82.112.22:443   HTTPS    74 Flags [S], seq 1234, win 64240, options [mss 1460], length 0
+  2 20:35:47.230 in  140.82.112.22:443   192.168.1.45:52114  HTTPS  1514 Flags [P.], seq 1:1449, ack 1, win 501, length 1448
+  3 20:35:47.300 out 192.168.1.45:61000  192.168.1.1:53      DNS      70 4321+ A? github.com. (28)
+  4 20:35:47.310 in  192.168.1.1:53      192.168.1.45:61000  DNS      86 4321 1/0/0 A 140.82.112.22 (44)</pre>
   <p><strong>How to read it:</strong> <em>Dir</em> is from this PC's point of view. In <em>Info</em>, TCP flags tell the story of a connection: <code>[S]</code> is an attempt, <code>[S.]</code> the other side accepting, <code>[P.]</code> data, <code>[F.]</code> a polite close, <code>[R]</code> a slammed door (a refused port or a firewall). DNS rows show the question (<code>A? name</code>) and the answer (<code>1/0/0 A address</code>). To dig deeper than this, capture with the "keep .pcapng" variant and open the file in Wireshark.</p>
   <p><strong>Linux / macOS:</strong> <code>tcpdump -nn -r capture.pcap</code>; <code>tshark -r capture.pcap</code> for the full decode.</p>
 </article>
@@ -1424,10 +1425,10 @@ Dropped in total: 41. The Type and reason columns say which layer dropped them.<
 
 IP           Name           Model          Maker       Via       Services
 --           ----           -----          -----       ---       --------
-192.168.7.1  eero           eero Pro       eero inc.   SSDP      UPnP InternetGatewayDevice
-192.168.7.33 Living Room TV Eureka Dongle  Google Inc. SSDP+mDNS _googlecast._tcp, UPnP dial
-192.168.7.51 Office Printer ET-4850        EPSON       mDNS      _ipp._tcp, _printer._tcp, _http._tcp
-192.168.7.72 Kitchen                                   mDNS      _hap._tcp, _companion-link._tcp</pre>
+192.168.1.1  eero           eero Pro       eero inc.   SSDP      UPnP InternetGatewayDevice
+192.168.1.33 Living Room TV Eureka Dongle  Google Inc. SSDP+mDNS _googlecast._tcp, UPnP dial
+192.168.1.51 Office Printer ET-4850        EPSON       mDNS      _ipp._tcp, _printer._tcp, _http._tcp
+192.168.1.72 Kitchen                                   mDNS      _hap._tcp, _companion-link._tcp</pre>
   <p><strong>How to read it:</strong> only devices that speak these protocols appear — phones mostly do not, and many cheap smart-home gadgets only talk to their cloud — so a short list is normal; the network scan finds everything. <em>Via</em> says which protocol answered. <em>Services</em> is what the device advertises: <code>_googlecast</code> is Cast, <code>_airplay</code>/<code>_raop</code> Apple, <code>_hap</code> HomeKit, <code>_ipp</code>/<code>_printer</code> printing, <code>_smb</code> file sharing. Windows' firewall only lets the system resolver receive multicast replies, so NetDeck asks devices to answer it directly; a device that refuses to (rare) is still found by the scan.</p>
   <p><strong>Linux / macOS:</strong> <code>avahi-browse -art</code> (Linux) or <code>dns-sd -B _services._dns-sd._udp</code> (macOS).</p>
 </article>
@@ -1435,7 +1436,7 @@ IP           Name           Model          Maker       Via       Services
 <article class="cmd" id="cmd-device-probe">
   <h4><code>Device port probe</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>"What is this thing?" Give it one address (or press <strong>probe</strong> on any row of the scan table) and it tries 26 common device ports at once — web pages, printing, casting, AirPlay, file sharing, cameras, remote access, telnet — in about two and a half seconds, then says what the mix looks like. Only probe devices on networks you are responsible for.</p>
-  <pre>Probed 26 common ports on 192.168.7.51 in 2.4 s: 4 open, 22 closed, 0 no answer
+  <pre>Probed 26 common ports on 192.168.1.51 in 2.4 s: 4 open, 22 closed, 0 no answer
 
  Port Service       State
  ---- -------       -----
@@ -1447,7 +1448,7 @@ IP           Name           Model          Maker       Via       Services
    …
 
 Looks like: a printer (printing ports open).
-Tip: it has a web page - open http://192.168.7.51 in a browser to identify it for sure.</pre>
+Tip: it has a web page - open http://192.168.1.51 in a browser to identify it for sure.</pre>
   <p><strong>How to read it:</strong> <em>open</em> means something answered on that port; <em>closed</em> means the device is up but nothing listens there; <em>filtered (no answer)</em> means a firewall dropped the attempt silently — phones and locked-down PCs look like this on every port. The guess at the bottom is from the pattern of open ports (printing ports → printer, 8009 → Google Cast, 3389/445 → Windows PC, 53 alone → a router managed from an app). Telnet (23) open on anything is worth fixing: it is unencrypted and usually means old firmware.</p>
   <p><strong>Linux / macOS:</strong> <code>nmap -F 192.168.1.20</code>.</p>
 </article>
@@ -1455,7 +1456,7 @@ Tip: it has a web page - open http://192.168.7.51 in a browser to identify it fo
 <article class="cmd" id="cmd-router-check">
   <h4><code>Router check-up</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>Your router looked at from the inside, without logging in. <strong>1.</strong> Which management ports answer on the LAN side — the web admin page (80/443), SSH, <strong>telnet</strong> (the red flag: an unencrypted login anything on the network can try passwords against), DNS, and TR-069 (the channel ISPs use to manage routers they supply). <strong>2.</strong> The admin page's title and its certificate (self-signed is normal for a router). <strong>3.</strong> Whether UPnP is on, and every port it has opened from the internet to devices on your network — the thing games, consoles and some cameras do silently. Read-only: it lists forwards, it never changes anything, and it only ever talks to your own gateway on a private address.</p>
-  <pre>Router: 192.168.7.1 (F8-BB-BF-xx-xx-xx)
+  <pre>Router: 192.168.1.1 (F8-BB-BF-xx-xx-xx)
 
 1. Management ports on the LAN side
  Port Purpose                        State
@@ -1466,12 +1467,12 @@ Tip: it has a web page - open http://192.168.7.51 in a browser to identify it fo
  7547 TR-069 (ISP remote management) no answer
 
 3. UPnP (programs opening ports on the router automatically)
-   UPnP is ON (http://192.168.7.1:5000/rootDesc.xml).
+   UPnP is ON (http://192.168.1.1:5000/rootDesc.xml).
    Port forwards currently open from the internet:
 External port Proto Goes to             Description
 ------------- ----- -------             -----------
-3074          UDP   192.168.7.88:3074   Xbox
-<span class="hl">Attention: 1 UPnP port forward exposes devices on your network to the internet (3074->192.168.7.88:3074)…</span></pre>
+3074          UDP   192.168.1.88:3074   Xbox
+<span class="hl">Attention: 1 UPnP port forward exposes devices on your network to the internet (3074->192.168.1.88:3074)…</span></pre>
   <p><strong>How to read it:</strong> telnet open = fix or replace the router. UPnP forwards to a console or a game are normal and close by themselves; a forward pointing at a camera, NAS or PC is an exposure you should recognise. Mesh systems managed from an app (eero, Google Wifi, Deco) show no admin page, which is fine. NetDeck cannot check the two things that matter most — current firmware and a non-default admin password — those are yours.</p>
   <p><strong>Linux / macOS:</strong> <code>nmap -p 22,23,53,80,443,7547 &lt;gateway&gt;</code>; <code>upnpc -l</code> (miniupnpc) lists UPnP forwards.</p>
 </article>
@@ -1524,9 +1525,9 @@ TrustedByWindows : True</pre>
 <article class="cmd" id="cmd-router-wan">
   <h4><code>Router WAN address (UPnP)</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
   <p>Finds your router over UPnP (an SSDP search for an Internet Gateway Device) and sends it one read-only request, <code>GetExternalIPAddress</code>: what address does it have on its internet side? A private address there means a second router in front of it — double NAT; an address in <code>100.64.0.0/10</code> means carrier-grade NAT; a public address means the router is directly on the internet. Only your own gateway, only on a private address; a router with UPnP off cannot be asked. Used by <a href="#pb-doublenat">Am I behind double NAT or CGNAT?</a>.</p>
-  <pre>Router: 192.0.2.1
-UPnP: on (http://192.0.2.1:1900/igd.xml)
-WAN address the router reports: 10.0.0.47  (a PRIVATE address - this router sits behind another router)</pre>
+  <pre>Router: 192.168.1.1
+UPnP: on (http://192.168.1.1:1900/igd.xml)
+WAN address the router reports: 10.0.0.5  (a PRIVATE address - this router sits behind another router)</pre>
 </article>
 <h3 id="c-sys">System &amp; process info</h3>
 
@@ -1656,7 +1657,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <!-- ============================================================ -->
 <h2 id="glossary">Glossary</h2>
 <dl class="gloss">
-  <dt>IP address</dt><dd>A device's number on a network, like <code>192.168.7.45</code>. Addresses starting with <code>10.</code>, <code>172.16–31.</code> or <code>192.168.</code> are private (only meaningful inside your network); anything else is a public internet address.</dd>
+  <dt>IP address</dt><dd>A device's number on a network, like <code>192.168.1.45</code>. Addresses starting with <code>10.</code>, <code>172.16–31.</code> or <code>192.168.</code> are private (only meaningful inside your network); anything else is a public internet address.</dd>
   <dt>MAC address</dt><dd>The hardware serial number of a network card, like <code>a4-6b-b6-12-34-56</code>. Fixed for life; only used within your local network.</dd>
   <dt>MTU</dt><dd>Maximum Transmission Unit — the largest packet, in bytes, a connection carries in one piece. 1500 on ordinary Ethernet and Wi-Fi; smaller over VPNs and PPPoE. When a path's MTU is lower than your PC assumes, big packets vanish and some sites load partway then hang.</dd>
   <dt>Gateway / router</dt><dd>The device that forwards traffic between your local network and the internet. Its address is the "Default Gateway" in <code>ipconfig</code>.</dd>
@@ -1697,7 +1698,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.26.4</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.26.5</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this licence text go with it — and it comes with no warranty of any kind. The full text:</p>
