@@ -1232,7 +1232,8 @@ body[data-mode="static"] .live-only { display: none !important; }
 
 /* ================= network calculator ================= */
 .calc-btn + .theme-btn { margin-left: -14px; }
-.calc-box { width: min(940px, 100%); max-height: 88vh; gap: 10px; }
+#calc-modal { padding: 16px; }
+.calc-box { width: min(1000px, 100%); max-height: calc(100vh - 32px); gap: 10px; }
 .calc-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .calc-head-tools { display: inline-flex; gap: 4px; align-items: center; }
 .calc-head-tools .icon-btn { width: 28px; height: 28px; }
@@ -1257,16 +1258,25 @@ body[data-mode="static"] .live-only { display: none !important; }
 .calc-field .tbtn { align-self: flex-start; text-transform: none; letter-spacing: 0; }
 .calc-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .calc-actions[hidden] { display: none; }
+.calc-actions.inline { align-self: end; padding-bottom: 5px; }
 .calc-actions .run-btn { padding: 4px 12px; }
-.calc-out { display: flex; flex-direction: column; gap: 8px; }
-.calc-sub { margin: 6px 0 0; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-.calc-kv { display: grid; grid-template-columns: 11.5em minmax(0, 1.15fr) minmax(0, 1fr); gap: 6px 16px; align-items: baseline; }
+/* result groups flow into two balanced columns; messages, tables and Checks run across both */
+.calc-out { columns: 2 360px; column-gap: 32px; }
+.calc-block { break-inside: avoid; margin: 0 0 14px; }
+.calc-block.span { column-span: all; }
+.calc-block.span .calc-kv { columns: 2 330px; column-gap: 32px; }
+.calc-sub { margin: 0 0 8px; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.calc-row { display: grid; grid-template-columns: 11em minmax(0, 1fr); column-gap: 14px; align-items: baseline; break-inside: avoid; padding: 2.5px 0; }
 .calc-k { font-size: 12px; color: var(--muted); }
 .calc-v { font-family: var(--mono); font-size: 13px; color: var(--bright); overflow-wrap: anywhere; }
 .calc-v[data-tone="ok"] { color: var(--ok); }
 .calc-v[data-tone="warn"] { color: var(--warn); }
 .calc-v[data-tone="err"] { color: var(--err); }
-.calc-note { font-size: 12px; color: var(--muted); }
+/* explanations sit under their value, shown with the "Show explanations" toggle; the value's tooltip carries them otherwise */
+.calc-note { display: none; grid-column: 2; margin: -2px 0 4px; font-size: 12px; color: var(--muted); }
+.calc-out.explain .calc-note { display: block; }
+.calc-out:not(.explain) .calc-k[title], .calc-out:not(.explain) .calc-v[title] { cursor: help; }
+#calc-explain[aria-pressed="true"] { color: var(--bright); border-color: var(--muted); }
 .calc-v .b-net, .calc-v .b-sub, .calc-v .b-host { padding: 1px 0; }
 .calc-v .b-net { background: var(--err-dim); color: var(--err); }
 .calc-v .b-sub { background: var(--warn-dim); color: var(--warn); }
@@ -1275,14 +1285,15 @@ body[data-mode="static"] .live-only { display: none !important; }
 .calc-msg { margin: 0; padding: 8px 10px; border-left: 3px solid var(--border); border-radius: 4px; background: var(--surface-2); font-size: 13px; }
 .calc-msg[data-tone="err"] { border-left-color: var(--err); background: var(--err-dim); color: var(--text); }
 .calc-msg[data-tone="warn"] { border-left-color: var(--warn); background: var(--warn-dim); }
-.calc-tablewrap { overflow: auto; max-height: 360px; border: 1px solid var(--border-soft); border-radius: 6px; }
+.calc-tablewrap { overflow: auto; max-height: 250px; border: 1px solid var(--border-soft); border-radius: 6px; }
 .calc-table { margin: 0; width: 100%; }
 .calc-table td { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
 .calc-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--border-soft); padding-top: 10px; }
 .calc-foot-note { font-size: 12px; color: var(--muted); }
 .calc-foot-btns { display: inline-flex; gap: 6px; }
 @media (max-width: 640px) {
-  .calc-kv { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .calc-row { grid-template-columns: minmax(0, 1fr); }
+  .calc-note { grid-column: 1; }
   .calc-k { margin-top: 6px; }
   .calc-field.span2 { grid-column: 1 / -1; }
 }

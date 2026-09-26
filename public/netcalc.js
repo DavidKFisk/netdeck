@@ -14,8 +14,8 @@ window.NetDeckCalc = (() => {
 
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   function load() {
-    try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') return { tool: j.tool || 'ipv4', modes: j.modes || {}, vals: j.vals || {} }; } catch (e) { /* blocked */ }
-    return { tool: 'ipv4', modes: {}, vals: {} };
+    try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') return { tool: j.tool || 'ipv4', modes: j.modes || {}, vals: j.vals || {}, explain: !!j.explain }; } catch (e) { /* blocked */ }
+    return { tool: 'ipv4', modes: {}, vals: {}, explain: false };
   }
   function save() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* a convenience */ } }, 300); }
   class Bad extends Error {}
@@ -348,8 +348,8 @@ window.NetDeckCalc = (() => {
       fields: [
         { id: 'ip', label: 'IP address', def: '192.168.1.100', placeholder: '192.168.1.100 or 192.168.1.100/26' },
         { id: 'mask', label: 'Mask or prefix', def: '/26', list: prefixList, placeholder: '/26 · 255.255.255.192 · 0.0.0.63' },
-        { id: 'other', label: 'Same subnet as… (optional)', def: '', placeholder: 'another address' },
-        { id: 'need', label: 'Hosts needed (optional)', def: '', placeholder: 'e.g. 50' },
+        { id: 'other', label: 'Same subnet as…', def: '', placeholder: 'optional' },
+        { id: 'need', label: 'Hosts needed', def: '', placeholder: 'optional — e.g. 50' },
       ],
       actions: [{
         label: 'Use this PC', live: true, title: "Fill in this computer's address and mask",
@@ -407,7 +407,8 @@ window.NetDeckCalc = (() => {
           { k: 'Binary', v: ip4.bin(ip).match(/.{8}/g).join('.'), html: bitsHtml(ip, prefix, cls.bits), note: 'Red: classful network bits · amber: subnet bits · green: host bits.' },
           { k: 'Hexadecimal', v: `${ip4.hex(ip)}  (0x${(ip >>> 0).toString(16).toUpperCase().padStart(8, '0')})` },
           { k: 'Decimal integer', v: String(ip), note: 'The address as one 32-bit number.' },
-          { k: 'Mask in hex / binary', v: `${ip4.hex(mask).toLowerCase()}  ·  ${ip4.bin(mask).match(/.{8}/g).join('.')}` },
+          { k: 'Mask in hex', v: ip4.hex(mask).toLowerCase() },
+          { k: 'Mask in binary', v: ip4.bin(mask).match(/.{8}/g).join('.') },
           { k: 'Reverse DNS name', v: `${ipText.split('.').reverse().join('.')}.in-addr.arpa`, note: 'The name a PTR lookup (address → name) asks for.' },
         ];
         blocks.push({ type: 'kv', title: 'Encodings', rows: enc });
@@ -424,9 +425,9 @@ window.NetDeckCalc = (() => {
           const h = num(v.need, 'Hosts needed', { min: 1, max: 4294967294, int: true });
           const p = fitPrefix(h);
           extra.push(p === null ? { k: `Subnet for ${fmtInt(h)} hosts`, v: 'too many for IPv4', tone: 'err' }
-            : { k: `Smallest subnet for ${fmtInt(h)} host${h === 1 ? '' : 's'}`, v: `/${p}  (${ip4.str(ip4.mask(p))})`, note: `${fmtInt(ip4.usable(p))} usable addresses, ${fmtInt(ip4.usable(p) - h)} to spare.${h === 2 ? ' A /31 also works for a point-to-point link between two routers.' : ''}` });
+            : { k: `Subnet for ${fmtInt(h)} host${h === 1 ? '' : 's'}`, v: `/${p}  (${ip4.str(ip4.mask(p))})`, note: `${fmtInt(ip4.usable(p))} usable addresses, ${fmtInt(ip4.usable(p) - h)} to spare.${h === 2 ? ' A /31 also works for a point-to-point link between two routers.' : ''}` });
         }
-        if (extra.length) blocks.push({ type: 'kv', title: 'Checks', rows: extra });
+        if (extra.length) blocks.unshift({ type: 'kv', title: 'Checks', rows: extra, span: true });
         return blocks;
       },
     }],
@@ -472,7 +473,7 @@ window.NetDeckCalc = (() => {
         hint: 'Variable-length subnet masking: list what you need, one line each as "name hosts", and each gets the smallest subnet that fits — largest first, packed from the start of the network, so nothing overlaps and little is wasted.',
         fields: [
           { id: 'net', label: 'Network to divide', def: '10.0.0.0/22', placeholder: '10.0.0.0/22' },
-          { id: 'reqs', label: 'Requirements — one per line: name hosts', type: 'textarea', rows: 6, wide: true, def: 'Office 200\nGuest Wi-Fi 100\nCameras 25\nPrinters 10\nRouter link 2' },
+          { id: 'reqs', label: 'Requirements — one per line: name hosts', type: 'textarea', rows: 5, wide: true, def: 'Office 200\nGuest Wi-Fi 100\nCameras 25\nPrinters 10\nRouter link 2' },
         ],
         compute(v) {
           const n = parseCidr(v.net);
@@ -527,7 +528,7 @@ window.NetDeckCalc = (() => {
       {
         key: 'summary', label: 'Summarize routes',
         hint: 'Combine a list of networks: the exact result merges neighbors that line up into larger blocks, and the single summary is the smallest one network that covers them all — what one route or one firewall rule would need.',
-        fields: [{ id: 'nets', label: 'Networks — one per line', type: 'textarea', rows: 6, wide: true, def: '192.168.0.0/24\n192.168.1.0/24\n192.168.2.0/24\n192.168.3.0/24' }],
+        fields: [{ id: 'nets', label: 'Networks — one per line', type: 'textarea', rows: 5, wide: true, def: '192.168.0.0/24\n192.168.1.0/24\n192.168.2.0/24\n192.168.3.0/24' }],
         compute(v) {
           const nets = String(v.nets || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => parseCidr(l, 32));
           if (!nets.length) bad('Add at least one network.');
@@ -559,7 +560,7 @@ window.NetDeckCalc = (() => {
       hint: 'Type an IPv6 address with or without a prefix (/64 is assumed). You get the short and full forms, the network it belongs to, what kind of address it is, and how it breaks down. Optionally list the subnets of a given size inside the prefix.',
       fields: [
         { id: 'addr', label: 'IPv6 address / prefix', def: '2001:db8:abcd:12::1/64', placeholder: '2001:db8::1/64', span2: true },
-        { id: 'split', label: 'List subnets of size (optional)', def: '', placeholder: '/64' },
+        { id: 'split', label: 'List subnets of size', def: '', placeholder: 'optional — e.g. /64' },
       ],
       compute(v) {
         let t = String(v.addr || '').trim(), p = 64, assumed = true;
@@ -900,7 +901,7 @@ window.NetDeckCalc = (() => {
         fields: [
           { id: 'band', label: 'Band', type: 'select', def: '2.4', options: Object.entries(BANDS).map(([k, [, l]]) => [k, l]) },
           { id: 'dfs', label: 'Include DFS channels (5 GHz)', type: 'checkbox', def: false },
-          { id: 'list', label: 'Neighboring networks — one per line: channel signal%', type: 'textarea', rows: 6, wide: true, def: '1 80\n6 45\n6 30\n11 70\n3 20' },
+          { id: 'list', label: 'Neighboring networks — one per line: channel signal%', type: 'textarea', rows: 5, wide: true, def: '1 80\n6 45\n6 30\n11 70\n3 20' },
         ],
         actions: [{
           label: 'Read nearby networks', live: true, win: true, title: 'Fill the list from netsh wlan show networks mode=bssid',
@@ -1013,7 +1014,7 @@ window.NetDeckCalc = (() => {
         fields: [
           { id: 'text', label: 'Text (or pick a file below)', type: 'textarea', rows: 3, wide: true, def: '', persist: false, secret: true },
           { id: 'file', label: 'File', type: 'file', span2: true },
-          { id: 'cmp', label: 'Expected value (optional)', def: '', persist: false, span2: true, placeholder: 'paste the published hash' },
+          { id: 'cmp', label: 'Expected value', def: '', persist: false, span2: true, placeholder: 'optional — paste the published hash' },
         ],
         async compute(v) {
           const f = files[`security/hash/file`];
@@ -1050,8 +1051,8 @@ window.NetDeckCalc = (() => {
           { id: 'rack', label: 'Rack size', type: 'select', def: '12', options: ['6', '9', '12', '15', '18', '22', '24', '27', '32', '42', '45', '48'].map((u) => [u, `${u}U`]) },
           { id: 'volts', label: 'Voltage', type: 'select', def: '120', options: [['120', '120 V'], ['208', '208 V'], ['230', '230 V']] },
           { id: 'amps', label: 'Circuit', type: 'select', def: '15', options: [['10', '10 A'], ['15', '15 A'], ['16', '16 A'], ['20', '20 A'], ['30', '30 A'], ['32', '32 A']] },
-          { id: 'pf', label: 'Power factor', def: '0.9' }, { id: 'headroom', label: 'UPS headroom %', def: '25' }, { id: 'wh', label: 'UPS battery (Wh, optional)', def: '' },
-          { id: 'devs', label: 'Equipment — name, U, watts, quantity', type: 'textarea', rows: 6, wide: true, def: 'Firewall, 1, 40, 1\nSwitch 24-port PoE, 1, 370, 1\nPatch panel, 1, 0, 2\nNAS, 2, 60, 1\nUPS, 2, 30, 1' },
+          { id: 'pf', label: 'Power factor', def: '0.9' }, { id: 'headroom', label: 'UPS headroom %', def: '25' }, { id: 'wh', label: 'UPS battery (Wh)', def: '', placeholder: 'optional' },
+          { id: 'devs', label: 'Equipment — name, U, watts, quantity', type: 'textarea', rows: 5, wide: true, def: 'Firewall, 1, 40, 1\nSwitch 24-port PoE, 1, 370, 1\nPatch panel, 1, 0, 2\nNAS, 2, 60, 1\nUPS, 2, 30, 1' },
         ],
         compute(v) {
           const devs = String(v.devs || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l, i) => {
@@ -1146,6 +1147,9 @@ window.NetDeckCalc = (() => {
     D.$('calc-close').addEventListener('click', close);
     D.$('calc-copy').addEventListener('click', copyResults);
     D.$('calc-save').addEventListener('click', saveReport);
+    els.explain = D.$('calc-explain');
+    els.explain.addEventListener('click', () => { state.explain = !state.explain; save(); showExplain(); });
+    showExplain();
     els.book.innerHTML = D.bookSvg || '';
     els.book.addEventListener('click', () => { const t = toolOf(state.tool); if (D.openDoc) D.openDoc('manual.html', t.manual); });
   }
@@ -1219,6 +1223,10 @@ window.NetDeckCalc = (() => {
       });
       els.actions.appendChild(b);
     }
+    // with only short inputs, the buttons take the next cell of the input grid instead of a row of their own
+    const inline = acts.length > 0 && !m.fields.some((f) => f.wide || f.type === 'textarea');
+    if (inline) els.fields.appendChild(els.actions); else els.fields.after(els.actions);
+    els.actions.classList.toggle('inline', inline);
     m._note = '';
     recompute();
   }
@@ -1250,12 +1258,23 @@ window.NetDeckCalc = (() => {
     showOut(out);
   }
 
+  function showExplain() {
+    els.out.classList.toggle('explain', !!state.explain);
+    els.explain.setAttribute('aria-pressed', String(!!state.explain));
+    els.explain.textContent = state.explain ? 'Hide explanations' : 'Show explanations';
+  }
+
   function showOut(out) {
+    // groups of values, and tables narrow enough for half the width, share two columns; one with no neighbor to
+    // share with spans the width instead (a group of values then splits its own rows over the two columns)
+    const narrow = (b) => b.type === 'table' && b.columns.reduce((w, c, i) => w + 26 + 7.6 * Math.max(String(c).length, ...b.rows.map((r) => String(r[i] ?? '').length)), 0) <= 430;
+    const col = (b) => !!b && ((b.type === 'kv' && !b.span) || narrow(b));
+    out.forEach((b, i) => { b.alone = col(b) && !col(out[i - 1]) && !col(out[i + 1]); });
     els.out.innerHTML = out.map((b) => {
       const title = b.title ? `<h3 class="calc-sub">${esc(b.title)}</h3>` : '';
-      if (b.type === 'msg') return `<p class="calc-msg" data-tone="${esc(b.tone || '')}">${esc(b.text)}</p>`;
-      if (b.type === 'kv') return `${title}<div class="calc-kv">${b.rows.map((r) => `<div class="calc-k">${esc(r.k)}</div><div class="calc-v"${r.tone ? ` data-tone="${esc(r.tone)}"` : ''}>${r.html || esc(r.v)}</div><div class="calc-note">${esc(r.note || '')}</div>`).join('')}</div>`;
-      if (b.type === 'table') return `${title}<div class="calc-tablewrap"><table class="data-table calc-table"><thead><tr>${b.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      if (b.type === 'msg') return `<p class="calc-msg calc-block span" data-tone="${esc(b.tone || '')}">${esc(b.text)}</p>`;
+      if (b.type === 'kv') return `<section class="calc-block${b.span || b.alone ? ' span' : ''}">${title}<div class="calc-kv">${b.rows.map((r) => { const tip = r.note ? ` title="${esc(r.note)}"` : ''; return `<div class="calc-row"><div class="calc-k"${tip}>${esc(r.k)}</div><div class="calc-v"${r.tone ? ` data-tone="${esc(r.tone)}"` : ''}${tip}>${r.html || esc(r.v)}</div>${r.note ? `<div class="calc-note">${esc(r.note)}</div>` : ''}</div>`; }).join('')}</div></section>`;
+      if (b.type === 'table') return `<section class="calc-block${narrow(b) && !b.alone ? '' : ' span'}">${title}<div class="calc-tablewrap"><table class="data-table calc-table"><thead><tr>${b.columns.map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
       return '';
     }).join('');
   }

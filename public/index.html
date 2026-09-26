@@ -213,7 +213,7 @@
         <h2 id="calc-title">Network calculator</h2>
         <span class="calc-head-tools">
           <button type="button" class="icon-btn manual-btn" id="calc-manual" aria-label="Open the manual at this tool"></button>
-          <button type="button" class="icon-btn calc-x" id="calc-close" aria-label="Close" title="Close (Esc)">&#x2715;</button>
+          <button type="button" class="icon-btn calc-x" id="calc-close" aria-label="Close" title="Close">&#x2715;</button>
         </span>
       </div>
       <div class="view-switch calc-tabs" id="calc-tabs" role="tablist" aria-label="Calculator"></div>
@@ -227,6 +227,7 @@
       <div class="calc-foot">
         <span class="calc-foot-note">Calculated here on this PC — nothing is sent anywhere.</span>
         <span class="calc-foot-btns">
+          <button type="button" class="tbtn" id="calc-explain" aria-pressed="false" title="Show what each value means under it (hover a value to see it without this)">Show explanations</button>
           <button type="button" class="tbtn" id="calc-copy">Copy results</button>
           <button type="button" class="tbtn" id="calc-save">Save report</button>
         </span>

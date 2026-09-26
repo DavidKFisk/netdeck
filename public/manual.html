@@ -277,7 +277,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.27.3</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.1</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -525,12 +525,13 @@
 
 <h2 id="calculator">Network calculator</h2>
 <p>The calculator icon beside the theme button opens a popup with nine tools for the arithmetic of networking: working out subnets and masks, splitting and combining networks, decoding IPv6 and MAC addresses, estimating bandwidth, throughput and latency, planning Wi-Fi, and a few security and infrastructure calculations. You can also reach any tool from the command palette: press <kbd>Ctrl</kbd>+<kbd>K</kbd> and type <em>calc</em>, <em>subnet</em>, <em>VLSM</em>, <em>password</em>… Everything is calculated inside the page — nothing is sent anywhere — so it works the same in the hosted edition. A few tools can also read real values from this PC (your own address and mask, the Wi-Fi networks around you, a site's certificate); those buttons appear only when NetDeck can run commands.</p>
-<figure class="shot"><img src="manual-img/calc-ipv4.webp" width="1410" height="1808" alt="The network calculator on the IPv4 subnet tab" loading="lazy"><figcaption>The IPv4 tab for 192.168.1.100/26: the subnet, then its class, then the address in binary with the network, subnet and host bits colored — each row with a note saying what it means.</figcaption></figure>
+<figure class="shot"><img src="manual-img/calc-ipv4.webp" width="1500" height="1028" alt="The network calculator on the IPv4 subnet tab" loading="lazy"><figcaption>The IPv4 tab for 192.168.1.100/26: the subnet on the left, its class and the address in binary (network, subnet and host bits colored) on the right. <span class="btn">Show explanations</span> adds a note under each value saying what it means.</figcaption></figure>
 <div class="ui">
   <div>Tabs</div><div>One per tool: <a href="#nc-ipv4">IPv4 subnet</a>, <a href="#nc-split">Split &amp; summarize</a>, <a href="#nc-ipv6">IPv6</a>, <a href="#nc-mac">MAC</a>, <a href="#nc-bandwidth">Bandwidth &amp; time</a>, <a href="#nc-throughput">Throughput &amp; latency</a>, <a href="#nc-wifi">Wi-Fi</a>, <a href="#nc-security">Security</a> and <a href="#nc-planning">Planning</a>. Tools that do several things have a row of round buttons under the tabs to choose the mode.</div>
   <div>The line under the tabs</div><div>What the current tool expects, in a sentence or two — the step-by-step guide for that tool.</div>
   <div>Inputs</div><div>Results update as you type; there is no Calculate button. Inputs are remembered between sessions, except the password and hash fields, which are never kept.</div>
-  <div>Results</div><div>Three columns: what the value is, the value, and a note that says what it means or how it was worked out. Tables (a list of subnets, the same transfer at other speeds) follow below. Values in green are good, amber worth a look, red a problem.</div>
+  <div>Results</div><div>Grouped under small headings and laid out in two columns, so a whole answer fits without scrolling. Answers to the optional questions (<em>Checks</em>), messages and tables (a list of subnets, the same transfer at other speeds) run across the full width. Values in green are good, amber worth a look, red a problem.</div>
+  <div><span class="btn">Show explanations</span></div><div>Adds a short note under every value saying what it means or how it was worked out; click again to hide them. The setting is remembered. With explanations hidden, hover over a value to read its note.</div>
   <div><span class="btn">Use this PC</span> and other green buttons</div><div>Fill inputs from this computer by running an ordinary NetDeck command. Only shown when NetDeck can run commands.</div>
   <div><span class="btn">Copy results</span></div><div>Copies the inputs and every result as plain text, ready to paste into a ticket or a message.</div>
   <div><span class="btn">Save report</span></div><div>Saves the current tool's inputs and results as one HTML file with a Print button — a record for documentation or change requests.</div>
@@ -638,7 +639,11 @@
   <li><strong>The subnet</strong> — the address and what kind it is (private, public, loopback, documentation…, with the RFC that defines it), the network, the mask in each notation, the wildcard mask, the usable host range and count, the total, the broadcast address, and the subnets on either side.</li>
   <li><strong>Class</strong> — the historical class, its default mask, and measured against it the <em>subnet bits</em> (how many were borrowed) and the <em>maximum subnets</em> of this size the classful network holds; a prefix shorter than the classful one is a <em>supernet</em>. The <em>bitmap</em> writes the pattern as fixed class bits, then <code>n</code> for network, <code>s</code> for subnet and <code>h</code> for host bits.</li>
   <li><strong>Encodings</strong> — the address in binary, colored red for classful network bits, amber for subnet bits and green for host bits; in hex; as one 32-bit integer; the mask in hex and binary; and the reverse-DNS name a PTR lookup would ask for.</li>
-  <li><strong>Checks</strong> — fill in <em>Same subnet as</em> to see whether another address is on the same subnet (and so reachable without a router), and <em>Hosts needed</em> for the smallest subnet that fits that many devices.</li>
+</ul>
+<p>The last two boxes are optional questions. Their answers appear first, under <strong>Checks</strong>, above everything else:</p>
+<ul>
+  <li><em>Same subnet as</em> — another address, such as a printer's. The calculator says whether it is on the same subnet as the first address with the mask you gave, so the two can talk directly; if not, it names the subnet the other address is in, and traffic between them has to go through a router.</li>
+  <li><em>Hosts needed</em> — how many devices a network must hold. The answer is the smallest subnet that fits them, with how many addresses are left over: 500 hosts need a /23 (255.255.254.0), 510 usable, 10 to spare.</li>
 </ul>
 
 <h3 id="nc-split">Split &amp; summarize</h3>
@@ -646,7 +651,7 @@
 <p>Cut a network into equal pieces, chosen by the number of subnets, the hosts each must hold, or the new prefix length. The result lists every subnet — network, first and last host, broadcast and size — up to the first 1,024. Subnets come in powers of two, so asking for 5 gives 8.</p>
 <h4>VLSM plan</h4>
 <p>List what you need, one line each as <em>name</em> and <em>hosts</em> ("Guest Wi-Fi 100"). Each gets the smallest subnet that holds it, allocated largest first from the start of the network, aligned on its own size — the method described in <a href="#nc-subnetting">Subnetting</a>. The table shows each subnet and how many addresses it has to spare, and the summary says how much of the network is used and which range is still free. If the plan does not fit, the calculator says which requirement ran out of room and by how much.</p>
-<figure class="shot"><img src="manual-img/calc-vlsm.webp" width="1410" height="1157" alt="The VLSM plan in the network calculator" loading="lazy"><figcaption>Five requirements packed into 10.0.0.0/22, largest first: the office gets a /24, guest Wi-Fi a /25, and so on down to a /30 for the router link — 436 of 1,024 addresses used, the rest free in one block.</figcaption></figure>
+<figure class="shot"><img src="manual-img/calc-vlsm.webp" width="1500" height="1130" alt="The VLSM plan in the network calculator" loading="lazy"><figcaption>Five requirements packed into 10.0.0.0/22, largest first: the office gets a /24, guest Wi-Fi a /25, and so on down to a /30 for the router link — 436 of 1,024 addresses used, the rest free in one block.</figcaption></figure>
 <h4>Range → CIDR</h4>
 <p>Give a first and last address and get the fewest CIDR blocks that cover exactly that range. A block must start on a multiple of its own size, so an arbitrary range — 192.168.1.10 to 192.168.1.100, say — needs several blocks of decreasing and increasing size. Useful for firewall rules and route lists that only accept CIDR.</p>
 <h4>Summarize routes</h4>
@@ -1972,7 +1977,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.27.3</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.28.1</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
