@@ -2194,7 +2194,7 @@ ${body}
       return;
     }
     if (!palette.hidden || !customModal.hidden || !$('agent-modal').hidden || !elevateModal.hidden || window.NetDeckCalc?.isOpen()) {
-      if (e.key === 'Escape') { closePalette(); closeCustom(); closeAgent(); closeElevate(); window.NetDeckCalc?.close(); }
+      if (e.key === 'Escape') { closePalette(); closeCustom(); closeAgent(); closeElevate(); }
       return;
     }
     if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;

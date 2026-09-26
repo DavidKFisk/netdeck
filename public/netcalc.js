@@ -1142,9 +1142,8 @@ window.NetDeckCalc = (() => {
     els.tabs.innerHTML = TOOLS.map((t) => `<button type="button" class="vtab" role="tab" data-tool="${t.key}">${esc(t.label)}</button>`).join('');
     els.tabs.addEventListener('click', (e) => { const b = e.target.closest('[data-tool]'); if (b) { state.tool = b.dataset.tool; save(); render(); } });
     els.modes.addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { state.modes[state.tool] = b.dataset.mode; save(); render(); } });
-    els.modal.addEventListener('click', (e) => { if (e.target === els.modal) close(); });
+    // only the ✕ closes it — clicking outside, pressing Esc or switching windows leaves it open with its inputs
     D.$('calc-close').addEventListener('click', close);
-    D.$('calc-close2').addEventListener('click', close);
     D.$('calc-copy').addEventListener('click', copyResults);
     D.$('calc-save').addEventListener('click', saveReport);
     els.book.innerHTML = D.bookSvg || '';
