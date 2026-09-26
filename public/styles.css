@@ -1244,6 +1244,8 @@ body[data-mode="static"] .live-only { display: none !important; }
 .calc-modes[hidden] { display: none; }
 .calc-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
 .calc-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px 12px; }
+/* the label takes the spare height, so every input in a row sits on the same line even when a label wraps */
+.calc-field:not(.check) > span { flex: 1; }
 .calc-field.wide { grid-column: 1 / -1; }
 .calc-field.span2 { grid-column: span 2; }
 .calc-field.check { flex-direction: row; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; }
