@@ -207,7 +207,7 @@
       <li><a href="#calculator">Network calculator</a></li>
       <li class="sub"><a href="#nc-basics">How IP addresses work</a></li>
       <li class="sub"><a href="#nc-subnetting">Subnetting, step by step</a></li>
-      <li class="sub"><a href="#nc-v6basics">IPv6 in brief</a></li>
+      <li class="sub"><a href="#nc-v6basics">How IPv6 addresses work</a></li>
       <li class="sub"><a href="#nc-macbasics">MAC addresses in brief</a></li>
       <li class="sub"><a href="#nc-ipv4">IPv4 subnet</a></li>
       <li class="sub"><a href="#nc-split">Split &amp; summarize</a></li>
@@ -277,7 +277,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.1</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.2</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -616,18 +616,82 @@
 <p><strong>Summarizing — combining networks.</strong> Networks that share their leading bits can be written as one. 192.168.0.0/24 to 192.168.3.0/24 differ only in the last 2 bits of the third octet (0 to 3 is <code>000000<strong>00</strong></code> to <code>000000<strong>11</strong></code>), so they are exactly 192.168.0.0/22. One route or firewall rule instead of four. It only works cleanly when the group is a power of two and starts on a multiple of its size; otherwise the summary also covers addresses you did not list.</p>
 <p><strong>Wildcard masks</strong> are the subnet mask inverted — zeros where the network is, ones where the host bits are: 255.255.255.192 becomes 0.0.0.63. Cisco access lists and OSPF use them. The calculator accepts either form.</p>
 
-<h3 id="nc-v6basics">IPv6 in brief</h3>
-<p>An IPv6 address is 128 bits, written as eight groups of four hexadecimal digits separated by colons: <code>2001:0db8:abcd:0012:0000:0000:0000:0001</code>. Two rules shorten it: leading zeros in a group may be dropped (<code>0db8</code> → <code>db8</code>), and one run of all-zero groups may be replaced by <code>::</code> — once only, or the reader could not tell how many groups it stands for. The address above is normally written <code>2001:db8:abcd:12::1</code>.</p>
-<p><strong>The /64.</strong> The last 64 bits identify the device (the <em>interface ID</em>), so almost every IPv6 subnet is a /64 — 18 quintillion addresses, never "full". An ISP gives a home a /56 or a /48 — 256 or 65,536 of those subnets. There is no broadcast (multicast does that job), no need for NAT, and every interface also has a <em>link-local</em> address starting <code>fe80::</code>, valid only on its own network segment.</p>
-<p><strong>Where the interface ID comes from.</strong> Older systems built it from the MAC address (EUI-64: split the MAC, insert <code>ff:fe</code>, flip one bit), which let anyone track a device across networks. Windows, macOS, phones and modern Linux now use random interface IDs — temporary ones for outgoing connections (RFC 4941) and a stable random one per network (RFC 7217). The <a href="#nc-ipv6">IPv6 tool</a> tells you which kind you are looking at.</p>
+<h3 id="nc-v6basics">How IPv6 addresses work</h3>
+<p><strong>Why IPv6 exists.</strong> IPv4 has 32-bit addresses — about 4.3 billion of them, fewer than the people on Earth, let alone their phones, laptops and TVs. The last free blocks were handed out in 2011. NAT stretched IPv4 by hiding a whole home behind one public address, but at the cost of devices that cannot be reached directly. IPv6 fixes the shortage for good: its addresses are 128 bits, about 340 undecillion (3.4 × 10<sup>38</sup>) of them. Most networks today run both side by side (<em>dual stack</em>); your PC very likely has IPv6 addresses already — <code>ipconfig</code> lists them.</p>
+
+<h4>Reading an address</h4>
+<p>128 bits written in binary would be unreadable, so IPv6 uses <strong>hexadecimal</strong>: each hex digit (0–9, a–f) stands for 4 bits. The 32 digits are written in eight groups of four — each group is 16 bits, sometimes called a <em>hextet</em> — separated by colons:</p>
+<p><code>2001:0db8:abcd:0012:0000:0000:0000:0001</code></p>
+<p>Two rules make it shorter, applied in this order:</p>
+<ol>
+  <li><strong>Drop leading zeros in each group.</strong> <code>0db8</code> becomes <code>db8</code>, <code>0012</code> becomes <code>12</code>, <code>0000</code> becomes <code>0</code>, <code>0001</code> becomes <code>1</code>: <code>2001:db8:abcd:12:0:0:0:1</code>. Only <em>leading</em> zeros go — <code>12</code> can never be written for <code>1200</code>.</li>
+  <li><strong>Replace one run of all-zero groups with <code>::</code>.</strong> The three zero groups collapse: <code>2001:db8:abcd:12::1</code>. You can do this only once in an address. To expand it again, count the groups you can see (five here) — the <code>::</code> stands for however many are missing to make eight (three). With two <code>::</code> the reader could not tell how to share out the missing groups.</li>
+</ol>
+<p>Both forms are the same address. Because one address can be written many ways, RFC 5952 fixes one <em>canonical</em> form — lower case, leading zeros dropped, the <em>longest</em> zero run compressed (the first, if two tie), a single zero group left as <code>0</code>. Always compare, search logs and write documentation in that form; the calculator's <em>Compressed</em> row gives it to you.</p>
+
+<h4>The parts of an address</h4>
+<p>As in IPv4, a <strong>prefix length</strong> says how many bits from the left name the network; the rest name the device on it. <code>2001:db8:abcd:12::1/64</code> means the first 64 bits are the network. A typical global address divides into three parts:</p>
 <div class="tbl-wrap"><table>
-  <tr><th>Starts with</th><th>Type</th></tr>
-  <tr><td><code>2000::/3</code> (2… or 3…)</td><td>Global unicast — public internet addresses</td></tr>
-  <tr><td><code>fc00::/7</code> (usually fd…)</td><td>Unique local (ULA) — private, like 192.168.x.x</td></tr>
-  <tr><td><code>fe80::/10</code></td><td>Link-local — every interface has one</td></tr>
-  <tr><td><code>ff00::/8</code></td><td>Multicast</td></tr>
-  <tr><td><code>::1</code></td><td>Loopback</td></tr>
-  <tr><td><code>2001:db8::/32</code></td><td>Documentation — examples only</td></tr>
+  <tr><th>Part</th><th>Bits</th><th>Example</th><th>Who decides it</th></tr>
+  <tr><td>Routing (site) prefix</td><td>48</td><td><code>2001:db8:abcd</code></td><td>Your ISP or registry — the block assigned to your site</td></tr>
+  <tr><td>Subnet ID</td><td>16</td><td><code>0012</code></td><td>You — which of your site's subnets (65,536 of them in a /48)</td></tr>
+  <tr><td>Interface ID</td><td>64</td><td><code>0000:0000:0000:0001</code></td><td>The device itself, or DHCPv6 — which device on that subnet</td></tr>
+</table></div>
+<p>Hex makes prefixes easy to read when they are a multiple of 4: every hex digit is 4 bits, so a /48 is the first 12 digits, a /56 the first 14 and a /64 the first 16 — exactly the first four groups. The split between network and device always lands between two hex digits.</p>
+
+<h4>Why nearly every subnet is a /64</h4>
+<p>In IPv4 you size a subnet to fit its devices. In IPv6 you don't: every ordinary subnet — a home LAN, an office VLAN, a guest Wi-Fi — is a <strong>/64</strong>, 18,446,744,073,709,551,616 addresses. That is not waste; it is what lets devices pick their own 64-bit interface IDs without a server and without ever colliding. It also means you never plan hosts per subnet — you plan <em>how many subnets</em>, which is what the prefix your ISP gives you decides:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Prefix</th><th>What it usually is</th><th>/64 subnets inside</th></tr>
+  <tr><td>/32</td><td>An ISP's allocation</td><td>4,294,967,296</td></tr>
+  <tr><td>/48</td><td>A business site</td><td>65,536</td></tr>
+  <tr><td>/56</td><td>A home connection (many ISPs)</td><td>256</td></tr>
+  <tr><td>/60</td><td>A home connection (other ISPs)</td><td>16</td></tr>
+  <tr><td>/64</td><td>One subnet — one LAN or VLAN</td><td>1</td></tr>
+  <tr><td>/127</td><td>A link between two routers</td><td>—</td></tr>
+  <tr><td>/128</td><td>One single address (a loopback, a host route)</td><td>—</td></tr>
+</table></div>
+
+<h4>How a device gets its addresses</h4>
+<p>On most networks nobody hands out IPv6 addresses one by one. The router sends out a <em>Router Advertisement</em> saying "this network is <code>2001:db8:abcd:12::/64</code>, and I am the way out". Each device takes that prefix and adds an interface ID it chooses itself — <strong>SLAAC</strong>, stateless address autoconfiguration. Some networks use <strong>DHCPv6</strong> instead or as well, much like DHCP in IPv4. The router's own address, the default gateway, is usually its link-local <code>fe80::</code> address.</p>
+<p>That is why <code>ipconfig</code> shows several IPv6 addresses for one adapter, and why that is normal:</p>
+<ul>
+  <li><strong>Link-local</strong> (<code>fe80::…</code>) — every IPv6 interface makes one for itself, even with no router. It works only on the local network segment and is used for things like finding the router and neighbors.</li>
+  <li><strong>IPv6 Address</strong> — a stable global address, the same each time the PC joins this network, used for incoming connections.</li>
+  <li><strong>Temporary IPv6 Address</strong> — a random one, replaced every day or so, used for outgoing connections so websites cannot follow the PC by its address.</li>
+</ul>
+
+<h4>Where the interface ID comes from</h4>
+<p>Older systems built the interface ID from the network card's MAC address, a method called <strong>EUI-64</strong>. Take the 48-bit MAC, split it in half, put <code>ff:fe</code> in the middle, and flip the seventh bit of the first byte (the "universal/local" bit):</p>
+<div class="tbl-wrap"><table>
+  <tr><td>MAC address</td><td><code>00-00-5E-00-53-01</code></td></tr>
+  <tr><td>Split and insert <code>ff:fe</code></td><td><code>00:00:5e:<strong>ff:fe</strong>:00:53:01</code></td></tr>
+  <tr><td>Flip the U/L bit (<code>00</code> → <code>02</code>)</td><td><code><strong>02</strong>00:5eff:fe00:5301</code></td></tr>
+  <tr><td>Interface ID</td><td><code>0200:5eff:fe00:5301</code></td></tr>
+</table></div>
+<p>The problem: the MAC — and so the maker of the hardware — shows in every address, and the device can be recognized on any network it joins. Windows, macOS, iOS, Android and modern Linux therefore use <strong>random</strong> interface IDs instead: temporary ones for outgoing traffic (RFC 4941) and a stable random one per network (RFC 7217). You still meet EUI-64 on routers, printers and older embedded devices; <code>ff:fe</code> in the middle of the last half is the giveaway, and the <a href="#nc-ipv6">IPv6 tool</a> spots it and recovers the MAC.</p>
+
+<h4>What is gone from IPv4, and what replaces it</h4>
+<ul>
+  <li><strong>No broadcast.</strong> Messages for "everyone on this network" use <em>multicast</em> groups instead — <code>ff02::1</code> is all devices on the link, <code>ff02::2</code> all routers — so devices only hear what they joined.</li>
+  <li><strong>No ARP.</strong> <em>Neighbor Discovery</em> finds the MAC address behind an IPv6 address (<code>netsh interface ipv6 show neighbors</code> lists what it found).</li>
+  <li><strong>No NAT needed.</strong> Every device can have a public address, so the firewall — in the router and on the PC — is what keeps unwanted traffic out. Having a global address does not mean being reachable; a home router blocks incoming IPv6 connections by default.</li>
+  <li><strong>Private addresses still exist.</strong> <em>Unique local addresses</em> (<code>fd…</code>) are for networks that should never be routed to the internet, like 192.168.x.x in IPv4 — but they are chosen at random, so two networks joined later rarely clash.</li>
+</ul>
+
+<h4>Kinds of address</h4>
+<p>The first few digits tell you what kind of address you are looking at:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Starts with</th><th>Type</th><th>Where you meet it</th></tr>
+  <tr><td><code>2</code>… or <code>3</code>… (<code>2000::/3</code>)</td><td>Global unicast</td><td>Public internet addresses — your PC's "IPv6 Address" and "Temporary IPv6 Address"</td></tr>
+  <tr><td><code>fd</code>… (<code>fc00::/7</code>)</td><td>Unique local (ULA)</td><td>Private networks, lab networks, some home routers alongside the global prefix</td></tr>
+  <tr><td><code>fe80::</code> (<code>fe80::/10</code>)</td><td>Link-local</td><td>Every interface; the default gateway is usually one of these</td></tr>
+  <tr><td><code>ff</code>… (<code>ff00::/8</code>)</td><td>Multicast</td><td>Neighbor Discovery, mDNS (<code>ff02::fb</code>), DHCPv6 (<code>ff02::1:2</code>)</td></tr>
+  <tr><td><code>::1</code></td><td>Loopback</td><td>This computer itself — the IPv6 <code>127.0.0.1</code></td></tr>
+  <tr><td><code>::</code></td><td>Unspecified</td><td>"No address yet" — also what a server listening on all addresses shows</td></tr>
+  <tr><td><code>::ffff:</code>… (<code>::ffff:0:0/96</code>)</td><td>IPv4-mapped</td><td>An IPv4 address in IPv6 form — how dual-stack programs show IPv4 connections</td></tr>
+  <tr><td><code>64:ff9b::</code> (<code>/96</code>)</td><td>NAT64</td><td>IPv6-only networks (many mobile carriers) reaching IPv4-only servers</td></tr>
+  <tr><td><code>2001:db8::</code> (<code>/32</code>)</td><td>Documentation</td><td>Examples in books and manuals — like every IPv6 address in this one. Never routed.</td></tr>
 </table></div>
 
 <h3 id="nc-macbasics">MAC addresses in brief</h3>
@@ -658,14 +722,52 @@
 <p>Paste networks one per line. The <em>exact blocks</em> merge neighbors that line up into larger ones without adding a single address; the <em>single summary</em> is the smallest one network that covers them all, with a note of how many extra addresses it includes if the list does not line up perfectly.</p>
 
 <h3 id="nc-ipv6">IPv6</h3>
-<p>Type an IPv6 address with a prefix (<code>2001:db8:abcd:12::1/64</code>); without one, /64 is assumed. The address may include an embedded IPv4 part (<code>::ffff:192.0.2.1</code>) or a zone (<code>fe80::1%12</code>, which is ignored).</p>
-<ul>
-  <li>The <strong>compressed</strong> form follows the standard (RFC 5952): lower case, leading zeros dropped, the longest run of zero groups — the first, if two are equally long — written as <code>::</code>, and a single zero group never compressed. The <strong>expanded</strong> form has all 32 digits.</li>
-  <li>The <strong>type</strong> (global, unique local, link-local, multicast with its scope, documentation, NAT64, IPv4-mapped…), the network, first and last address, and how many addresses the prefix holds — and how many /64 subnets, for a shorter prefix. Any embedded IPv4 address is shown.</li>
-  <li><strong>How it breaks down</strong>, for global and unique-local addresses: the typical 48-bit site prefix, the 16-bit subnet ID and the 64-bit interface ID, with whether the interface ID was built from a MAC address (and whose) or is random.</li>
-  <li>The <strong>reverse-DNS name</strong> — every hex digit, reversed, under <code>ip6.arpa</code>.</li>
-  <li><em>List subnets of size</em> lists the first 16 subnets of that size inside the prefix — for example the /64s of a /56 an ISP has given you — with the total count.</li>
-</ul>
+<p>Type an IPv6 address, with or without a prefix length: <code>2001:db8:abcd:12::1/64</code>. With no prefix, /64 is assumed, since that is the size of almost every IPv6 subnet (see <a href="#nc-v6basics">How IPv6 addresses work</a>). Any written form is accepted — full or shortened, upper or lower case, with an IPv4 address at the end (<code>::ffff:192.0.2.1</code>), or with a <em>zone</em> such as <code>fe80::1%12</code>. A zone is the <code>%</code> and number Windows adds to link-local addresses to say which adapter they belong to, because every adapter has its own <code>fe80::</code> network; the calculator ignores it.</p>
+
+<h4>The address</h4>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it tells you</th></tr>
+  <tr><td>Compressed</td><td>The canonical short form (RFC 5952). Paste an address copied from anywhere and this is how to write it for a search, a firewall rule or documentation. For IPv4-mapped and NAT64 addresses the last 32 bits are written as an IPv4 address (<code>::ffff:192.0.2.1</code>), as the standard recommends, because that is the part people need to read.</td></tr>
+  <tr><td>Expanded</td><td>All 32 hex digits, no shortcuts. Useful for lining addresses up digit by digit, and for seeing exactly which groups a <code>::</code> stood for.</td></tr>
+  <tr><td>Type</td><td>What kind of address it is — global, unique local, link-local, multicast, loopback, documentation, IPv4-mapped, NAT64, or a tunnel address (Teredo <code>2001::/32</code>, 6to4 <code>2002::/16</code>). Green means an ordinary public address. The type answers most "why can't I reach it?" questions: a link-local address works only on its own network segment, a unique-local one never crosses the internet, and a documentation address was never real.</td></tr>
+  <tr><td>Multicast scope</td><td>For multicast addresses only: how far the message may travel, read from the fourth hex digit. <code>ff02::</code> is link-local — this network segment only; <code>ff05::</code> site-local; <code>ff08::</code> organization; <code>ff0e::</code> global. So <code>ff02::1</code> means "every device on this link".</td></tr>
+  <tr><td>Embedded IPv4</td><td>The IPv4 address hidden inside, when there is one: the real IPv4 client behind an IPv4-mapped address, the IPv4 server a NAT64 address stands for, or the gateway of a 6to4 address.</td></tr>
+</table></div>
+
+<h4>The network it belongs to</h4>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it tells you</th></tr>
+  <tr><td>Prefix</td><td>How many bits name the network, and how many are left for devices. A /64 splits the address exactly in half.</td></tr>
+  <tr><td>Network</td><td>The address with every device bit set to zero, plus the prefix — the name of the network, the way you write it in a route or a firewall rule. <code>2001:db8:abcd:12::1/64</code> is on <code>2001:db8:abcd:12::/64</code>.</td></tr>
+  <tr><td>First address / Last address</td><td>The range the prefix covers. Unlike IPv4, both ends are usable: there is no broadcast address to reserve. (The first address is by convention the <em>subnet-router anycast</em> address, so it is rarely given to a device.)</td></tr>
+  <tr><td>Addresses</td><td>How many addresses the prefix holds — shown as a power of two, since the numbers are enormous: 2<sup>64</sup> for a /64. For a prefix shorter than /64 the note tells you how many /64 subnets fit, which is the number that matters for planning: a /56 holds 256.</td></tr>
+</table></div>
+
+<h4>How it breaks down</h4>
+<p>For global and unique-local addresses, the calculator splits the address into the three parts described in <a href="#nc-v6basics">How IPv6 addresses work</a>:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it tells you</th></tr>
+  <tr><td>Routing prefix</td><td>The first 48 bits, the usual size of the block assigned to one site. Everything at your site shares it.</td></tr>
+  <tr><td>Subnet ID</td><td>The next 16 bits — which of the site's subnets this is. Network admins often make it meaningful, for example matching the VLAN number (VLAN 12 → subnet <code>0012</code>).</td></tr>
+  <tr><td>Interface ID</td><td>The last 64 bits, identifying the device. If it has <code>ff:fe</code> in the middle it was built from a MAC address (EUI-64), and the note gives that MAC and, when known, its manufacturer — so you can tell which physical device it is. A small number such as <code>::1</code> or <code>::10</code> was set by hand or handed out by DHCPv6 — usual for routers and servers, and easy to remember. Anything else is random: a privacy or stable-random address, which is what modern PCs and phones pick for themselves.</td></tr>
+</table></div>
+<p>The 48 / 16 / 64 split is the common layout, not a rule of the protocol. A home that gets a /56 has only 8 bits of subnet ID (the last two digits of the fourth group), and the rest of the fourth group belongs to the ISP.</p>
+
+<h4>Encodings</h4>
+<p><strong>Reverse DNS name</strong> — the name a reverse lookup (address → name, a PTR record) asks for. It is every one of the 32 hex digits, in reverse order, separated by dots, under <code>ip6.arpa</code>. The digits are reversed because DNS names are read from the right, most general part last, while addresses are written most general part first. Use it when setting up reverse DNS for a server, or with <code>nslookup -type=PTR</code>.</p>
+
+<h4>List subnets of size</h4>
+<p>Type a longer prefix, such as <code>/64</code>, to see how a network divides. The table lists the first 16 subnets of that size, with the total count. This is how you plan an IPv6 network. Say your ISP gives you <code>2001:db8:abcd:1200::/56</code>; ask for /64 and you get 256 subnets, <code>2001:db8:abcd:1200::/64</code>, <code>…1201::/64</code>, <code>…1202::/64</code> and so on up to <code>…12ff::/64</code> — one for the main LAN, one for guests, one for cameras, and plenty left over. Only the last two digits of the fourth group change: those are your 8 bits of subnet ID.</p>
+
+<div class="callout"><span class="lbl">Try these</span><p>
+<code>2001:db8:abcd:12::1/64</code> — an ordinary address and its network ·
+<code>2001:db8:abcd:12:200:5eff:fe00:5301</code> — an EUI-64 interface ID, with the MAC recovered ·
+<code>fe80::1</code> — link-local ·
+<code>ff02::1</code> — multicast, all devices on the link ·
+<code>::ffff:192.0.2.1</code> — IPv4-mapped ·
+<code>64:ff9b::192.0.2.1</code> — NAT64 ·
+<code>fd12:3456:789a:1::10/64</code> — unique local ·
+<code>2001:db8:abcd:1200::/56</code> with <em>List subnets of size</em> <code>/64</code> — a home allocation divided up.</p></div>
 
 <h3 id="nc-mac">MAC</h3>
 <p>Paste a MAC address in any common format; separators are ignored and it must come to twelve hex digits. You get it in colon, dash, Cisco dot and bare forms (in upper or lower case), the manufacturer from the IEEE registry, what the two flag bits say — unicast or multicast, burned-in or locally administered (random) — and the EUI-64 interface ID and link-local IPv6 address a device would build from it. If <a href="#pb-scan">Scan my network</a> has seen the address, its IP and name are shown too.</p>
@@ -1977,7 +2079,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.28.1</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.28.2</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>

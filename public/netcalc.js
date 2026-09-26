@@ -240,6 +240,8 @@ window.NetDeckCalc = (() => {
     ['ff00::/8', 'Multicast — one sender, many receivers (IPv6 has no broadcast)'],
     ['2000::/3', 'Global unicast — a public internet address'],
   ].map(([c, label]) => { const [a, p] = c.split('/'); return { net: parse6(a), prefix: Number(p), label }; }).sort((a, b) => b.prefix - a.prefix);
+  // IPv4-mapped and NAT64 addresses end in an IPv4 address, which RFC 5952 (section 5) writes in dotted form
+  const mixed6 = (n) => ((n >> 32n) === 0xffffn || (n & mask6(96)) === parse6('64:ff9b::')) ? fmt6(n).replace(/[0-9a-f]+:[0-9a-f]+$/, ip4.str(Number(n & 0xffffffffn))) : fmt6(n);
   const v6Type = (n) => (V6_TYPES.find((t) => (n & mask6(t.prefix)) === t.net) || { label: 'Reserved / unassigned', prefix: -1 });
   const MC_SCOPE = { 1: 'interface-local', 2: 'link-local', 4: 'admin-local', 5: 'site-local', 8: 'organization-local', 14: 'global' };
 
@@ -572,7 +574,7 @@ window.NetDeckCalc = (() => {
         const type = v6Type(n);
         const count = 1n << BigInt(128 - p);
         const rows = [
-          { k: 'Compressed', v: fmt6(n), note: 'The standard short form (RFC 5952): leading zeros dropped, the longest run of zero groups written as "::", lower case.' },
+          { k: 'Compressed', v: mixed6(n), note: 'The standard short form (RFC 5952): leading zeros dropped, the longest run of zero groups written as "::", lower case.' },
           { k: 'Expanded', v: expand6(n), note: 'All eight groups of four hex digits.' },
           { k: 'Type', v: type.label, tone: type.prefix === 3 ? 'ok' : '' },
           { k: 'Prefix', v: `/${p}`, note: assumed ? 'None given, so /64 was assumed — the standard size of one IPv6 subnet.' : `${p} network bits, ${128 - p} interface bits.` },
@@ -596,7 +598,7 @@ window.NetDeckCalc = (() => {
           blocks.push({ type: 'kv', title: 'How it breaks down', rows: [
             { k: 'Routing prefix', v: `${g.slice(0, 3).map((x) => x.toString(16)).join(':')}::/48`, note: 'The first 48 bits: typically the block an ISP assigns to one site.' },
             { k: 'Subnet ID', v: g[3].toString(16).padStart(4, '0'), note: 'The next 16 bits: which of the site\'s 65,536 subnets.' },
-            { k: 'Interface ID', v: g.slice(4).map((x) => x.toString(16).padStart(4, '0')).join(':'), note: eui ? `Built from the MAC address ${mac}${vendor ? ` (${vendor})` : ''} — EUI-64, which reveals the hardware.` : 'The last 64 bits, identifying the device — random here (a privacy or stable-opaque address, RFC 4941 / 7217), not derived from the MAC.' },
+            { k: 'Interface ID', v: g.slice(4).map((x) => x.toString(16).padStart(4, '0')).join(':'), note: eui ? `Built from the MAC address ${mac}${vendor ? ` (${vendor})` : ''} — EUI-64, which reveals the hardware.` : iid < 0x10000n ? 'The last 64 bits, identifying the device — a small number like this was set by hand or handed out by DHCPv6, as is usual for routers and servers.' : 'The last 64 bits, identifying the device — random here (a privacy or stable-opaque address, RFC 4941 / 7217), not derived from the MAC.' },
           ] });
         }
         blocks.push({ type: 'kv', title: 'Encodings', rows: [{ k: 'Reverse DNS name', v: `${expand6(n).replace(/:/g, '').split('').reverse().join('.')}.ip6.arpa`, note: 'The name a PTR lookup asks for: every hex digit, reversed.' }] });
