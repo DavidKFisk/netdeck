@@ -1238,8 +1238,9 @@ body[data-mode="static"] .live-only { display: none !important; }
 .calc-head-tools .icon-btn { width: 28px; height: 28px; }
 .calc-x { font-size: 14px; }
 .calc-x:hover, #calc-manual:hover { color: var(--bright); }
-.calc-tabs { display: flex; flex-wrap: wrap; align-self: stretch; margin: 0; }
-.calc-tabs .vtab { padding: 5px 11px; }
+/* nine tools in an even 3 × 3 grid: every tab the same width, labels centered */
+.calc-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: stretch; margin: 0; }
+.calc-tabs .vtab { padding: 5px 8px; text-align: center; }
 .calc-modes { margin: 0; }
 .calc-modes[hidden] { display: none; }
 .calc-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
