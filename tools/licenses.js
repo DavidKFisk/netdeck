@@ -14,7 +14,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const meta = JSON.parse(execFileSync('cargo', ['metadata', '--format-version', '1', '--locked'], { cwd: path.join(root, 'src-tauri'), maxBuffer: 64 * 1024 * 1024 }).toString());
 const inGraph = new Set(meta.resolve.nodes.map((n) => n.id));
 const crates = meta.packages.filter((p) => inGraph.has(p.id) && p.name !== 'netdeck');
-// "MIT/Apache-2.0" and "Apache-2.0 OR MIT" are the same choice: normalise the spelling before grouping
+// "MIT/Apache-2.0" and "Apache-2.0 OR MIT" are the same choice: normalize the spelling before grouping
 const norm = (l) => (l || 'see the crate').replace(/\s*\/\s*/g, ' OR ').split(/\s+OR\s+/).map((x) => x.trim()).sort().join(' OR ');
 const groups = new Map();
 for (const c of crates) { const l = norm(c.license); if (!groups.has(l)) groups.set(l, []); groups.get(l).push(`${c.name} ${c.version}`); }
@@ -50,7 +50,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.</pre>
 <p>The desktop installer shows this license before installing; the same text ships as <code>LICENSE</code> with the source.</p>
-<p>NetDeck runs diagnostic commands on your own computer and network. Its verdicts are aids to judgement, not guarantees: a clean result does not prove a network is secure.</p>
+<p>NetDeck runs diagnostic commands on your own computer and network. Its verdicts are aids to judgment, not guarantees: a clean result does not prove a network is secure.</p>
 
 <h3 id="third-party">Third-party components</h3>
 <p>NetDeck stands on other people's work. Their licenses allow this use; their copyright notices belong to their authors.</p>

@@ -205,7 +205,7 @@ window.NetDeckPlaybooks = (() => {
       });
       const mine = ctx?.ip ? real.filter((r) => r[0] === ctx.ip || !IPV4.test(r[0])) : real;
       const devices = (mine.length ? mine : real).length;
-      return { status: devices ? 'pass' : 'warn', summary: devices ? `${devices} device${devices === 1 ? '' : 's'} seen recently on your network (${t.rows.length} cache entries in total)` : 'No neighbours in the ARP cache yet', data: { devices, total: t.rows.length } };
+      return { status: devices ? 'pass' : 'warn', summary: devices ? `${devices} device${devices === 1 ? '' : 's'} seen recently on your network (${t.rows.length} cache entries in total)` : 'No neighbors in the ARP cache yet', data: { devices, total: t.rows.length } };
     },
 
     netview(out) {
@@ -542,7 +542,7 @@ window.NetDeckPlaybooks = (() => {
       ],
       verdict(r, p, ctx, R) {
         const n = R.arp?.data?.devices || 0;
-        if (!n) return { tone: 'warn', text: 'The ARP cache is nearly empty — this machine has not exchanged traffic with its neighbours recently. Ping a few local addresses and run again.' };
+        if (!n) return { tone: 'warn', text: 'The ARP cache is nearly empty — this machine has not exchanged traffic with its neighbors recently. Ping a few local addresses and run again.' };
         return { tone: 'pass', text: `${n} device${n === 1 ? ' has' : 's have'} talked to this machine recently. Press "table" on step 2 for each IP and MAC address; the first three pairs of a MAC identify the manufacturer. The cache only lists devices you have exchanged traffic with, so quiet ones may be missing.` };
       },
     },
@@ -979,7 +979,7 @@ window.NetDeckPlaybooks = (() => {
       if (INTERCEPTOR.test(issuer)) return { status: 'warn', summary: `Issued by ${org} — that is a security product re-signing your HTTPS traffic, not the site's real certificate`, data: { ...data, intercepted: true } };
       if (!trusted) return { status: 'fail', summary: `Issued by ${org}, which Windows does not trust`, data };
       if (PUBLIC_CA.test(issuer)) return { status: days < 14 ? 'warn' : 'pass', summary: `Issued by ${org} (a public certificate authority) · ${days} days left`, data };
-      return { status: 'info', summary: `Issued by ${org} — trusted by this PC but not a public authority I recognise; on a company PC that usually means HTTPS inspection`, data: { ...data, unusual: true } };
+      return { status: 'info', summary: `Issued by ${org} — trusted by this PC but not a public authority I recognize; on a company PC that usually means HTTPS inspection`, data: { ...data, unusual: true } };
     },
 
     /* Quick TCP port test: the command states the outcome itself, within 5 seconds. */
@@ -994,7 +994,7 @@ window.NetDeckPlaybooks = (() => {
       return { status: 'fail', summary: `TCP ${params.port}: ${result || 'no result'}`.slice(0, 160), data: { kind: 'closed' } };
     },
 
-    /* Local network scan: count what was found and sort it into recognisable groups. */
+    /* Local network scan: count what was found and sort it into recognizable groups. */
     dropHunt(out) {
       const err = out.match(/HUNT-ERROR:\s*([^\r\n]+)/);
       if (err) {
@@ -1074,7 +1074,7 @@ window.NetDeckPlaybooks = (() => {
       const devices = t.rows.map((r) => ({ ip: r[c('IP')], name: r[c('Name')], mac: r[c('MAC')], maker: r[c('Manufacturer')] || '', replied: r[c('Ping')] === 'replied', note: r[c('Note')] }));
       const others = devices.filter((d) => d.note !== 'this PC');
       const silent = others.filter((d) => !d.replied).length;
-      const randomised = others.filter((d) => /randomised/.test(d.maker)).length;
+      const randomised = others.filter((d) => /randomi[sz]ed/.test(d.maker)).length;
       const unknown = others.filter((d) => !d.maker).length;
       const range = (out.match(/Scanned (\S+) on (.+?) in ([\d.,]+) s/) || []);
       const summary = `${others.length} other device${others.length === 1 ? '' : 's'} on ${range[1] || 'your subnet'}${range[3] ? ` in ${range[3]} s` : ''} — ${silent} ignore ping and were found through ARP`;
@@ -1200,7 +1200,7 @@ window.NetDeckPlaybooks = (() => {
     {
       id: 'wifi',
       name: 'Wi-Fi health',
-      description: 'Signal strength, band, radio mode and link rate of your connection, how many neighbouring access points crowd your channel, and how steady the link to your router really is.',
+      description: 'Signal strength, band, radio mode and link rate of your connection, how many neighboring access points crowd your channel, and how steady the link to your router really is.',
       params: [],
       steps: [
         { id: 'link', cmd: 'netsh', label: 'Read your Wi-Fi link', check: 'wlan' },
@@ -1214,7 +1214,7 @@ window.NetDeckPlaybooks = (() => {
         if (!R.link?.data?.wifi) return { tone: 'pass', text: `This PC is not using Wi-Fi right now (${R.link?.summary || 'no wireless link'}).${link}` };
         const d = R.link.data;
         const notes = [...(d.problems || [])];
-        if (R.nets?.data?.clash >= 3) notes.push(`${R.nets.data.clash} strong neighbouring access points share or overlap your channel${R.nets.data.suggestion ? ` — channel ${R.nets.data.suggestion} is the quietest of 1 / 6 / 11` : ''}`);
+        if (R.nets?.data?.clash >= 3) notes.push(`${R.nets.data.clash} strong neighboring access points share or overlap your channel${R.nets.data.suggestion ? ` — channel ${R.nets.data.suggestion} is the quietest of 1 / 6 / 11` : ''}`);
         if (notes.length || warned(R.gw)) return { tone: 'warn', text: `Wi-Fi is connected (${R.link.summary.split(' — ')[0]}), with room to improve: ${notes.join('; ') || 'the link is unsteady'}.${link}` };
         return { tone: 'pass', text: `Wi-Fi looks healthy: ${R.link.summary}.${R.nets?.data?.total ? ` ${R.nets.data.total} access points are in range and your channel is not crowded.` : ''}${link}` };
       },
@@ -1344,7 +1344,7 @@ window.NetDeckPlaybooks = (() => {
         if (!d) return { tone: 'warn', text: 'The connection list could not be read on this system.' };
         const lines = d.programs.slice(0, 12).map((e) => `  • ${e.name}: ${e.n} connection${e.n === 1 ? '' : 's'} — port${e.ports.length === 1 ? '' : 's'} ${e.ports.slice(0, 6).join(', ')}${e.ports.length > 6 ? '…' : ''}${e.lan === e.n ? ' (local network only)' : ''}`);
         const more = d.programs.length > 12 ? `\n  • …and ${d.programs.length - 12} more programs` : '';
-        return { tone: 'pass', text: `${R.conns.summary}. Ports 80 and 443 are ordinary web traffic; anything else is listed so you can recognise it (22 SSH, 993 mail, 5228 Google push, 3478 calls…). Press "table" for every connection with its remote address.\n${lines.join('\n')}${more}` };
+        return { tone: 'pass', text: `${R.conns.summary}. Ports 80 and 443 are ordinary web traffic; anything else is listed so you can recognize it (22 SSH, 993 mail, 5228 Google push, 3478 calls…). Press "table" for every connection with its remote address.\n${lines.join('\n')}${more}` };
       },
     },
     {
@@ -1419,11 +1419,11 @@ window.NetDeckPlaybooks = (() => {
       if (failed(R.scan)) return { tone: 'fail', text: `${R.scan.summary}` };
       const d = R.scan.data;
       const byMaker = new Map();
-      d.others.forEach((x) => { const k = x.maker || 'unrecognised manufacturer'; byMaker.set(k, (byMaker.get(k) || 0) + 1); });
+      d.others.forEach((x) => { const k = x.maker || 'unrecognized manufacturer'; byMaker.set(k, (byMaker.get(k) || 0) + 1); });
       const makers = [...byMaker.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `  • ${n} × ${k}`).join('\n');
       const router = d.devices.find((x) => x.note === 'router');
       const notes = [];
-      if (d.randomised) notes.push(`${d.randomised} use a randomised private address — that is what phones, tablets and recent laptops do on Wi-Fi, so they cannot be matched to a manufacturer`);
+      if (d.randomised) notes.push(`${d.randomised} use a randomized private address — that is what phones, tablets and recent laptops do on Wi-Fi, so they cannot be matched to a manufacturer`);
       if (d.silent) notes.push(`${d.silent} never answered ping but showed up in the ARP table, which is normal for phones, TVs and smart-home devices`);
       const ch = d.changes;
       const who = (x) => x.ip + (x.name ? ` (${x.name})` : x.maker ? ` (${x.maker})` : '');
@@ -1481,7 +1481,7 @@ window.NetDeckPlaybooks = (() => {
     description: 'For three minutes it pings your router and the internet once a second, printing a line every ten seconds with a small bar chart of the delay and any lost pings, and calls out runs of loss as they happen. Then it says whether the dropouts are on the local link (Wi-Fi, cable, router) or beyond it. Start it when the problem tends to happen, and carry on working.',
     params: [],
     steps: [
-      { id: 'mon', cmd: 'stability-monitor', preset: 'min-3', label: 'Ping the router and the internet every second for 3 minutes', check: 'stability', warnMs: 200000, what: 'one ping a second to the router and to 1.1.1.1, summarised every 10 s' },
+      { id: 'mon', cmd: 'stability-monitor', preset: 'min-3', label: 'Ping the router and the internet every second for 3 minutes', check: 'stability', warnMs: 200000, what: 'one ping a second to the router and to 1.1.1.1, summarized every 10 s' },
     ],
     verdict(r, p, ctx, R) {
       const h = R.mon;
@@ -1531,7 +1531,7 @@ window.NetDeckPlaybooks = (() => {
       const d = R.router?.data;
       if (!d) return { tone: 'fail', text: R.router?.summary || 'The router check did not run.' };
       if (d.telnet) return { tone: 'fail', text: `Telnet (port 23) is open on the router at ${d.gw}. That is an unencrypted login that anything on your network can try passwords against — a 1990s protocol that should not be on. Turn it off in the router's settings; if there is no setting, the router is old enough to replace.${d.forwards ? ` Also ${d.forwards} UPnP port forward${d.forwards === 1 ? ' is' : 's are'} open to the internet.` : ''}` };
-      if (d.forwards) return { tone: 'warn', text: `UPnP is on and ${d.forwards} port forward${d.forwards === 1 ? ' is' : 's are'} currently open from the internet to devices on your network (listed in the step above). Games, consoles and video calls open these legitimately and close them after; a forward you do not recognise, or one that points at a camera, NAS or PC, is an exposure. If in doubt, turn UPnP off in the router and forward ports by hand when needed.` };
+      if (d.forwards) return { tone: 'warn', text: `UPnP is on and ${d.forwards} port forward${d.forwards === 1 ? ' is' : 's are'} currently open from the internet to devices on your network (listed in the step above). Games, consoles and video calls open these legitimately and close them after; a forward you do not recognize, or one that points at a camera, NAS or PC, is an exposure. If in doubt, turn UPnP off in the router and forward ports by hand when needed.` };
       if (d.tr069) return { tone: 'warn', text: `No telnet and ${d.upnp ? 'no UPnP forwards' : 'no UPnP'}, but TR-069 (port 7547) answers on the LAN side — the channel ISPs use to manage the routers they supply. Normal on an ISP router; it means the ISP can change its settings remotely. Nothing to do unless that bothers you, in which case a router of your own behind it is the fix.` };
       return { tone: 'pass', text: `Router ${d.gw} looks healthy: no telnet, ${d.upnp ? 'UPnP on but nothing forwarded' : 'UPnP not offered'}, ${d.admin ? `admin page present${d.cert ? ' (' + d.cert.split(' (')[0] + ' certificate)' : ''}` : 'managed from an app rather than a web page'}. Two things NetDeck cannot check from here: that its firmware is current, and that its admin password is not the default.` };
     },

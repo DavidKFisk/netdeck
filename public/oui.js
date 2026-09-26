@@ -97,7 +97,7 @@ window.NetDeckOui = (() => {
     const h = hex(mac);
     if (h.length < 6) return '';
     if (h.startsWith('0242')) return 'Docker container';
-    if (isLocallyAdministered(h)) return 'private address (randomised)';
+    if (isLocallyAdministered(h)) return 'private address (randomized)';
     // curated names first (they are friendlier: "Microsoft Hyper-V", not "Microsoft"), then the longest registry block that matches
     return TABLE[h.slice(0, 6)] || REGISTRY.get(h.slice(0, 9)) || REGISTRY.get(h.slice(0, 7)) || REGISTRY.get(h.slice(0, 6)) || '';
   }

@@ -29,6 +29,7 @@
       <kbd>/</kbd>
     </div>
     <button class="palette-btn" id="palette-open" title="Command palette (Ctrl+K)"><span>Jump to…</span><kbd>Ctrl K</kbd></button>
+    <button class="theme-btn calc-btn" id="calc-open" title="Network calculator" aria-label="Open the network calculator"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="1.75" width="10" height="12.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="5" y="3.75" width="6" height="2.5" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 8.75h.01M8 8.75h.01M10.5 8.75h.01M5.5 11.25h.01M8 11.25h.01M10.5 11.25h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
     <button class="theme-btn" id="theme-toggle" title="Switch light / dark theme" aria-label="Switch light / dark theme">
       <svg class="moon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10.5 2.5A5.5 5.5 0 1 0 13.5 9.5 4.5 4.5 0 0 1 10.5 2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
       <svg class="sun" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -197,7 +198,7 @@
     <div class="modal-box">
       <h2 id="report-title">Save a report of this run</h2>
       <p class="modal-hint">A single HTML file with the run's title, time, your note, and its output — steps and verdict for a playbook, output and table for a command. It opens in any browser and has a Print button for a PDF.</p>
-      <label class="modal-row"><input type="checkbox" id="report-anon" checked> Anonymise: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
+      <label class="modal-row"><input type="checkbox" id="report-anon" checked> Anonymize: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
       <label class="modal-row"><input type="checkbox" id="report-full" checked> Include each step's full output (collapsed sections)</label>
       <div class="modal-actions">
         <button type="button" class="tbtn" id="report-cancel">Cancel</button>
@@ -206,11 +207,38 @@
     </div>
   </div>
 
+  <div class="modal" id="calc-modal" hidden role="dialog" aria-labelledby="calc-title">
+    <div class="modal-box calc-box">
+      <div class="calc-head">
+        <h2 id="calc-title">Network calculator</h2>
+        <span class="calc-head-tools">
+          <button type="button" class="icon-btn manual-btn" id="calc-manual" aria-label="Open the manual at this tool"></button>
+          <button type="button" class="icon-btn calc-x" id="calc-close" aria-label="Close" title="Close (Esc)">&#x2715;</button>
+        </span>
+      </div>
+      <div class="view-switch calc-tabs" id="calc-tabs" role="tablist" aria-label="Calculator"></div>
+      <div class="filter-row calc-modes" id="calc-modes" role="group" aria-label="Mode"></div>
+      <p class="modal-hint" id="calc-hint"></p>
+      <div class="calc-body">
+        <div class="calc-fields" id="calc-fields"></div>
+        <div class="calc-actions" id="calc-actions"></div>
+        <div class="calc-out" id="calc-out" aria-live="polite"></div>
+      </div>
+      <div class="calc-foot">
+        <span class="calc-foot-note">Calculated here on this PC — nothing is sent anywhere.</span>
+        <span class="calc-foot-btns">
+          <button type="button" class="tbtn" id="calc-copy">Copy results</button>
+          <button type="button" class="tbtn" id="calc-save">Save report</button>
+          <button type="button" class="tbtn" id="calc-close2">Close</button>
+        </span>
+      </div>
+    </div>
+  </div>
   <div class="modal" id="snapshot-modal" hidden role="dialog" aria-labelledby="snapshot-title">
     <div class="modal-box">
       <h2 id="snapshot-title">Save a dashboard snapshot</h2>
       <p class="modal-hint">One HTML file with every tile and card exactly as they are on screen — status, this computer, connection, network, latency chart, speed tests, route, traffic and security posture. It opens in any browser and has a Print button for a PDF, so it can go to IT or a provider as a picture of the network right now.</p>
-      <label class="modal-row"><input type="checkbox" id="snapshot-anon" checked> Anonymise: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
+      <label class="modal-row"><input type="checkbox" id="snapshot-anon" checked> Anonymize: replace this computer's name, IP addresses (kept consistent) and the device half of MAC addresses</label>
       <div class="modal-actions">
         <button type="button" class="tbtn" id="snapshot-cancel">Cancel</button>
         <button type="button" class="run-btn" id="snapshot-go">Save snapshot</button>
@@ -281,6 +309,7 @@
   <script src="parsers.js"></script>
   <script src="playbooks.js"></script>
   <script src="dashboard.js"></script>
+  <script src="netcalc.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

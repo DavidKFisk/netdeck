@@ -36,7 +36,7 @@ window.NetDeckParsers = (() => {
         if (!gap && start === -1) start = pos;
         if (gap && start !== -1) { spans.push({ start, end: pos }); start = -1; }
       }
-      // A run with no ruler beneath it is not a column of its own (a value that happens to be split): fold it into its neighbour.
+      // A run with no ruler beneath it is not a column of its own (a value that happens to be split): fold it into its neighbor.
       const columnsSpans = [];
       for (const s of spans) {
         const hasRuler = /[-=]/.test(ruler.slice(s.start, s.end));

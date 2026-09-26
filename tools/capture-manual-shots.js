@@ -1,7 +1,7 @@
 // Drive a headless browser against the running NetDeck, run every playbook, and capture its result pane.
 //   node tools/capture-manual-shots.js <debug-port> [playbook-id ...]     (no ids = everything, plus the overview)
 // Output: public/manual-img/*.webp (shipped) and %TEMP%/netdeck-shots/*.png (for review).
-// Identifying values are anonymised in the page before each capture.
+// Identifying values are anonymized in the page before each capture.
 const fs = require('fs');
 const path = require('path');
 
@@ -178,6 +178,19 @@ const CAPTURE_CSS = `
     await shoot('dashboard', rect);
     console.log(`  dashboard: ${rect.height}px tall`);
     await evalJs(`(() => { document.getElementById('__capdash')?.remove(); return true; })()`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 1000, deviceScaleFactor: 1.5, mobile: false });
+  }
+  // 4. The network calculator, at its default (example) inputs.
+  if (!ONLY.length || ONLY.includes('calc')) {
+    console.log('calculator…');
+    await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 2400, deviceScaleFactor: 1.5, mobile: false });
+    await evalJs(`(() => { document.getElementById('term-close-all')?.click(); const s = document.createElement('style'); s.id = '__capcalc'; s.textContent = '.calc-box{max-height:none!important} .calc-body{overflow:visible!important} .calc-tablewrap{max-height:none!important} html{overflow:hidden!important} .modal{padding-top:20px!important}'; document.head.appendChild(s); return true; })()`);
+    for (const [name, tool, mode] of [['calc-ipv4', 'ipv4', 'main'], ['calc-vlsm', 'split', 'vlsm']]) {
+      await evalJs(`(async () => { window.NetDeckCalc.open('${tool}', '${mode}'); await new Promise(r => setTimeout(r, 800)); document.activeElement?.blur(); return true; })()`);
+      const rect = await evalJs(`(() => { const r = document.querySelector('.calc-box').getBoundingClientRect(); return { x: Math.floor(r.left), y: Math.floor(r.top + scrollY), width: Math.ceil(r.width), height: Math.ceil(r.height) }; })()`);
+      await shoot(name, rect);
+    }
+    await evalJs(`(() => { window.NetDeckCalc.close(); document.getElementById('__capcalc')?.remove(); return true; })()`);
     await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 1000, deviceScaleFactor: 1.5, mobile: false });
   }
   console.log('ALL_DONE');

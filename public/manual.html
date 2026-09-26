@@ -204,6 +204,20 @@
       <li class="sub"><a href="#d-route">Route to the internet</a></li>
       <li class="sub"><a href="#d-traffic">Traffic</a></li>
       <li class="sub"><a href="#d-posture">Security posture</a></li>
+      <li><a href="#calculator">Network calculator</a></li>
+      <li class="sub"><a href="#nc-basics">How IP addresses work</a></li>
+      <li class="sub"><a href="#nc-subnetting">Subnetting, step by step</a></li>
+      <li class="sub"><a href="#nc-v6basics">IPv6 in brief</a></li>
+      <li class="sub"><a href="#nc-macbasics">MAC addresses in brief</a></li>
+      <li class="sub"><a href="#nc-ipv4">IPv4 subnet</a></li>
+      <li class="sub"><a href="#nc-split">Split &amp; summarize</a></li>
+      <li class="sub"><a href="#nc-ipv6">IPv6</a></li>
+      <li class="sub"><a href="#nc-mac">MAC</a></li>
+      <li class="sub"><a href="#nc-bandwidth">Bandwidth &amp; time</a></li>
+      <li class="sub"><a href="#nc-throughput">Throughput &amp; latency</a></li>
+      <li class="sub"><a href="#nc-wifi">Wi-Fi</a></li>
+      <li class="sub"><a href="#nc-security">Security</a></li>
+      <li class="sub"><a href="#nc-planning">Planning</a></li>
       <li><a href="#playbooks">Playbooks</a></li>
       <li><a href="#commands">Command reference</a></li>
       <li class="sub"><a href="#c-config">Configuration &amp; interfaces</a></li>
@@ -255,7 +269,7 @@
 
 <p>NetDeck runs on Windows, Linux and macOS. The reference is the same everywhere; on Linux or macOS the run button moves to the L/M row and runs that platform's equivalent (<code>ip addr</code> for <code>ipconfig /all</code>, <code>ss -tulpn</code> for <code>netstat -ano</code>, <code>nc -zv</code> for <code>Test-NetConnection</code>). Windows-only commands such as <code>net view</code> are shown for reference there.</p>
 
-<div class="callout"><span class="lbl">Addresses in this manual are examples</span><p>Every address you see here is a placeholder, not a real network: <code>192.168.1.x</code> stands for your own local network (yours may be 192.168.0.x, 10.x.x.x or something else — the <a href="#s-context">context strip</a> shows the real one), <code>203.0.113.x</code> for a public address that is not a named service, and <code>10.0.0.x</code> for a network in front of yours. Screenshots are taken from a real network and then anonymised the same way: the computer name becomes OFFICE-PC, local addresses are renumbered into 192.168.1.x, public ones into 203.0.113.x, and the device half of every MAC address is hidden.</p></div>
+<div class="callout"><span class="lbl">Addresses in this manual are examples</span><p>Every address you see here is a placeholder, not a real network: <code>192.168.1.x</code> stands for your own local network (yours may be 192.168.0.x, 10.x.x.x or something else — the <a href="#s-context">context strip</a> shows the real one), <code>203.0.113.x</code> for a public address that is not a named service, and <code>10.0.0.x</code> for a network in front of yours. Screenshots are taken from a real network and then anonymized the same way: the computer name becomes OFFICE-PC, local addresses are renumbered into 192.168.1.x, public ones into 203.0.113.x, and the device half of every MAC address is hidden.</p></div>
 <div class="callout ok"><span class="lbl">Safe by design</span><p>Only read-only, "look but don't touch" commands can be run from the page. Commands that change settings (clearing caches, adding routes, ending processes) are shown for reference with a copy button and an orange note explaining why you'd run them yourself in a terminal.</p></div>
 
 <!-- ============================================================ -->
@@ -263,9 +277,10 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.26.9</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.27.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
+  <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
   <div>&#x263D; / &#x2600;</div><div>Switches between dark and light themes. Your choice is remembered.</div>
   <div>&#x1F310;&#xFE0E; website</div><div>The globe next to the theme button opens <code>davidkfisk.com</code> — in a new browser tab, or in your default browser if you're using the desktop app.</div>
   <div>Cheat sheet</div><div>Opens the whole reference as compact tables — one line per command, grouped by category, with a filter box and a <strong>Print / save PDF</strong> button. The print layout is tuned to fit on a few pages.</div>
@@ -275,7 +290,7 @@
 <h3 id="s-hosted">Hosted (web) version</h3>
 <p>NetDeck can also be published to a web address as a plain reference. A web page can't run commands on your computer — browsers forbid it — so the hosted version has no run buttons, no terminal drawer and no network context. Everything else works: search, filters, playbooks (shown as steps to copy), the manual, the cheat sheet, pinning, links, and custom commands (kept in your browser).</p>
 <div class="ui">
-  <div>reference mode</div><div>The note in the grey bar under the header saying commands can't run from a hosted page.</div>
+  <div>reference mode</div><div>The note in the gray bar under the header saying commands can't run from a hosted page.</div>
   <div><span class="btn">Connect local NetDeck</span></div><div>Turns the hosted page into the full app by pairing it with a NetDeck server running <em>on your own computer</em>. Start that server with the website's address as its allowed origin — the dialog shows the exact command — and it prints a pairing token; enter the address (<code>http://localhost:4573</code>) and the token, click <strong>Test &amp; connect</strong>, and run buttons, the terminal and the health strip appear. The server only ever accepts that one website, only with the token, and still listens on your own machine only. Works in Chrome, Edge and Firefox; Safari blocks web pages from reaching <code>localhost</code>.</div>
   <div><span class="btn">Disconnect</span></div><div>Forgets the pairing and returns to reference mode.</div>
 </div>
@@ -290,7 +305,7 @@
   <div>DNS</div><div>The servers that turn names like <code>google.com</code> into addresses. Often the router itself, or your internet provider's servers.</div>
   <div>GATEWAY PING / INTERNET PING</div><div>Two tiny live charts. Every 10 seconds NetDeck pings your router and Cloudflare's <code>1.1.1.1</code> once and plots the reply time, so a problem shows up before you go looking for it. The number beside each is the latest reply: green is normal, amber is slow (over 50 ms to the router, over 100 ms to the internet), red is very slow or no reply at all; a red tick in the chart marks a missed reply. A steady low line is what healthy looks like; a line that climbs when you start a download is congestion; gaps are drop-outs. Hover for the max over the last few minutes.</div>
   <div>STANDARD USER / ADMIN</div><div>Whether NetDeck was started from an elevated ("Run as administrator") shell. A few command variants only work when elevated — <code>netstat -anob</code>, which lists the program behind each connection, is the main one. Those variants are shown as "admin only (locked)" until NetDeck runs as administrator. Everything else works either way.</div>
-  <div><span class="btn">Run as admin</span></div><div>Appears beside the badge whenever NetDeck is <em>not</em> elevated. In the <strong>desktop app</strong> it restarts NetDeck with administrator rights: NetDeck closes, Windows shows its usual permission prompt, and NetDeck reopens with the badge reading ADMIN. Anything still running stops and open tabs close; your history, pins and custom commands are kept. If you decline the Windows prompt, NetDeck just reopens as it was. It lasts until you quit — the next normal start is un-elevated again. (If Windows asks for another account's password because yours isn't an administrator, NetDeck runs as that account and shows that account's history and pins.) In the <strong>run-from-source</strong> edition the button is labelled <em>How to run as admin</em> and shows the exact commands for that installation's folder, since a web page can't restart its own server.</div>
+  <div><span class="btn">Run as admin</span></div><div>Appears beside the badge whenever NetDeck is <em>not</em> elevated. In the <strong>desktop app</strong> it restarts NetDeck with administrator rights: NetDeck closes, Windows shows its usual permission prompt, and NetDeck reopens with the badge reading ADMIN. Anything still running stops and open tabs close; your history, pins and custom commands are kept. If you decline the Windows prompt, NetDeck just reopens as it was. It lasts until you quit — the next normal start is un-elevated again. (If Windows asks for another account's password because yours isn't an administrator, NetDeck runs as that account and shows that account's history and pins.) In the <strong>run-from-source</strong> edition the button is labeled <em>How to run as admin</em> and shows the exact commands for that installation's folder, since a web page can't restart its own server.</div>
   <div>&#x21BB; (refresh)</div><div>Re-detects everything. Use it after switching from Wi-Fi to a cable, connecting a VPN, or fixing a network problem.</div>
 </div>
 <div class="callout warn"><span class="lbl">If the IP starts with 169.254</span><p>That is an "APIPA" address — Windows made it up because no router handed out a real one. It means DHCP failed: check the cable or Wi-Fi connection, then try <code>ipconfig /release</code> followed by <code>ipconfig /renew</code> in a terminal.</p></div>
@@ -329,7 +344,7 @@
 <p>The dark panel pinned to the bottom of the window. It stays collapsed to a thin bar until you run something, then opens to show the output. Each run gets its own <strong>tab</strong>, so a slow command keeps going while you start another.</p>
 <div class="ui">
   <div>Tab strip</div><div>One tab per run, named after the command. Click to switch; click <strong>&times;</strong> to close (this also stops the command if it's still running). The active tab has a green underline.</div>
-  <div><span class="dot ok"></span> status dot</div><div><strong>Pulsing green</strong>: running. <strong>Solid green</strong>: finished normally. <span class="dot warn"></span> <strong>Amber</strong>: finished but reported a problem (for example, ping got no replies). <span class="dot err"></span> <strong>Red</strong>: couldn't run at all. <span class="dot"></span> <strong>Grey</strong>: you stopped it.</div>
+  <div><span class="dot ok"></span> status dot</div><div><strong>Pulsing green</strong>: running. <strong>Solid green</strong>: finished normally. <span class="dot warn"></span> <strong>Amber</strong>: finished but reported a problem (for example, ping got no replies). <span class="dot err"></span> <strong>Red</strong>: couldn't run at all. <span class="dot"></span> <strong>Gray</strong>: you stopped it.</div>
   <div>&gt; command · time · duration · exit 0</div><div>The line at the top of each tab: what ran, when it started, how long it has been running (it counts up live), and its <em>exit code</em>. <code>exit 0</code> means "completed without error"; anything else means the program is reporting a failure — for <code>ping</code>, <code>exit 1</code> simply means the host didn't reply.</div>
   <div>find in output</div><div>On the right of that line. Type to highlight every match in the output and see the count; <kbd>Enter</kbd> jumps to the next match, <kbd>Shift</kbd>+<kbd>Enter</kbd> to the previous, <kbd>Esc</kbd> clears. Works while a command is still running.</div>
   <div><span class="btn">wrap</span></div><div>Toggles line wrapping. Off shows long lines (like <code>route print</code> or wide PowerShell tables) on one line with a horizontal scroll, which keeps columns aligned. The setting is remembered.</div>
@@ -339,7 +354,7 @@
   <div><span class="btn">Copy</span></div><div>Copies the whole output of the active tab. For a playbook, it copies the step-by-step summary and the verdict.</div>
   <div><span class="btn">Close all</span></div><div>Closes every tab at once and stops anything still running. Your history is kept.</div>
   <div><span class="btn">History</span></div><div>Toggles the recent-runs panel on the left side of the drawer (see <a href="#s-history">History</a>).</div>
-  <div><span class="btn">&#x1F514;&#xFE0E;</span> notify</div><div>When switched on (the browser asks permission once), a test notification appears at once so you can see they reach the desktop, and from then on any run or playbook that finishes while the NetDeck window is not the active one — behind another window, minimised, or a different browser tab — raises a desktop notification with the result; clicking it brings NetDeck back and shows that tab. Handy for <code>pathping</code> and <code>systeminfo</code>.</div>
+  <div><span class="btn">&#x1F514;&#xFE0E;</span> notify</div><div>When switched on (the browser asks permission once), a test notification appears at once so you can see they reach the desktop, and from then on any run or playbook that finishes while the NetDeck window is not the active one — behind another window, minimized, or a different browser tab — raises a desktop notification with the result; clicking it brings NetDeck back and shows that tab. Handy for <code>pathping</code> and <code>systeminfo</code>.</div>
   <div><span class="btn">link</span></div><div>On the right of each tab's top line: copies a link that opens this exact command with its host and variant pre-filled. Web editions only — not in the desktop app.</div>
   <div><span class="btn">&#x2195;</span></div><div>Switches the drawer between half-height and tall.</div>
   <div><span class="btn">Expand</span> / <span class="btn">Collapse</span></div><div>Shows or hides the drawer body. Collapsing doesn't stop or discard anything.</div>
@@ -369,7 +384,7 @@
 <div class="ui">
   <div>note</div><div>On the right of a run's top line (and on the bar above a playbook's steps). Opens a box for a note about this run — what you were seeing, a ticket number, what you tried. The note is saved with the run in History (a ✎ marks entries that have one; hover to read it) and goes into any report you save. It is yours alone; nothing is sent anywhere.</div>
   <div>Compare</div><div>With a finished run in front of you, press <strong>Compare</strong> and pick an earlier run of the same command or playbook — an open tab or a History entry. NetDeck opens a new tab showing the difference line by line: lines only in the older run in red, only in the newer in green, unchanged stretches folded. For playbooks it compares the step summaries and the verdict. This is the "what changed since it worked?" question answered in one click; run <code>ipconfig /all</code>, <code>route print</code> or the network scan when things work, and compare when they do not.</div>
-  <div>Report</div><div>Saves the run in front of you as a single HTML file: title, time, your note, the output and its table for a command, the steps (with their full output in collapsible sections) and the verdict for a playbook. It opens in any browser and has a <em>Print / save as PDF</em> button. <strong>Anonymise</strong> is on by default: your computer's name becomes OFFICE-PC, every address is replaced consistently (private ones with 192.0.2.x, public with 203.0.113.x — so the same device keeps the same fake address throughout), and the device half of MAC addresses becomes xx-xx-xx. Well-known addresses such as 1.1.1.1 are left alone. Turn it off for a report you keep yourself.</div>
+  <div>Report</div><div>Saves the run in front of you as a single HTML file: title, time, your note, the output and its table for a command, the steps (with their full output in collapsible sections) and the verdict for a playbook. It opens in any browser and has a <em>Print / save as PDF</em> button. <strong>Anonymize</strong> is on by default: your computer's name becomes OFFICE-PC, every address is replaced consistently (private ones with 192.0.2.x, public with 203.0.113.x — so the same device keeps the same fake address throughout), and the device half of MAC addresses becomes xx-xx-xx. Well-known addresses such as 1.1.1.1 are left alone. Turn it off for a report you keep yourself.</div>
   <div>Schedule</div><div>Runs a playbook every 5 minutes to 3 hours while NetDeck is open — <em>Scan my network</em> every 15 minutes, say, or <em>Does my connection drop out?</em> every hour. Each run opens a tab; an unchanged run replaces the previous one so tabs do not pile up. A run whose result changed — a new device, a verdict that flipped, a step that started failing — is kept, marked with "!" in its tab, counted on the ⏱ badge in the context strip, and (if you tick "notify on change") announced with a desktop notification. Schedules are remembered and resume when NetDeck is reopened; they never run while it is closed. Playbooks that need input appear in the list once you have run them, with the input you used last.</div>
 </div>
 
@@ -378,7 +393,7 @@
 <figure class="shot"><img src="manual-img/dashboard.webp" width="1860" height="3465" alt="The Dashboard view: eight status tiles and the This computer, Connection and Network cards" loading="lazy"><figcaption>A healthy office network. Green tiles across the top; this computer's addresses, the connection checks with their one-line verdict, and the network as the last scan saw it; then the speed tests kept so far, the path to 1.1.1.1 hop by hop and the security checks with how each last came out; and at the bottom the two chart cards, latency over the last ten minutes and the traffic through the adapter, which start folded and are shown open here.</figcaption></figure>
 
 <h3 id="d-reading">Reading the dashboard</h3>
-<p><strong>Colours.</strong> Every tile has a coloured left edge, and every check row a coloured dot. <span style="color:var(--ok)">Green</span> means the check passed and the figure is in a healthy range. <span style="color:var(--warn)">Amber</span> means it works but something is off — slow, weak, or worth a look. <span style="color:var(--err)">Red</span> means it failed. Grey means not checked yet, or not applicable (Wi-Fi on a wired PC). Amber is the colour to read most carefully: it is where the dashboard has an opinion and the explanation is in the small text.</p>
+<p><strong>Colors.</strong> Every tile has a colored left edge, and every check row a colored dot. <span style="color:var(--ok)">Green</span> means the check passed and the figure is in a healthy range. <span style="color:var(--warn)">Amber</span> means it works but something is off — slow, weak, or worth a look. <span style="color:var(--err)">Red</span> means it failed. Gray means not checked yet, or not applicable (Wi-Fi on a wired PC). Amber is the color to read most carefully: it is where the dashboard has an opinion and the explanation is in the small text.</p>
 <p><strong>Ages.</strong> "just now", "3 min ago", "2 h ago": how old a figure is. The tiles for the quick checks are as old as the last <span class="btn">Refresh</span>; the Router and Internet tiles update every ten seconds on their own; the playbook tiles and the Network card are as old as the last time you ran that playbook. A stale figure is not wrong, it is just old — the age is always shown so you can decide.</p>
 <p><strong>Units.</strong> Latencies are in <strong>ms</strong>, milliseconds, and mean a round trip: out and back. Speeds and traffic are in <strong>Mbit/s</strong>, megabits per second, the unit ISPs sell; divide by 8 for the MB/s a download dialog shows (100 Mbit/s ≈ 12.5 MB/s). Data totals are in MB or GB (bytes). Percentages of loss are "of the pings sent".</p>
 <div class="callout"><span class="lbl">Where the numbers come from</span><p>Quick checks: <code>ipconfig /all</code>, <code>ping</code> ×4 to the router and to 1.1.1.1, <code>nslookup example.com</code>, a timed <code>curl</code> to https://example.com/, <code>netsh wlan show interfaces</code>, <code>netsh advfirewall show allprofiles</code>, and <code>Get-CimInstance Win32_OperatingSystem</code> — all read-only, no administrator rights. Slow checks: the <a href="#pb-scan">Scan my network</a>, <a href="#pb-dnshonest">Is my DNS honest?</a> and <a href="#pb-routercheck">Router check-up</a> playbooks, plus any speed test, traceroute or stability monitor you run, whether from the dashboard, a command card or a playbook.</p></div>
@@ -403,7 +418,7 @@
 <p><span class="btn">Refresh</span> runs the quick checks again, all at the same time, in about three seconds. The line above the tiles reads, for example, <code>Last check 18:41:25 (46 s ago) · 3.1 s · router and internet pings update every 10 s</code>: when the quick checks last ran, how long they took, and a reminder that the two ping tiles keep updating between refreshes. The dashboard refreshes by itself when you open it if the last snapshot is more than two minutes old, and whenever a newer version of NetDeck has added a tile that the saved snapshot does not have. The snapshot is kept in this browser (or the desktop app), so the dashboard always opens with something to show.</p>
 
 <h3 id="d-snapshot">Snapshot</h3>
-<p><span class="btn">Snapshot</span> saves the whole dashboard as one HTML file — every tile and card exactly as it is on screen, with a Print button for a PDF. Tick <em>Anonymise</em> (on by default) to replace this computer's name, IP addresses (each real address gets the same substitute every time, so the picture stays consistent) and the device half of MAC addresses, the same way a run report does. The file needs nothing else to open, so it can go to IT or your provider as "this is what my network looked like at 18:41".</p>
+<p><span class="btn">Snapshot</span> saves the whole dashboard as one HTML file — every tile and card exactly as it is on screen, with a Print button for a PDF. Tick <em>Anonymize</em> (on by default) to replace this computer's name, IP addresses (each real address gets the same substitute every time, so the picture stays consistent) and the device half of MAC addresses, the same way a run report does. The file needs nothing else to open, so it can go to IT or your provider as "this is what my network looked like at 18:41".</p>
 
 <h3 id="d-computer">This computer</h3>
 <p>Your PC's own network identity, as <code>ipconfig /all</code> and Windows report it. These are the facts a help desk asks for first.</p>
@@ -448,14 +463,14 @@
   <tr><td><strong>router</strong> — e.g. 192.168.1.1, eero</td><td>The gateway, and its manufacturer from the MAC registry.</td><td>Your router's brand. "ICANN, IANA Department" is a special case: a virtual router address (VRRP/CARP) used by some business firewalls.</td></tr>
   <tr><td><strong>router check</strong></td><td>The last <a href="#pb-routercheck">Router check-up</a> summary and its age: open management ports, UPnP, admin page.</td><td>"healthy". Telnet open, or UPnP forwards you did not create, deserve attention.</td></tr>
   <tr><td><strong>since last scan</strong> — no change / 2 new · 1 gone · 1 moved</td><td>The difference from the previous scan of the same range. <em>New</em>: never seen in any scan. <em>Gone</em>: seen last time, not now. <em>Moved</em>: same device, different address. Hover for the addresses.</td><td>Phones and laptops come and go; "gone" is only meaningful when it persists. "new" is the one to check — a device that has never been on your network before.</td></tr>
-  <tr><td><strong>manufacturer bars</strong></td><td>The devices grouped by who made them, from their MAC addresses. "private address (randomised)" is not a manufacturer: it is what phones, tablets and recent laptops do on Wi-Fi on purpose, so they cannot be tracked between networks.</td><td>A rough inventory. Six Amazon devices and four Wyze cameras is a smart home; twelve "unrecognised" is worth a scan with the table open.</td></tr>
+  <tr><td><strong>manufacturer bars</strong></td><td>The devices grouped by who made them, from their MAC addresses. "private address (randomized)" is not a manufacturer: it is what phones, tablets and recent laptops do on Wi-Fi on purpose, so they cannot be tracked between networks.</td><td>A rough inventory. Six Amazon devices and four Wyze cameras is a smart home; twelve "unrecognized" is worth a scan with the table open.</td></tr>
 </table></div>
 
 <h3 id="d-latency">Latency &amp; loss</h3>
 <p><strong>Latency</strong> is how long a packet takes to get somewhere and back, in milliseconds; <strong>loss</strong> is the share of packets that never came back; <strong>jitter</strong> is how much the latency varies from one packet to the next. Downloads mostly care about speed; calls, games and remote desktop care about these three, and this card is where they show. It draws the same router and internet pings the context strip takes every ten seconds, kept for 24 hours.</p>
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>the chart</strong></td><td>Time runs left to right for the chosen range (10m, 1h, 6h, 24h). The green line is the router, the grey line the internet; each point is the average of the pings in that slice of time. A red mark on the baseline means a ping in that slice got no reply — the taller the mark, the larger the share lost. Hover anywhere for the exact figures at that moment.</td><td>Two flat, low lines. The internet line sits above the router line by your ISP's delay. Spikes that appear on both lines started on your link (usually Wi-Fi); spikes only on the grey line started beyond your router. A gap is time NetDeck was closed or hidden — not a fault.</td></tr>
+  <tr><td><strong>the chart</strong></td><td>Time runs left to right for the chosen range (10m, 1h, 6h, 24h). The green line is the router, the gray line the internet; each point is the average of the pings in that slice of time. A red mark on the baseline means a ping in that slice got no reply — the taller the mark, the larger the share lost. Hover anywhere for the exact figures at that moment.</td><td>Two flat, low lines. The internet line sits above the router line by your ISP's delay. Spikes that appear on both lines started on your link (usually Wi-Fi); spikes only on the gray line started beyond your router. A gap is time NetDeck was closed or hidden — not a fault.</td></tr>
   <tr><td><strong>router / internet</strong> — 3 ms avg · worst 28 ms · no loss</td><td>For the range shown: the average latency, the single worst ping, and the share lost.</td><td>Router: avg under 5 ms wired, under 20 ms Wi-Fi, worst not more than a few times the average. Internet: avg 10–40 ms. Any loss on the router line is a local problem; loss only on the internet line is the provider's.</td></tr>
   <tr><td><strong>N samples</strong></td><td>How many ten-second pings fall in the range.</td><td>6 per minute while NetDeck is open and showing.</td></tr>
   <tr><td><strong>Longer monitors</strong> — 180/180, 0 ms, jitter 0 ms</td><td>Results of <a href="#pb-dropouts">Does my connection drop out?</a>: one ping a second for three minutes to each of the router and the internet — answered/sent, average, jitter, and "loss runs" (several lost in a row, which is what a dropout feels like).</td><td>All answered, jitter under 10 ms to the router and under 30 ms to the internet, no loss runs. A monitor with loss runs on the internet leg only is the pattern of a flaky provider link.</td></tr>
@@ -469,7 +484,7 @@
   <tr><td><strong>down / up</strong> — e.g. 234 / 46 Mbit/s</td><td>Download and upload throughput measured against Cloudflare's speed servers, in megabits per second — the unit on your ISP contract.</td><td>Close to what you pay for, on a cable. Wi-Fi typically gives a fraction of the plan; that is the Wi-Fi, not the ISP. Upload is usually much lower than download on cable and DSL, by design.</td></tr>
   <tr><td><strong>idle ms</strong> — e.g. 22</td><td>The latency to the speed server when nothing else was happening: the baseline for the next figure.</td><td>Similar to the Internet tile.</td></tr>
   <tr><td><strong>bufferbloat</strong> — A / B / C / D, +21 ms</td><td>How much the latency rose <em>while</em> the download and upload were running. A router that queues too much lets it climb by hundreds of milliseconds under load, so a call stutters whenever someone else downloads. A: under 30 ms; B: under 100; C: under 300 (noticeable); D: more (severe).</td><td>A or B. C or D is fixed by a router with smart queue management (SQM, sometimes sold as "QoS"), not by a faster plan.</td></tr>
-  <tr><td><strong>bars</strong></td><td>One pair per past run — green download, grey upload — oldest on the left. Hover a bar for that run's figures and the Cloudflare site it tested against (an airport code such as IAD or LHR: the nearest data centre).</td><td>Bars of similar height. A slope downwards over weeks is a line problem worth showing the provider — the Snapshot does exactly that.</td></tr>
+  <tr><td><strong>bars</strong></td><td>One pair per past run — green download, gray upload — oldest on the left. Hover a bar for that run's figures and the Cloudflare site it tested against (an airport code such as IAD or LHR: the nearest data center).</td><td>Bars of similar height. A slope downwards over weeks is a line problem worth showing the provider — the Snapshot does exactly that.</td></tr>
 </table></div>
 <p><span class="btn">Clear</span> forgets the kept runs (they stay in History), for a fresh start after changing network or provider.</p>
 
@@ -478,7 +493,7 @@
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
   <tr><td><strong>the chain</strong> — 1 · 1 ms · 192.168.1.1 › 2 · 3 ms · 10.0.0.1 › …</td><td>One box per hop: its number, the round trip <em>to that hop</em> (not the time between hops), and its address. The bar over each box is its delay, so the shape of the bars is the shape of the path.</td><td>Hop 1 is your router at 1–2 ms. The next one or two are your provider's. Then the internet. Eight to fifteen hops and 10–40 ms end to end is typical; a long chain is not a fault by itself.</td></tr>
-  <tr><td><strong>colours</strong></td><td>Green: inside your own network (a private address). Amber: your provider's access network (carrier-grade NAT addresses, 100.64–127.x). Grey: the internet. An empty box with * is a hop that did not reply.</td><td>Routers are often configured not to answer traceroute; a * with normal hops after it is fine. Two green hops in a row is double NAT — see <a href="#pb-doublenat">the playbook</a>.</td></tr>
+  <tr><td><strong>colors</strong></td><td>Green: inside your own network (a private address). Amber: your provider's access network (carrier-grade NAT addresses, 100.64–127.x). Gray: the internet. An empty box with * is a hop that did not reply.</td><td>Routers are often configured not to answer traceroute; a * with normal hops after it is fine. Two green hops in a row is double NAT — see <a href="#pb-doublenat">the playbook</a>.</td></tr>
   <tr><td><strong>amber underline</strong></td><td>The hop where latency jumps up and <em>stays</em> up for the rest of the path — the point where the delay is added. One slow hop that the later hops do not share is just a router answering slowly, and is not marked.</td><td>None. If there is one and it is hop 1, it is your link; hop 2 or 3, your provider; later, the internet beyond them.</td></tr>
   <tr><td><strong>the verdict line</strong> — Reached in 8 hops, 20 ms end to end · 1 silent hop (normal)</td><td>Whether the trace reached its destination, in how many hops, and the total.</td><td>"Reached". "Path stops after hop N" with the internet still working means a firewall on the way drops traceroute, not traffic.</td></tr>
 </table></div>
@@ -490,12 +505,12 @@
   <tr><td><strong>down / up</strong> — e.g. 51 kbit/s · 18 kbit/s</td><td>The rate over the last six-second interval, in bits per second: what is being received and sent at this moment.</td><td>A few kbit/s when idle (Windows and its apps chatter). Tens of Mbit/s during a download or a video call. If it is high and you are not doing anything, the <a href="#pb-outbound">Who is this PC talking to?</a> playbook names the program.</td></tr>
   <tr><td><strong>link</strong> — e.g. 1.00 Gbit/s · 0% used</td><td>The speed your adapter negotiated with the switch or access point — the most this hop could ever carry — and how much of it the current rate uses.</td><td>Wired: 1 Gbit/s (2.5 on newer PCs). A wired link at 100 Mbit/s means a bad cable or port. Wi-Fi: the link rate, which rises and falls with signal.</td></tr>
   <tr><td><strong>received / sent since boot</strong> — e.g. 6.0 GB · 2.2 GB</td><td>Totals since the adapter was last reset (normally the last restart).</td><td>Informational. Received is usually several times sent.</td></tr>
-  <tr><td><strong>the chart</strong></td><td>The last ten minutes: green for download, grey for upload, with the scale in the top-left corner.</td><td>Spiky: traffic comes in bursts. A flat, sustained line is a transfer or a stream.</td></tr>
+  <tr><td><strong>the chart</strong></td><td>The last ten minutes: green for download, gray for upload, with the scale in the top-left corner.</td><td>Spiky: traffic comes in bursts. A flat, sustained line is a transfer or a stream.</td></tr>
   <tr><td><strong>other adapters</strong></td><td>Any other adapter that is up, with its rates.</td><td>VPN or virtual adapters usually show little. Two physical adapters both carrying traffic is unusual.</td></tr>
 </table></div>
 
 <h3 id="d-posture">Security posture</h3>
-<p>One list of the security checks NetDeck has, and how each one last came out. Only the firewall state is live (it is one of the quick checks); the others show the most recent run of their playbook or command, with its age, and are grey until you have run them once. The verdict line counts them up: the card is only as complete as the checks you have run.</p>
+<p>One list of the security checks NetDeck has, and how each one last came out. Only the firewall state is live (it is one of the quick checks); the others show the most recent run of their playbook or command, with its age, and are gray until you have run them once. The verdict line counts them up: the card is only as complete as the checks you have run.</p>
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
   <tr><td><strong>Firewall</strong></td><td>Windows Firewall on or off, per profile.</td><td>On for all three. Off is worth a look even if a security suite replaced it.</td></tr>
@@ -507,6 +522,252 @@
 </table></div>
 
 <div class="callout"><span class="lbl">Hosted version</span><p>A web page cannot read your network, so the hosted dashboard shows a note instead — until a local NetDeck is connected, when it works like the desktop app's.</p></div>
+
+<h2 id="calculator">Network calculator</h2>
+<p>The calculator icon beside the theme button opens a popup with nine tools for the arithmetic of networking: working out subnets and masks, splitting and combining networks, decoding IPv6 and MAC addresses, estimating bandwidth, throughput and latency, planning Wi-Fi, and a few security and infrastructure calculations. You can also reach any tool from the command palette: press <kbd>Ctrl</kbd>+<kbd>K</kbd> and type <em>calc</em>, <em>subnet</em>, <em>VLSM</em>, <em>password</em>… Everything is calculated inside the page — nothing is sent anywhere — so it works the same in the hosted edition. A few tools can also read real values from this PC (your own address and mask, the Wi-Fi networks around you, a site's certificate); those buttons appear only when NetDeck can run commands.</p>
+<figure class="shot"><img src="manual-img/calc-ipv4.webp" width="1410" height="1766" alt="The network calculator on the IPv4 subnet tab" loading="lazy"><figcaption>The IPv4 tab for 192.168.1.100/26: the subnet, then its class, then the address in binary with the network, subnet and host bits colored — each row with a note saying what it means.</figcaption></figure>
+<div class="ui">
+  <div>Tabs</div><div>One per tool: <a href="#nc-ipv4">IPv4 subnet</a>, <a href="#nc-split">Split &amp; summarize</a>, <a href="#nc-ipv6">IPv6</a>, <a href="#nc-mac">MAC</a>, <a href="#nc-bandwidth">Bandwidth &amp; time</a>, <a href="#nc-throughput">Throughput &amp; latency</a>, <a href="#nc-wifi">Wi-Fi</a>, <a href="#nc-security">Security</a> and <a href="#nc-planning">Planning</a>. Tools that do several things have a row of round buttons under the tabs to choose the mode.</div>
+  <div>The line under the tabs</div><div>What the current tool expects, in a sentence or two — the step-by-step guide for that tool.</div>
+  <div>Inputs</div><div>Results update as you type; there is no Calculate button. Inputs are remembered between sessions, except the password and hash fields, which are never kept.</div>
+  <div>Results</div><div>Three columns: what the value is, the value, and a note that says what it means or how it was worked out. Tables (a list of subnets, the same transfer at other speeds) follow below. Values in green are good, amber worth a look, red a problem.</div>
+  <div><span class="btn">Use this PC</span> and other green buttons</div><div>Fill inputs from this computer by running an ordinary NetDeck command. Only shown when NetDeck can run commands.</div>
+  <div><span class="btn">Copy results</span></div><div>Copies the inputs and every result as plain text, ready to paste into a ticket or a message.</div>
+  <div><span class="btn">Save report</span></div><div>Saves the current tool's inputs and results as one HTML file with a Print button — a record for documentation or change requests.</div>
+  <div>Book icon</div><div>Opens this manual at the current tool.</div>
+  <div><kbd>Esc</kbd> or ✕</div><div>Closes the calculator. Clicking outside it does too.</div>
+</div>
+
+<h3 id="nc-basics">How IP addresses work</h3>
+<p>An IPv4 address is a 32-bit number. People write it as four 8-bit pieces called <strong>octets</strong>, each shown in decimal (0 to 255) and separated by dots: <code>192.168.1.100</code>. Computers see only the bits. Each octet converts to binary using the place values 128, 64, 32, 16, 8, 4, 2 and 1 — a bit is 1 when that value is part of the number:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Place value</th><th>128</th><th>64</th><th>32</th><th>16</th><th>8</th><th>4</th><th>2</th><th>1</th><th>Decimal</th></tr>
+  <tr><td>192</td><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>128 + 64 = 192</td></tr>
+  <tr><td>168</td><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>128 + 32 + 8 = 168</td></tr>
+  <tr><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+  <tr><td>100</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>64 + 32 + 4 = 100</td></tr>
+</table></div>
+<p><strong>Network part and host part.</strong> Every address has two parts. The first bits say which network the device is on — like a street name; the rest say which device on that network — like the house number. Devices on the same network talk to each other directly. To reach anything on another network they send the traffic to their <em>gateway</em>, the router, which passes it on.</p>
+<p><strong>The subnet mask</strong> says where the split is. It is another 32-bit number: ones over the network part, zeros over the host part — always a single run of ones followed by zeros. To find the network an address belongs to, a device combines the address and the mask bit by bit with AND: a bit survives only where the mask has a one.</p>
+<div class="tbl-wrap"><table>
+  <tr><th></th><th>Dotted decimal</th><th>Binary</th></tr>
+  <tr><td>Address</td><td><code>192.168.1.100</code></td><td><code>11000000.10101000.00000001.01100100</code></td></tr>
+  <tr><td>Mask</td><td><code>255.255.255.192</code></td><td><code>11111111.11111111.11111111.11000000</code></td></tr>
+  <tr><td>Address AND mask = network</td><td><code>192.168.1.64</code></td><td><code>11000000.10101000.00000001.01000000</code></td></tr>
+</table></div>
+<p><strong>CIDR notation</strong> writes the mask as the number of ones: 255.255.255.192 has 26, so the network is <code>192.168.1.64/26</code> (Classless Inter-Domain Routing). The remaining 32 − 26 = 6 bits are the host part, which gives 2<sup>6</sup> = 64 addresses.</p>
+<p><strong>Two addresses in every subnet are special.</strong> The first (all host bits 0) is the <em>network address</em>: it names the subnet and no device uses it. The last (all host bits 1) is the <em>broadcast address</em>: a packet sent there goes to every device in the subnet. So a /26 has 64 − 2 = 62 usable addresses, here 192.168.1.65 to 192.168.1.126. Two exceptions: a <strong>/31</strong> has no broadcast and both addresses are usable, for a link between two routers (RFC 3021), and a <strong>/32</strong> is a single address.</p>
+<p><strong>Private and special addresses.</strong> Some ranges have fixed meanings. The private ones are used inside homes and offices and are never routed on the internet; your router's <a href="#glossary">NAT</a> translates them to its one public address.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Range</th><th>What it is</th></tr>
+  <tr><td><code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code></td><td>Private (RFC 1918) — free for anyone to use inside a network</td></tr>
+  <tr><td><code>100.64.0.0/10</code></td><td>Carrier-grade NAT — private addresses on the ISP side (RFC 6598)</td></tr>
+  <tr><td><code>127.0.0.0/8</code></td><td>Loopback — the computer itself; 127.0.0.1 is "localhost"</td></tr>
+  <tr><td><code>169.254.0.0/16</code></td><td>Link-local (APIPA) — self-assigned when no DHCP server answered</td></tr>
+  <tr><td><code>224.0.0.0/4</code></td><td>Multicast — one sender, many listeners</td></tr>
+  <tr><td><code>192.0.2.0/24</code>, <code>198.51.100.0/24</code>, <code>203.0.113.0/24</code></td><td>Documentation — reserved for examples, never routed</td></tr>
+  <tr><td><code>0.0.0.0</code> · <code>255.255.255.255</code></td><td>"Any address / no address yet" · broadcast to everyone on the link</td></tr>
+</table></div>
+<p><strong>Address classes</strong> are how IPv4 was divided before 1993: the first bits of the address fixed the size of the network. They were replaced by classless addressing (CIDR, RFC 4632), which lets a mask end anywhere, but the names are still heard — "a class C network" usually just means a /24.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Class</th><th>First octet</th><th>Leading bits</th><th>Default mask</th><th>Networks × hosts</th></tr>
+  <tr><td>A</td><td>1–126</td><td><code>0</code></td><td>255.0.0.0 (/8)</td><td>126 × 16,777,214</td></tr>
+  <tr><td>B</td><td>128–191</td><td><code>10</code></td><td>255.255.0.0 (/16)</td><td>16,384 × 65,534</td></tr>
+  <tr><td>C</td><td>192–223</td><td><code>110</code></td><td>255.255.255.0 (/24)</td><td>2,097,152 × 254</td></tr>
+  <tr><td>D</td><td>224–239</td><td><code>1110</code></td><td>—</td><td>multicast</td></tr>
+  <tr><td>E</td><td>240–255</td><td><code>1111</code></td><td>—</td><td>reserved</td></tr>
+</table></div>
+
+<h3 id="nc-subnetting">Subnetting, step by step</h3>
+<p><strong>Subnetting</strong> means dividing one network into smaller ones by moving the split to the right — taking bits from the host part and using them to number subnets. Reasons to do it: to keep broadcast traffic inside smaller groups, to put devices that should not talk freely (guests, cameras, servers) behind a router or firewall, and to hand out address space in sensible pieces.</p>
+<p><strong>Each borrowed bit doubles the number of subnets and halves their size.</strong> Borrow 2 bits from a /24 and you get 2<sup>2</sup> = 4 subnets of /26. The table below is the one to learn:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Prefix</th><th>Mask</th><th>Addresses</th><th>Usable hosts</th><th>Block size in the last octet</th></tr>
+  <tr><td>/16</td><td><code>255.255.0.0</code></td><td>65,536</td><td>65,534</td><td></td></tr>
+  <tr><td>/17</td><td><code>255.255.128.0</code></td><td>32,768</td><td>32,766</td><td></td></tr>
+  <tr><td>/18</td><td><code>255.255.192.0</code></td><td>16,384</td><td>16,382</td><td></td></tr>
+  <tr><td>/19</td><td><code>255.255.224.0</code></td><td>8,192</td><td>8,190</td><td></td></tr>
+  <tr><td>/20</td><td><code>255.255.240.0</code></td><td>4,096</td><td>4,094</td><td></td></tr>
+  <tr><td>/21</td><td><code>255.255.248.0</code></td><td>2,048</td><td>2,046</td><td></td></tr>
+  <tr><td>/22</td><td><code>255.255.252.0</code></td><td>1,024</td><td>1,022</td><td></td></tr>
+  <tr><td>/23</td><td><code>255.255.254.0</code></td><td>512</td><td>510</td><td></td></tr>
+  <tr><td>/24</td><td><code>255.255.255.0</code></td><td>256</td><td>254</td><td>256 − 0 = 256</td></tr>
+  <tr><td>/25</td><td><code>255.255.255.128</code></td><td>128</td><td>126</td><td>256 − 128 = 128</td></tr>
+  <tr><td>/26</td><td><code>255.255.255.192</code></td><td>64</td><td>62</td><td>256 − 192 = 64</td></tr>
+  <tr><td>/27</td><td><code>255.255.255.224</code></td><td>32</td><td>30</td><td>256 − 224 = 32</td></tr>
+  <tr><td>/28</td><td><code>255.255.255.240</code></td><td>16</td><td>14</td><td>256 − 240 = 16</td></tr>
+  <tr><td>/29</td><td><code>255.255.255.248</code></td><td>8</td><td>6</td><td>256 − 248 = 8</td></tr>
+  <tr><td>/30</td><td><code>255.255.255.252</code></td><td>4</td><td>2</td><td>256 − 252 = 4</td></tr>
+  <tr><td>/31</td><td><code>255.255.255.254</code></td><td>2</td><td>2 (point-to-point)</td><td></td></tr>
+  <tr><td>/32</td><td><code>255.255.255.255</code></td><td>1</td><td>1 (single host)</td><td></td></tr>
+</table></div>
+<p><strong>The block-size shortcut.</strong> For masks that end in the last octet, subtract that octet from 256. For /26 (255.255.255.<strong>192</strong>): 256 − 192 = 64, so subnets start every 64 addresses — at .0, .64, .128 and .192. To place an address, find the block it falls in: 192.168.1.100 is between 64 and 127, so its network is 192.168.1.64, its broadcast 192.168.1.127, and its hosts 192.168.1.65 to 192.168.1.126. The same trick works in any octet: /20 is 255.255.<strong>240</strong>.0, so third-octet blocks of 16 — 10.0.0.0, 10.0.16.0, 10.0.32.0…</p>
+<p><strong>Worked example — four equal subnets.</strong> Split 192.168.1.0/24 into four. Four is 2<sup>2</sup>, so borrow 2 bits: /26, block size 64.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Subnet</th><th>Network</th><th>Usable hosts</th><th>Broadcast</th></tr>
+  <tr><td>1</td><td>192.168.1.0/26</td><td>192.168.1.1 – 192.168.1.62</td><td>192.168.1.63</td></tr>
+  <tr><td>2</td><td>192.168.1.64/26</td><td>192.168.1.65 – 192.168.1.126</td><td>192.168.1.127</td></tr>
+  <tr><td>3</td><td>192.168.1.128/26</td><td>192.168.1.129 – 192.168.1.190</td><td>192.168.1.191</td></tr>
+  <tr><td>4</td><td>192.168.1.192/26</td><td>192.168.1.193 – 192.168.1.254</td><td>192.168.1.255</td></tr>
+</table></div>
+<p><strong>Worked example — sized for hosts.</strong> A network for 50 devices: find the smallest power of two whose value minus 2 is at least 50. 2<sup>6</sup> − 2 = 62 is enough and 2<sup>5</sup> − 2 = 30 is not, so 6 host bits: a /26. Leave room to grow — a subnet that is exactly full will not be for long.</p>
+<p><strong>VLSM — different sizes in one plan.</strong> Variable-length subnet masking gives each network only the size it needs. Sort the requirements from largest to smallest and hand them out in that order from the start of the range, each starting on a multiple of its own size; nothing then overlaps and the free space stays in one piece at the end. The calculator's <a href="#nc-split">VLSM plan</a> does exactly this.</p>
+<p><strong>Summarizing — combining networks.</strong> Networks that share their leading bits can be written as one. 192.168.0.0/24 to 192.168.3.0/24 differ only in the last 2 bits of the third octet (0 to 3 is <code>000000<strong>00</strong></code> to <code>000000<strong>11</strong></code>), so they are exactly 192.168.0.0/22. One route or firewall rule instead of four. It only works cleanly when the group is a power of two and starts on a multiple of its size; otherwise the summary also covers addresses you did not list.</p>
+<p><strong>Wildcard masks</strong> are the subnet mask inverted — zeros where the network is, ones where the host bits are: 255.255.255.192 becomes 0.0.0.63. Cisco access lists and OSPF use them. The calculator accepts either form.</p>
+
+<h3 id="nc-v6basics">IPv6 in brief</h3>
+<p>An IPv6 address is 128 bits, written as eight groups of four hexadecimal digits separated by colons: <code>2001:0db8:abcd:0012:0000:0000:0000:0001</code>. Two rules shorten it: leading zeros in a group may be dropped (<code>0db8</code> → <code>db8</code>), and one run of all-zero groups may be replaced by <code>::</code> — once only, or the reader could not tell how many groups it stands for. The address above is normally written <code>2001:db8:abcd:12::1</code>.</p>
+<p><strong>The /64.</strong> The last 64 bits identify the device (the <em>interface ID</em>), so almost every IPv6 subnet is a /64 — 18 quintillion addresses, never "full". An ISP gives a home a /56 or a /48 — 256 or 65,536 of those subnets. There is no broadcast (multicast does that job), no need for NAT, and every interface also has a <em>link-local</em> address starting <code>fe80::</code>, valid only on its own network segment.</p>
+<p><strong>Where the interface ID comes from.</strong> Older systems built it from the MAC address (EUI-64: split the MAC, insert <code>ff:fe</code>, flip one bit), which let anyone track a device across networks. Windows, macOS, phones and modern Linux now use random interface IDs — temporary ones for outgoing connections (RFC 4941) and a stable random one per network (RFC 7217). The <a href="#nc-ipv6">IPv6 tool</a> tells you which kind you are looking at.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Starts with</th><th>Type</th></tr>
+  <tr><td><code>2000::/3</code> (2… or 3…)</td><td>Global unicast — public internet addresses</td></tr>
+  <tr><td><code>fc00::/7</code> (usually fd…)</td><td>Unique local (ULA) — private, like 192.168.x.x</td></tr>
+  <tr><td><code>fe80::/10</code></td><td>Link-local — every interface has one</td></tr>
+  <tr><td><code>ff00::/8</code></td><td>Multicast</td></tr>
+  <tr><td><code>::1</code></td><td>Loopback</td></tr>
+  <tr><td><code>2001:db8::/32</code></td><td>Documentation — examples only</td></tr>
+</table></div>
+
+<h3 id="nc-macbasics">MAC addresses in brief</h3>
+<p>A MAC address is the 48-bit hardware address of a network adapter, written as six pairs of hex digits: <code>00-00-5E-00-53-01</code> (Windows uses dashes, Linux and macOS colons, Cisco groups of four: <code>0000.5e00.5301</code>). It is used only on the local network — routers do not pass it on. The first three bytes are the <strong>OUI</strong>, the number the IEEE assigned to the manufacturer, which is how NetDeck names who made a device. Two bits in the first byte carry flags: the lowest (I/G) is 1 for a group (multicast) address, and the next (U/L) is 1 for a <em>locally administered</em> address — one made up by software rather than burned in. Phones, tablets and recent laptops use such random addresses on Wi-Fi so that networks cannot track them, which is why they show up with no manufacturer.</p>
+
+<h3 id="nc-ipv4">IPv4 subnet</h3>
+<p>Type an address and a mask. The mask can be a prefix (<code>/26</code> or <code>26</code>), a dotted mask (<code>255.255.255.192</code>), a wildcard mask (<code>0.0.0.63</code> — recognized and inverted) or hex (<code>ff.ff.ff.c0</code> or <code>0xffffffc0</code>); or type both at once as <code>192.168.1.100/26</code>. The mask box offers every prefix from /8 to /32 with its mask and host count as you type. <span class="btn">Use this PC</span> fills in this computer's own address and mask.</p>
+<ul>
+  <li><strong>The subnet</strong> — the address and what kind it is (private, public, loopback, documentation…, with the RFC that defines it), the network, the mask in each notation, the wildcard mask, the usable host range and count, the total, the broadcast address, and the subnets on either side.</li>
+  <li><strong>Class</strong> — the historical class, its default mask, and measured against it the <em>subnet bits</em> (how many were borrowed) and the <em>maximum subnets</em> of this size the classful network holds; a prefix shorter than the classful one is a <em>supernet</em>. The <em>bitmap</em> writes the pattern as fixed class bits, then <code>n</code> for network, <code>s</code> for subnet and <code>h</code> for host bits.</li>
+  <li><strong>Encodings</strong> — the address in binary, colored red for classful network bits, amber for subnet bits and green for host bits; in hex; as one 32-bit integer; the mask in hex and binary; and the reverse-DNS name a PTR lookup would ask for.</li>
+  <li><strong>Checks</strong> — fill in <em>Same subnet as</em> to see whether another address is on the same subnet (and so reachable without a router), and <em>Hosts needed</em> for the smallest subnet that fits that many devices.</li>
+</ul>
+
+<h3 id="nc-split">Split &amp; summarize</h3>
+<h4>Split into subnets</h4>
+<p>Cut a network into equal pieces, chosen by the number of subnets, the hosts each must hold, or the new prefix length. The result lists every subnet — network, first and last host, broadcast and size — up to the first 1,024. Subnets come in powers of two, so asking for 5 gives 8.</p>
+<h4>VLSM plan</h4>
+<p>List what you need, one line each as <em>name</em> and <em>hosts</em> ("Guest Wi-Fi 100"). Each gets the smallest subnet that holds it, allocated largest first from the start of the network, aligned on its own size — the method described in <a href="#nc-subnetting">Subnetting</a>. The table shows each subnet and how many addresses it has to spare, and the summary says how much of the network is used and which range is still free. If the plan does not fit, the calculator says which requirement ran out of room and by how much.</p>
+<figure class="shot"><img src="manual-img/calc-vlsm.webp" width="1410" height="1115" alt="The VLSM plan in the network calculator" loading="lazy"><figcaption>Five requirements packed into 10.0.0.0/22, largest first: the office gets a /24, guest Wi-Fi a /25, and so on down to a /30 for the router link — 436 of 1,024 addresses used, the rest free in one block.</figcaption></figure>
+<h4>Range → CIDR</h4>
+<p>Give a first and last address and get the fewest CIDR blocks that cover exactly that range. A block must start on a multiple of its own size, so an arbitrary range — 192.168.1.10 to 192.168.1.100, say — needs several blocks of decreasing and increasing size. Useful for firewall rules and route lists that only accept CIDR.</p>
+<h4>Summarize routes</h4>
+<p>Paste networks one per line. The <em>exact blocks</em> merge neighbors that line up into larger ones without adding a single address; the <em>single summary</em> is the smallest one network that covers them all, with a note of how many extra addresses it includes if the list does not line up perfectly.</p>
+
+<h3 id="nc-ipv6">IPv6</h3>
+<p>Type an IPv6 address with a prefix (<code>2001:db8:abcd:12::1/64</code>); without one, /64 is assumed. The address may include an embedded IPv4 part (<code>::ffff:192.0.2.1</code>) or a zone (<code>fe80::1%12</code>, which is ignored).</p>
+<ul>
+  <li>The <strong>compressed</strong> form follows the standard (RFC 5952): lower case, leading zeros dropped, the longest run of zero groups — the first, if two are equally long — written as <code>::</code>, and a single zero group never compressed. The <strong>expanded</strong> form has all 32 digits.</li>
+  <li>The <strong>type</strong> (global, unique local, link-local, multicast with its scope, documentation, NAT64, IPv4-mapped…), the network, first and last address, and how many addresses the prefix holds — and how many /64 subnets, for a shorter prefix. Any embedded IPv4 address is shown.</li>
+  <li><strong>How it breaks down</strong>, for global and unique-local addresses: the typical 48-bit site prefix, the 16-bit subnet ID and the 64-bit interface ID, with whether the interface ID was built from a MAC address (and whose) or is random.</li>
+  <li>The <strong>reverse-DNS name</strong> — every hex digit, reversed, under <code>ip6.arpa</code>.</li>
+  <li><em>List subnets of size</em> lists the first 16 subnets of that size inside the prefix — for example the /64s of a /56 an ISP has given you — with the total count.</li>
+</ul>
+
+<h3 id="nc-mac">MAC</h3>
+<p>Paste a MAC address in any common format; separators are ignored and it must come to twelve hex digits. You get it in colon, dash, Cisco dot and bare forms (in upper or lower case), the manufacturer from the IEEE registry, what the two flag bits say — unicast or multicast, burned-in or locally administered (random) — and the EUI-64 interface ID and link-local IPv6 address a device would build from it. If <a href="#pb-scan">Scan my network</a> has seen the address, its IP and name are shown too.</p>
+
+<h3 id="nc-bandwidth">Bandwidth &amp; time</h3>
+<h4>Transfer time</h4>
+<p>How long a file takes: time = size in bits ÷ (line speed × efficiency). Two unit traps are handled for you. Speeds are sold in <strong>bits</strong> per second and file sizes are shown in <strong>bytes</strong> — a byte is 8 bits, so a 100 Mbit/s line moves at most 12.5 MB a second. And sizes come in decimal (1 GB = 1,000,000,000 bytes, used by drives and download sites) and binary units (1 GiB = 1,073,741,824 bytes, used by Windows even though it labels them GB). <em>Efficiency</em> allows for protocol overhead; about 90% is realistic on a good connection. A table shows the same transfer at common line speeds.</p>
+<h4>How much do I need?</h4>
+<p>Enter how many of each activity happen <em>at the same time</em> at the busiest moment of the day, not how many devices you own. Each activity has a typical rate per stream (Mbit/s, down / up):</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Activity</th><th>Down</th><th>Up</th></tr>
+  <tr><td>HD video call</td><td>3.8</td><td>3</td></tr>
+  <tr><td>Group video call</td><td>4</td><td>3</td></tr>
+  <tr><td>4K streaming</td><td>25</td><td>0.2</td></tr>
+  <tr><td>HD streaming</td><td>5</td><td>0.1</td></tr>
+  <tr><td>Music streaming</td><td>0.3</td><td>0.05</td></tr>
+  <tr><td>Web and email</td><td>1.5</td><td>0.5</td></tr>
+  <tr><td>Online gaming</td><td>3</td><td>1</td></tr>
+  <tr><td>Cloud backup / large uploads</td><td>0</td><td>10</td></tr>
+  <tr><td>Cloud security camera</td><td>0</td><td>2</td></tr>
+  <tr><td>Smart-home device</td><td>0.05</td><td>0.05</td></tr>
+</table></div>
+<p>The totals get <em>headroom</em> added (30% by default) for peaks, updates and the gap between advertised and real speeds, and the next common plan size is suggested. Check the upload figure on its own — cable and DSL plans often have a tenth of the download, and calls, cameras and backups all use upload.</p>
+
+<h3 id="nc-throughput">Throughput &amp; latency</h3>
+<h4>TCP throughput</h4>
+<p>Why a fast line can still give a slow download. A single TCP connection is held back by whichever of three limits is lowest:</p>
+<ul>
+  <li><strong>The line speed.</strong></li>
+  <li><strong>The window limit</strong> = window ÷ round-trip time. TCP sends one <em>window</em> of data and then waits for it to be acknowledged, so across a long distance it spends most of its time waiting. A 64 KB window over 100 ms caps a connection at about 5 Mbit/s whatever the line; Windows grows its window automatically up to 16 MB.</li>
+  <li><strong>The loss limit</strong> — the Mathis formula: (segment size ÷ round-trip time) × 1.22 ÷ √(loss rate). TCP halves its speed every time a packet is lost, so even 0.1% loss over 40 ms holds one connection to about 11 Mbit/s.</li>
+</ul>
+<p>The <strong>bandwidth-delay product</strong> — line speed × round-trip time — is how much data must be in flight to keep the line full, and so how big the window must be. <em>Parallel streams</em> shows why download managers and speed tests open several connections at once: each has its own window and its own loss penalty. The table below the results shows one stream's throughput at a range of loss rates.</p>
+<h4>Latency budget</h4>
+<p>Where the milliseconds of a round trip come from:</p>
+<ul>
+  <li><strong>Propagation</strong> — distance ÷ the speed of the signal. Light in fiber travels at about two-thirds of its speed in a vacuum, roughly 200 km per millisecond. Cables do not run in straight lines, so the <em>route factor</em> (1.3 by default) stretches the distance.</li>
+  <li><strong>Serialization</strong> — the time to clock a packet onto each link: size ÷ link speed. 1,500 bytes take 0.12 ms at 100 Mbit/s but 12 ms at 1 Mbit/s.</li>
+  <li><strong>Processing</strong> in each router, usually tiny, and <strong>queuing</strong> — time waiting behind other packets, near zero on an idle line and hundreds of milliseconds under <a href="#d-speed">bufferbloat</a>.</li>
+</ul>
+<p>Presets fill in typical paths, including a geostationary satellite (36,000 km up and down again, so about 480 ms round trip before anything else) and a low-orbit one. The note at the bottom states the physical floor: no technology can beat the speed of light over that distance.</p>
+
+<h3 id="nc-wifi">Wi-Fi</h3>
+<h4>Signal strength</h4>
+<p>Wi-Fi signal is measured in <strong>dBm</strong>, decibels relative to one milliwatt. The numbers are negative and closer to zero is stronger; every 3 dB is a doubling or halving of power, every 10 dB a factor of ten. The estimate starts from the access point's transmit power and antenna gains, subtracts the <em>free-space path loss</em> — 20·log<sub>10</sub>(distance in m) + 20·log<sub>10</sub>(frequency in MHz) − 27.55 — then what each wall and floor absorbs, and a margin for furniture and people:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Obstacle</th><th>2.4 GHz</th><th>5 GHz</th><th>6 GHz</th></tr>
+  <tr><td>Drywall</td><td>3 dB</td><td>4 dB</td><td>5 dB</td></tr>
+  <tr><td>Window glass</td><td>2 dB</td><td>3 dB</td><td>4 dB</td></tr>
+  <tr><td>Wooden door</td><td>3 dB</td><td>4 dB</td><td>5 dB</td></tr>
+  <tr><td>Brick wall</td><td>6 dB</td><td>10 dB</td><td>12 dB</td></tr>
+  <tr><td>Concrete wall</td><td>12 dB</td><td>18 dB</td><td>22 dB</td></tr>
+  <tr><td>Floor / ceiling</td><td>15 dB</td><td>20 dB</td><td>24 dB</td></tr>
+</table></div>
+<p>These are typical figures; low-emissivity glass, foil-backed insulation and metal can absorb far more. Higher bands carry more data but fade faster through walls, which is why 2.4 GHz reaches further and 6 GHz is usually a one-room band.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Signal</th><th>Quality</th></tr>
+  <tr><td>−50 dBm or better</td><td>Excellent</td></tr>
+  <tr><td>−50 to −60 dBm</td><td>Very good</td></tr>
+  <tr><td>−60 to −67 dBm</td><td>Good — the usual target for voice and video</td></tr>
+  <tr><td>−67 to −70 dBm</td><td>Fair — browsing works, calls may stutter</td></tr>
+  <tr><td>−70 to −80 dBm</td><td>Weak — slow and unreliable</td></tr>
+  <tr><td>below −80 dBm</td><td>Unusable</td></tr>
+</table></div>
+<p>The result also shows the percentage Windows would display (roughly 2 × (dBm + 100)), the signal-to-noise ratio against a typical −95 dBm noise floor, how far the same walls allow before the signal drops below −67 dBm, and a table of the signal at other distances. Treat it as a best case and confirm with a real measurement — the <a href="#pb-wifi">Wi-Fi health</a> playbook reads the actual signal.</p>
+<h4>Coverage planner</h4>
+<p>How many access points a space needs, worked out two ways, taking the larger. <strong>Coverage</strong> divides the floor area by planning figures for how much one AP covers — about 140 m² (1,500 ft²) on 2.4 GHz and 110 m² (1,200 ft²) on 5 GHz in a typical home or office, more in open plan, much less between brick or concrete walls — and multiplies by the number of floors. <strong>Capacity</strong> divides the devices in use at once by what one AP serves well: about 30 for everyday use, 20 for calls and video meetings, 15 where many devices share one room. The spacing figure assumes a grid with 15–20% overlap, so devices can hand over between APs as they move.</p>
+<h4>Channel planner</h4>
+<p>Wi-Fi networks on the same or overlapping channels take turns to transmit, so a crowded channel is a slow one. List the networks you can see as "channel signal%" per line, or press <span class="btn">Read nearby networks</span> (Windows needs Location services on to share the list). Each candidate channel is scored by the overlapping networks, weighted by their strength, and the quietest is recommended with a channel width:</p>
+<ul>
+  <li><strong>2.4 GHz</strong> has only three channels that do not overlap each other: <strong>1, 6 and 11</strong>. Anything in between overlaps two of them, so the planner only considers those three, and always recommends 20 MHz width.</li>
+  <li><strong>5 GHz</strong> has many 20 MHz channels, grouped into 80 MHz blocks (36–48, 52–64, 100–112…, 149–161). Networks in the same block count half. <em>DFS</em> channels (52–144) are shared with weather and military radar: routers must listen before using them and move off if radar appears, so they are only included when you tick the box.</li>
+  <li><strong>6 GHz</strong> candidates are the fifteen <em>preferred scanning channels</em> that devices check first; the band is usually quiet enough for 80 or 160 MHz.</li>
+</ul>
+
+<h3 id="nc-security">Security</h3>
+<h4>Certificate expiry</h4>
+<p>How long a TLS certificate has left, when to renew it, and how much of its life is used. Enter the <em>valid from</em> and <em>valid until</em> dates from the certificate, or a host name and <span class="btn">Check live</span>, which connects to the site on port 443 and reads them — and shows the subject and issuer. The recommended renewal date is when a third of the lifetime remains, the rule automated renewal (ACME, Let's Encrypt) uses, which leaves time to retry if something fails. Public certificate lifetimes are being cut by industry rule (the CA/Browser Forum), so the tool also flags a certificate longer than a public authority may issue — usually a sign of a private, internal certificate authority:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Certificates issued</th><th>Maximum lifetime</th></tr>
+  <tr><td>before 15 March 2026</td><td>398 days</td></tr>
+  <tr><td>from 15 March 2026</td><td>200 days</td></tr>
+  <tr><td>from 15 March 2027</td><td>100 days</td></tr>
+  <tr><td>from 15 March 2029</td><td>47 days</td></tr>
+</table></div>
+<h4>Password strength</h4>
+<p>An estimate of how long a password would resist guessing. It is calculated in the page, never stored, never included in a copied or saved report, and never sent anywhere — but test a password shaped like yours rather than the real one if you prefer. <strong>Entropy</strong>, in bits, measures how many guesses a password is worth: each bit doubles them. It starts from the length and the size of the character pool (lower case 26, upper case 26, digits 10, symbols 33), then is cut down for what attackers try first: the most common passwords, a common password with digits or a symbol added, a word followed by numbers, runs of the same character, and keyboard or alphabet sequences (<code>qwerty</code>, <code>abc</code>, <code>123</code>). The table shows the average time to guess it at three attack speeds — an online login that limits attempts, an offline attack on a slow password hash such as bcrypt, and an offline attack on a fast hash such as NTLM with graphics cards.</p>
+<p>Length beats cleverness: four or five random words are stronger than a short password full of symbols, and easier to type. Use a password manager so every site gets its own, and turn on two-factor sign-in.</p>
+<h4>Hash &amp; checksum</h4>
+<p>A <strong>hash</strong> is a fixed-length fingerprint of data: change one bit and the hash changes completely. Download pages publish them so you can check a file arrived intact and unaltered. Type text or pick a file (read in the page, never uploaded; up to 1 GB), paste the published value into <em>Expected value</em>, and the matching algorithm is highlighted.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Algorithm</th><th>Use it for</th></tr>
+  <tr><td>SHA-256</td><td>Verifying downloads — the usual choice</td></tr>
+  <tr><td>SHA-384, SHA-512</td><td>The same, with longer hashes</td></tr>
+  <tr><td>SHA-1</td><td>Legacy only — collisions have been produced since 2017</td></tr>
+  <tr><td>MD5</td><td>Spotting accidental corruption only — broken for security</td></tr>
+  <tr><td>CRC32</td><td>A checksum for transmission errors, not tampering</td></tr>
+</table></div>
+
+<h3 id="nc-planning">Planning</h3>
+<h4>Rack &amp; power</h4>
+<p>List the equipment one per line as "name, height in U, watts, quantity". A rack unit (U) is 1.75 in (44.45 mm). The results give the rack space used and free; the current drawn (watts ÷ volts) against the circuit, which should stay at or below 80% for continuous loads; the heat to remove (watts × 3.412 = BTU per hour — almost all power ends up as heat); the UPS size in VA (watts ÷ power factor, plus headroom), rounded up to a common size; and, if you give the battery's watt-hours, a runtime estimate. Use typical power draw, not the maximum on the nameplate.</p>
+<h4>API rate limit</h4>
+<p>For scripts and integrations that call an API allowing, say, 100 requests a minute: the allowed rate per second, a safe pace below it by your margin, the gap to leave between requests, and how long a batch will take. A batch that fits in one window can be sent at once if the API counts a fixed window, but not if it counts a rolling one — spacing requests evenly works either way. When an API answers <code>429 Too Many Requests</code>, wait for its <code>Retry-After</code> time.</p>
+<h4>WAN optimization</h4>
+<p>What a WAN optimizer between two sites would save. Time per transfer = round trips × round-trip time + data ÷ line speed. <strong>Data reduction</strong> (compression plus deduplication) cuts the second term; <strong>protocol acceleration</strong> cuts the first by answering most of a chatty protocol's round trips locally — Windows file sharing (SMB) can make dozens per file. The result shows the time per transfer before and after, how much of it is waiting on round trips, and the data and link time saved per day. Office documents and backups deduplicate well; video, compressed archives and encrypted traffic hardly at all.</p>
+<div class="callout"><span class="lbl">Estimates, not measurements</span><p>The IPv4, IPv6, MAC, subnet and hash results are exact. The bandwidth, throughput, latency, Wi-Fi, password and planning figures come from standard models and typical values — good for planning and for understanding why something is slow, but real networks vary. Measure with the <a href="#cmd-speed-test">speed test</a>, <a href="#pb-slow">Why is everything slow?</a> and <a href="#pb-wifi">Wi-Fi health</a> when it matters.</p></div>
 
 <h2 id="playbooks">Playbooks</h2>
 <p>A playbook is a set of commands run in a sensible order, each one checked automatically, ending in a one-paragraph verdict. They exist because real troubleshooting is a <em>sequence</em> — "can I reach my router? then the internet? then can I look up names?" — and doing it by hand means running five commands and squinting at each.</p>
@@ -522,7 +783,7 @@
   <div>! warn</div><div>It worked, but not cleanly — packet loss, or a service that isn't advertising.</div>
   <div>&#x2715; fail</div><div>The check failed. The summary says how.</div>
   <div><em>i</em> info</div><div>Worth reading, but not a fault — for example "Windows network browsing is switched off here", which is normal on Windows 10/11.</div>
-  <div>&#x2013; skipped</div><div>Shown greyed out. <em>not needed</em>: the step only runs when an earlier result calls for it (you gave an IP address, so no name lookup; ping worked, so no TCP fallback). <em>not run</em>: an earlier step failed in a way that makes the rest pointless — no IP address means there's nothing to test — so the playbook stops rather than making you wait through a minute of timeouts. <em>not detected</em>: it needed something NetDeck couldn't find, such as a gateway. Steps marked with a <strong>?</strong> on the playbook card are these conditional ones.</div>
+  <div>&#x2013; skipped</div><div>Shown grayed out. <em>not needed</em>: the step only runs when an earlier result calls for it (you gave an IP address, so no name lookup; ping worked, so no TCP fallback). <em>not run</em>: an earlier step failed in a way that makes the rest pointless — no IP address means there's nothing to test — so the playbook stops rather than making you wait through a minute of timeouts. <em>not detected</em>: it needed something NetDeck couldn't find, such as a gateway. Steps marked with a <strong>?</strong> on the playbook card are these conditional ones.</div>
   <div>output</div><div>Click to see the raw text of that step, exactly as the command printed it. Hover a finished step to see how long it took.</div>
   <div>table</div><div>Appears on steps whose output NetDeck can parse (the adapter check, the ARP cache). Opens the same sortable, filterable table you get from the Table button on a normal run, right inside the step.</div>
 </div>
@@ -540,7 +801,7 @@
   <li><strong>HTTPS to example.com</strong> — can you actually open a secure connection? (fail → firewall, proxy or security software)</li>
 </ol>
 
-<figure class="shot"><img src="manual-img/pb-internet.webp" width="1350" height="963" alt="Result of the “Can't reach the internet?” playbook" loading="lazy"><figcaption>A healthy run. Step 4 is greyed out as “not needed” because the ping in step 3 worked; it only runs when ping is blocked.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-internet.webp" width="1350" height="963" alt="Result of the “Can't reach the internet?” playbook" loading="lazy"><figcaption>A healthy run. Step 4 is grayed out as “not needed” because the ping in step 3 worked; it only runs when ping is blocked.</figcaption></figure>
 
 <h3 id="pb-port">Is a port open on a host?</h3>
 <p>Give it a host and a port (say <code>github.com</code> and <code>443</code>). It resolves the name, pings the host, then tries the port. The point is telling apart situations that look identical in a browser:</p>
@@ -565,7 +826,7 @@
 <p>NetDeck's IP scanner: it finds <em>every</em> device on your network, not just the ones this PC has talked to. There is nothing to type — it works out your subnet from your own address, pings all of its addresses <strong>at the same time</strong> (so 254 addresses take about six seconds, not four minutes), then reads the ARP table the sweep has just filled. That second step matters: phones, TVs and smart-home gadgets often ignore ping, but they cannot avoid answering ARP, so they still show up — marked <em>no reply</em> in the Ping column.</p>
 <p>Press <strong>table</strong> for the full list: IP address, name (when the network can supply one — on home networks it usually can't), MAC address, <strong>manufacturer</strong>, whether it answered ping, and a note marking <em>this PC</em> and the <em>router</em>. Sort by Manufacturer to group things: five Wyze cameras, three eero units and so on. Two values in that column deserve explanation:</p>
 <ul>
-  <li><strong>private address (randomised)</strong> — phones, tablets and recent laptops invent a random MAC address for each Wi-Fi network, for privacy. It belongs to no manufacturer, so it can't be identified this way. Usually these are your family's phones.</li>
+  <li><strong>private address (randomized)</strong> — phones, tablets and recent laptops invent a random MAC address for each Wi-Fi network, for privacy. It belongs to no manufacturer, so it can't be identified this way. Usually these are your family's phones.</li>
   <li><strong>blank</strong> — the prefix is not in the IEEE registry NetDeck carries (the official list of every manufacturer's address blocks, about 54,000 entries, bundled with the app). That is rare for real hardware: it usually means a virtual adapter, a device faking its address, or a very new assignment — the registry is refreshed with each NetDeck release.</li>
 </ul>
 <p>Anything you can't account for is worth tracking down; your router's own client list usually shows a name for each address. <strong>What it will not do:</strong> it only ever scans the private subnet this PC is on, never more than 254 addresses, and refuses to run on a public address — it's a "what's on <em>my</em> network" tool, not a general scanner. Reply times aren't shown, because pinging 254 addresses at once makes them meaningless; use <code>ping</code> on one device for that.</p>
@@ -619,17 +880,17 @@ Download: 5.0 MB in 3.1 s (12.9 Mbit/s)
 Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP_DROP</pre>
 
 <h3 id="pb-path">Where does the path break?</h3>
-<p>Runs a route trace (up to 20 hops) and reads it for you. It reports whether the destination was actually reached — <code>tracert</code> prints "Trace complete" even when the last hops never answered — where replies stop, and where latency <em>steps up and stays up</em> (one router replying slowly is normal and ignored). Each hop is labelled as your network, your provider's access network, or the internet, so "hop 2" becomes "the link to your provider". Press <strong>table</strong> for the hop list. Some hosts never answer traces; if the site works in a browser, a trace that goes quiet near the end means only that.</p>
+<p>Runs a route trace (up to 20 hops) and reads it for you. It reports whether the destination was actually reached — <code>tracert</code> prints "Trace complete" even when the last hops never answered — where replies stop, and where latency <em>steps up and stays up</em> (one router replying slowly is normal and ignored). Each hop is labeled as your network, your provider's access network, or the internet, so "hop 2" becomes "the link to your provider". Press <strong>table</strong> for the hop list. Some hosts never answer traces; if the site works in a browser, a trace that goes quiet near the end means only that.</p>
 
 <figure class="shot"><img src="manual-img/pb-path.webp" width="1350" height="1106" alt="Result of the “Where does the path break?” playbook" loading="lazy"><figcaption>The route to 1.1.1.1 with the hop table opened: each hop’s three round-trip times, its address, and whether it belongs to your network, your provider or the internet.</figcaption></figure>
 
 <h3 id="pb-exposure">What is this PC exposing?</h3>
-<p>Lists every TCP port this machine is listening on with the <em>program</em> behind it, split into <strong>reachable from the network</strong> (listening on all addresses) and <strong>local only</strong> (<code>127.0.0.1</code>, invisible to other machines). It flags remote-access and database services — Remote Desktop, VNC, Telnet, FTP, SQL Server, MySQL, PostgreSQL, Redis, MongoDB, the Docker API — which are the ones worth being sure about, and checks that Windows Firewall is on for every profile. Ports 135, 139 and 445 are standard Windows services, and the block of high ports (49152 and up) are Windows' own; both are summarised rather than listed one by one. "Reachable" means a program is listening; whether the firewall lets outsiders in depends on its rules.</p>
+<p>Lists every TCP port this machine is listening on with the <em>program</em> behind it, split into <strong>reachable from the network</strong> (listening on all addresses) and <strong>local only</strong> (<code>127.0.0.1</code>, invisible to other machines). It flags remote-access and database services — Remote Desktop, VNC, Telnet, FTP, SQL Server, MySQL, PostgreSQL, Redis, MongoDB, the Docker API — which are the ones worth being sure about, and checks that Windows Firewall is on for every profile. Ports 135, 139 and 445 are standard Windows services, and the block of high ports (49152 and up) are Windows' own; both are summarized rather than listed one by one. "Reachable" means a program is listening; whether the firewall lets outsiders in depends on its rules.</p>
 
-<figure class="shot"><img src="manual-img/pb-exposure.webp" width="1350" height="1005" alt="Result of the “What is this PC exposing?” playbook" loading="lazy"><figcaption>A developer PC: database ports published by Docker are flagged, ordinary Windows services are listed, and the dynamic high ports are summarised in one line.</figcaption></figure>
+<figure class="shot"><img src="manual-img/pb-exposure.webp" width="1350" height="1005" alt="Result of the “What is this PC exposing?” playbook" loading="lazy"><figcaption>A developer PC: database ports published by Docker are flagged, ordinary Windows services are listed, and the dynamic high ports are summarized in one line.</figcaption></figure>
 
 <h3 id="pb-routing">Routing &amp; adapter sanity</h3>
-<p>For "it works on Wi-Fi until I plug the cable in", half-connected VPNs, and connections that die for no visible reason. It reads the routing table for <em>default routes</em> — the "send everything else this way" rules. One is normal. Several means adapters are competing, and the lowest metric wins; the verdict lists them with the winner marked ▶. The dangerous case is an adapter that holds a default route but has <strong>no valid address</strong> (cable plugged in, DHCP failed): if it wins, your traffic goes nowhere. It also lists which DNS servers each adapter uses — a VPN adapter often takes DNS priority, which is why lookups may go to a server you don't recognise.</p>
+<p>For "it works on Wi-Fi until I plug the cable in", half-connected VPNs, and connections that die for no visible reason. It reads the routing table for <em>default routes</em> — the "send everything else this way" rules. One is normal. Several means adapters are competing, and the lowest metric wins; the verdict lists them with the winner marked ▶. The dangerous case is an adapter that holds a default route but has <strong>no valid address</strong> (cable plugged in, DHCP failed): if it wins, your traffic goes nowhere. It also lists which DNS servers each adapter uses — a VPN adapter often takes DNS priority, which is why lookups may go to a server you don't recognize.</p>
 
 <figure class="shot"><img src="manual-img/pb-routing.webp" width="1350" height="596" alt="Result of the “Routing & adapter sanity” playbook" loading="lazy"><figcaption>One default route, marked ▶, on a healthy adapter — and the DNS servers each adapter uses, which shows a VPN adapter supplying its own.</figcaption></figure>
 
@@ -670,7 +931,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 <figure class="shot"><img src="manual-img/pb-timesync.webp" width="1350" height="498" alt="Result of the “Clock & time sync” playbook" loading="lazy"><figcaption>The clock is within a fraction of a second; the idle time service is reported as information, not a fault.</figcaption></figure>
 
 <h3 id="pb-outbound">Who is this PC talking to?</h3>
-<p>Every live outbound connection, grouped by program: how many connections each has, and to which ports. Ports 80 and 443 are ordinary web traffic; anything else is listed so you can recognise it. Press <strong>table</strong> for each connection with its remote address. Useful for "what's using my connection right now?" and for noticing a program you don't recognise phoning home.</p>
+<p>Every live outbound connection, grouped by program: how many connections each has, and to which ports. Ports 80 and 443 are ordinary web traffic; anything else is listed so you can recognize it. Press <strong>table</strong> for each connection with its remote address. Useful for "what's using my connection right now?" and for noticing a program you don't recognize phoning home.</p>
 
 <figure class="shot"><img src="manual-img/pb-outbound.webp" width="1350" height="909" alt="Result of the “Who is this PC talking to?” playbook" loading="lazy"><figcaption>Live connections grouped by program, with the ports each one uses.</figcaption></figure>
 
@@ -711,7 +972,7 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 
 <h3 id="pb-printer">Printer won't print</h3>
 <p>Printing fails at one of four places, and Windows tells you almost nothing about which: the spooler on this PC, the queue, the network path to the printer, or the printer itself. The playbook needs no input — it finds your network printer among the printers installed on this PC (the default one if it is a network printer, otherwise the first).</p>
-<p><strong>Step 1 — this PC.</strong> The Print Spooler service (when it is stopped, nothing prints and every printer shows as unavailable), every installed printer with its kind — <em>network</em> with an address, <em>WSD</em> (found by broadcast, with no fixed address), <em>USB</em>, <em>shared from another PC</em>, or <em>virtual</em> (PDF, OneNote) — the status Windows shows for it, and the number of jobs waiting and stuck. A stuck job at the head of a queue blocks everything behind it; cancelling it is often the whole fix.</p>
+<p><strong>Step 1 — this PC.</strong> The Print Spooler service (when it is stopped, nothing prints and every printer shows as unavailable), every installed printer with its kind — <em>network</em> with an address, <em>WSD</em> (found by broadcast, with no fixed address), <em>USB</em>, <em>shared from another PC</em>, or <em>virtual</em> (PDF, OneNote) — the status Windows shows for it, and the number of jobs waiting and stuck. A stuck job at the head of a queue blocks everything behind it; canceling it is often the whole fix.</p>
 <p><strong>Steps 2 to 6 — the printer.</strong> A ping to its address, then its printing ports: <strong>9100</strong> (raw, also called JetDirect — what most Windows drivers use), <strong>631</strong> (IPP, what AirPrint and modern drivers use), <strong>515</strong> (LPR, older), and <strong>80</strong> for the printer's own web page. A printer that answers ping but opens none of the ports is awake but not accepting work — starting up, in an error state, or with network printing switched off. One that answers on a different port from the one Windows is configured to use is a port-configuration problem, and the verdict says which protocol to switch to.</p>
 <p><strong>The usual culprit.</strong> Home routers hand addresses out by DHCP, and after a reboot a printer can come back with a different one while Windows still points at the old. If the ping fails, the playbook looks in the scan log — the record <a href="#pb-scan">Scan my network</a> keeps — for a device whose name matches the printer's, and if it finds one at another address it says so. The lasting fix is a fixed address for the printer, set in the router (a DHCP reservation) rather than on the printer. WSD printers are the other version of the same problem: Windows finds them by broadcast, which breaks when the printer moves network or sleeps deeply; adding the printer again by IP address gives a connection that survives.</p>
 <figure class="shot"><img src="manual-img/pb-printer.webp" width="1350" height="867" alt="Result of the “Printer won't print” playbook" loading="lazy"><figcaption>The office printer, reached here from home through a split-tunnel VPN: it answers, all three printing ports and its web page are open, so anything left is on this PC — the driver or the queue.</figcaption></figure>
@@ -824,8 +1085,8 @@ HomeNet        5 GHz        36 71%    WPA2-Personal ax       f8:bb:bf:00:11:23 y
 NETGEAR42      2.4 GHz       6 62%    WPA2-Personal ac       a0:04:60:aa:bb:cc overlaps your channel
 xfinitywifi    2.4 GHz       8 55%    Open          n        5c:e3:0e:11:22:33 overlaps your channel
 …
-<span class="hl">Fine: 84% signal on channel 6 (2.4 GHz); 2 strong networks overlap it, which is normal in a neighbourhood. Channel 1 has only 1 strong network on or near it; 6 has 2. Setting the router to channel 1 (or to Auto) should help.</span></pre>
-  <p><strong>How to read it:</strong> signal above ~60% is good, below ~40% is the reason for drops and slow rates. "Overlaps your channel" networks share airtime with you — every one of them that is busy slows you down. If your network appears twice, once per band, prefer 5 GHz (faster, far less crowded) whenever its signal is decent; the 2.4 GHz band carries further but is where every neighbour, microwave and baby monitor lives. The suggested channel only counts strong networks; weak ones barely matter.</p>
+<span class="hl">Fine: 84% signal on channel 6 (2.4 GHz); 2 strong networks overlap it, which is normal in a neighborhood. Channel 1 has only 1 strong network on or near it; 6 has 2. Setting the router to channel 1 (or to Auto) should help.</span></pre>
+  <p><strong>How to read it:</strong> signal above ~60% is good, below ~40% is the reason for drops and slow rates. "Overlaps your channel" networks share airtime with you — every one of them that is busy slows you down. If your network appears twice, once per band, prefer 5 GHz (faster, far less crowded) whenever its signal is decent; the 2.4 GHz band carries further but is where every neighbor, microwave and baby monitor lives. The suggested channel only counts strong networks; weak ones barely matter.</p>
   <p><strong>Linux / macOS:</strong> <code>nmcli dev wifi list</code>; on macOS hold Option and click the Wi-Fi icon for your own link, or use the Wireless Diagnostics scan.</p>
 </article>
 
@@ -997,7 +1258,7 @@ route delete 10.0.0.0</pre>
 <!-- ---------- Connections & ports ---------- -->
 <article class="cmd" id="cmd-vpn-status">
   <h4><code>VPN adapters and default route</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
-  <p>Which VPN adapters are up — WireGuard, OpenVPN, Tailscale, the built-in Windows VPN types and most commercial apps are recognised by name — with their address, MTU and DNS server; then every default route in metric order, marking which belong to a VPN. The lowest metric wins, so this shows at a glance whether the tunnel carries everything (full tunnel) or only its own routes (split tunnel). Used by <a href="#pb-vpncheck">Is my VPN really working?</a>.</p>
+  <p>Which VPN adapters are up — WireGuard, OpenVPN, Tailscale, the built-in Windows VPN types and most commercial apps are recognized by name — with their address, MTU and DNS server; then every default route in metric order, marking which belong to a VPN. The lowest metric wins, so this shows at a glance whether the tunnel carries everything (full tunnel) or only its own routes (split tunnel). Used by <a href="#pb-vpncheck">Is my VPN really working?</a>.</p>
   <pre>1. VPN adapters that are up
 
 Adapter   Description        IP          MTU  DNS
@@ -1066,7 +1327,7 @@ OneDrive   8120 402 KB   1.2 MB    2210    3%  13.107.42.12:HTTPS
 svchost    3320  61 KB    18 KB     190    0%  20.190.160.5:HTTPS
 
 <span class="hl">Busiest program: chrome (97% of the traffic, mostly with 142.250.80.46:HTTPS).</span></pre>
-  <p><strong>How to read it:</strong> <em>svchost</em> is Windows itself (updates, time sync, the Store); <em>System</em> (PID 4) is the kernel, mostly file sharing. In the snapshot, many connections to one address means syncing or streaming. In the traffic view, a program you do not recognise moving data is the thing to look up; the unmatched row collects traffic from connections that opened and closed within the sample, ICMP, and other devices' broadcasts.</p>
+  <p><strong>How to read it:</strong> <em>svchost</em> is Windows itself (updates, time sync, the Store); <em>System</em> (PID 4) is the kernel, mostly file sharing. In the snapshot, many connections to one address means syncing or streaming. In the traffic view, a program you do not recognize moving data is the thing to look up; the unmatched row collects traffic from connections that opened and closed within the sample, ICMP, and other devices' broadcasts.</p>
   <p><strong>Linux / macOS:</strong> <code>ss -tunap</code> for the snapshot; <code>sudo nethogs</code> for bytes per program.</p>
 </article>
 
@@ -1169,7 +1430,7 @@ Addresses:  2606:2800:21f:cb07:6820:80da:af6b:8b2c
 
 <article class="cmd" id="cmd-hosts-audit">
   <h4><code>Hosts file & DNS cache audit</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
-  <p>Two places on this PC where names can be quietly redirected. The <strong>hosts file</strong> overrides DNS for any name listed in it: malware uses it to block antivirus and update sites, ad-blockers use it to blank tracking domains, developers use it for local aliases — the audit tells those apart, recognising Docker's and Windows' own entries as normal. The <strong>DNS cache</strong> is what this PC has looked up recently; the audit flags public names that resolved to private addresses (a DNS filter, or a hijack), internationalised look-alike names (<code>xn--</code>, a phishing trick), random-looking names (CDNs do this, so does malware), and a flood of failed lookups.</p>
+  <p>Two places on this PC where names can be quietly redirected. The <strong>hosts file</strong> overrides DNS for any name listed in it: malware uses it to block antivirus and update sites, ad-blockers use it to blank tracking domains, developers use it for local aliases — the audit tells those apart, recognizing Docker's and Windows' own entries as normal. The <strong>DNS cache</strong> is what this PC has looked up recently; the audit flags public names that resolved to private addresses (a DNS filter, or a hijack), internationalised look-alike names (<code>xn--</code>, a phishing trick), random-looking names (CDNs do this, so does malware), and a flood of failed lookups.</p>
   <pre>1. Hosts file (C:\Windows\System32\drivers\etc\hosts): 5 entries, 1 beyond the defaults - last changed 2026-09-08 12:31
 
 Address      Name                       Assessment
@@ -1363,7 +1624,7 @@ Name                 Queries
 ----                 -------
 github.com                 4
 api.github.com             2</pre>
-  <p><strong>How to read it:</strong> <em>Top internet hosts</em> is the "what is my PC talking to?" list — the Name column resolves the address where it can, and the Traffic column says over which protocol. A host you don't recognise moving a lot of data is worth looking up. <em>DNS lookups</em> shows what your programs asked for by name, which is often clearer than the addresses. <em>Local network peers</em> is traffic that stayed inside your own network.</p>
+  <p><strong>How to read it:</strong> <em>Top internet hosts</em> is the "what is my PC talking to?" list — the Name column resolves the address where it can, and the Traffic column says over which protocol. A host you don't recognize moving a lot of data is worth looking up. <em>DNS lookups</em> shows what your programs asked for by name, which is often clearer than the addresses. <em>Local network peers</em> is traffic that stayed inside your own network.</p>
   <p><strong>What it doesn't do:</strong> it keeps only the first 256 bytes of each packet — enough for the addresses and protocol, not the content — and the recording is deleted after the summary unless you chose the keep variant — though its decoded text stays for the <a href="#cmd-capture-view">Capture viewer</a> until the next capture. It can't see other devices' traffic, only this PC's. If you press <strong>Stop</strong> during a capture, the recording keeps running in the background until the next capture cleans it up (it is capped at 200 MB).</p>
   <p><strong>Linux / macOS:</strong> <code>sudo tcpdump -i any -c 2000 -w capture.pcap</code>, then open the file in Wireshark.</p>
 </article>
@@ -1475,7 +1736,7 @@ External port Proto Goes to             Description
 ------------- ----- -------             -----------
 3074          UDP   192.168.1.88:3074   Xbox
 <span class="hl">Attention: 1 UPnP port forward exposes devices on your network to the internet (3074->192.168.1.88:3074)…</span></pre>
-  <p><strong>How to read it:</strong> telnet open = fix or replace the router. UPnP forwards to a console or a game are normal and close by themselves; a forward pointing at a camera, NAS or PC is an exposure you should recognise. Mesh systems managed from an app (eero, Google Wifi, Deco) show no admin page, which is fine. NetDeck cannot check the two things that matter most — current firmware and a non-default admin password — those are yours.</p>
+  <p><strong>How to read it:</strong> telnet open = fix or replace the router. UPnP forwards to a console or a game are normal and close by themselves; a forward pointing at a camera, NAS or PC is an exposure you should recognize. Mesh systems managed from an app (eero, Google Wifi, Deco) show no admin page, which is fine. NetDeck cannot check the two things that matter most — current firmware and a non-default admin password — those are yours.</p>
   <p><strong>Linux / macOS:</strong> <code>nmap -p 22,23,53,80,443,7547 &lt;gateway&gt;</code>; <code>upnpc -l</code> (miniupnpc) lists UPnP forwards.</p>
 </article>
 
@@ -1654,6 +1915,8 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
   <tr><td>Calls stutter or drop</td><td>Playbook <strong>Will my video calls be OK?</strong></td><td>Jitter, NAT type, upload, bufferbloat — each with its fix.</td></tr>
   <tr><td>Port forwarding / remote access never works</td><td>Playbook <strong>Am I behind double NAT or CGNAT?</strong></td><td>Bridge the outer router, or ask the ISP for a public address.</td></tr>
   <tr><td>Can't Remote Desktop to a PC</td><td>Playbook <strong>Can't Remote Desktop to this PC</strong> (on that PC)</td><td>It stops at the first switch that is off.</td></tr>
+  <tr><td>Planning a subnet, or what mask to use</td><td><strong>Network calculator</strong> — IPv4 subnet or VLSM plan</td><td>It shows the ranges, and the manual chapter explains the method.</td></tr>
+  <tr><td>A download is slow though the line is fast</td><td><strong>Network calculator</strong> — TCP throughput</td><td>Round-trip time and packet loss limit a single connection; the result says which.</td></tr>
 </table></div>
 
 <!-- ============================================================ -->
@@ -1662,6 +1925,12 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
   <dt>IP address</dt><dd>A device's number on a network, like <code>192.168.1.45</code>. Addresses starting with <code>10.</code>, <code>172.16–31.</code> or <code>192.168.</code> are private (only meaningful inside your network); anything else is a public internet address.</dd>
   <dt>MAC address</dt><dd>The hardware serial number of a network card, like <code>a4-6b-b6-12-34-56</code>. Fixed for life; only used within your local network.</dd>
   <dt>MTU</dt><dd>Maximum Transmission Unit — the largest packet, in bytes, a connection carries in one piece. 1500 on ordinary Ethernet and Wi-Fi; smaller over VPNs and PPPoE. When a path's MTU is lower than your PC assumes, big packets vanish and some sites load partway then hang.</dd>
+  <dt>CIDR</dt><dd>Classless Inter-Domain Routing — writing a network as an address and the number of network bits, like <code>192.168.1.0/24</code>, instead of with a class. See <a href="#nc-basics">How IP addresses work</a>.</dd>
+  <dt>Octet</dt><dd>Eight bits — one of the four numbers (0–255) in an IPv4 address.</dd>
+  <dt>Subnet</dt><dd>A block of addresses that share their network bits; devices in one subnet reach each other directly, anything else goes through a router. See <a href="#nc-subnetting">Subnetting, step by step</a>.</dd>
+  <dt>Broadcast address</dt><dd>The last address of an IPv4 subnet; a packet sent to it reaches every device in the subnet.</dd>
+  <dt>Wildcard mask</dt><dd>A subnet mask inverted (0.0.0.63 for 255.255.255.192), used by router access lists and OSPF.</dd>
+  <dt>dBm / RSSI</dt><dd>Signal strength in decibels relative to one milliwatt — negative numbers, closer to zero is stronger; −67 dBm is the usual target for Wi-Fi calls. RSSI is the received signal strength a device reports.</dd>
   <dt>NAT</dt><dd>Network Address Translation — how a router lets every device on a private network share one public address: it rewrites the address and port on each packet going out and keeps a table so replies come back to the right device. One NAT (your router) is normal; a second one in front of it (double NAT) or one inside the ISP (carrier-grade NAT) breaks port forwarding and some games — see the <a href="#pb-doublenat">double NAT</a> playbook. Routers differ in how they map ports, which is what the <a href="#cmd-stun-test">STUN test</a> classifies.</dd>
   <dt>STUN</dt><dd>Session Traversal Utilities for NAT — a small protocol a device behind NAT uses to ask a public server "what address and port do you see me as?". Video calls and games rely on it to connect two ends directly; NetDeck uses it to tell an endpoint-independent NAT (direct connections work) from a symmetric one (they fall back to relays).</dd>
   <dt>UDP</dt><dd>User Datagram Protocol — the other transport next to TCP. It sends packets without setting up a connection and without retransmitting lost ones, which makes it cheap and fast: DNS lookups, voice, video and most games use it. A network that blocks outbound UDP breaks calls even though web pages (TCP) load fine.</dd>
@@ -1703,7 +1972,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.26.9</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.27.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
@@ -1729,7 +1998,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.</pre>
 <p>The desktop installer shows this license before installing; the same text ships as <code>LICENSE</code> with the source.</p>
-<p>NetDeck runs diagnostic commands on your own computer and network. Its verdicts are aids to judgement, not guarantees: a clean result does not prove a network is secure.</p>
+<p>NetDeck runs diagnostic commands on your own computer and network. Its verdicts are aids to judgment, not guarantees: a clean result does not prove a network is secure.</p>
 
 <h3 id="third-party">Third-party components</h3>
 <p>NetDeck stands on other people's work. Their licenses allow this use; their copyright notices belong to their authors.</p>
