@@ -17,6 +17,7 @@
   .sheet-head .sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); }
   .sheet-tools { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; }
   .sheet-tools input { background: var(--ground); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--bright); font-family: var(--mono); font-size: 12.5px; padding: 6px 10px; min-width: 200px; }
+  #hide-lm[aria-pressed="true"] { color: var(--bright); border-color: var(--muted); }
   .sheet-tools select { background: var(--ground); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 8px; }
   .sheet-intro { font-size: 13px; color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
   .cat { margin: 18px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); border-bottom: 1px solid var(--border-soft); padding-bottom: 4px; break-after: avoid; }
@@ -56,6 +57,7 @@
     <div class="sheet-tools">
       <input id="q" type="search" placeholder="Filter…" aria-label="Filter commands" autocomplete="off">
       <select id="cat" aria-label="Category"><option value="">All categories</option></select>
+      <button class="tbtn" id="hide-lm" aria-pressed="false" title="Show only the Windows commands">Hide Linux / macOS</button>
       <button class="tbtn" id="print">Print / save PDF</button>
       <a class="tbtn no-print" href="index.html">Back to NetDeck</a>
     </div>
@@ -72,8 +74,10 @@
   const sheet = document.getElementById('sheet');
   const q = document.getElementById('q');
   const catSel = document.getElementById('cat');
+  const hideBtn = document.getElementById('hide-lm');
 
   const pref = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+  let hideLm = pref('netdeck.sheet.hideLm') === '1';
   const customs = () => { try { return JSON.parse(localStorage.getItem('netdeck.custom') || '[]'); } catch { return []; } };
 
   async function load() {
@@ -100,7 +104,7 @@
   function draw() {
     const term = q.value.trim().toLowerCase();
     const cat = catSel.value;
-    const rows = all.filter((c) => (!cat || c.category === cat) && (!term || `${c.name} ${c.win || ''} ${(c.unix || []).join(' ')} ${c.purpose}`.toLowerCase().includes(term)));
+    const rows = all.filter((c) => (!cat || c.category === cat) && (!hideLm || c.win) && (!term || `${c.name} ${c.win || ''} ${hideLm ? '' : (c.unix || []).join(' ')} ${c.purpose}`.toLowerCase().includes(term)));
     sheet.textContent = '';
     if (!rows.length) { sheet.innerHTML = '<p class="sheet-empty">Nothing matches.</p>'; return; }
     const groups = new Map();
@@ -119,7 +123,7 @@
         card.className = 'card sheet-card';
         card.innerHTML = `<div class="card-head"><h3 class="card-name">${esc(c.name)}${c.essential ? ' <span class="star" title="Most useful on Windows">★</span>' : ''}</h3></div>
           <p class="card-purpose">${esc(c.purpose)}</p>
-          <div class="card-rows">${c.win ? row(tag, c.win) : ''}${(c.unix || []).map((u) => row('L/M', u)).join('')}</div>
+          <div class="card-rows">${c.win ? row(tag, c.win) : ''}${hideLm ? '' : (c.unix || []).map((u) => row('L/M', u)).join('')}</div>
           ${c.note ? `<p class="card-note">${esc(c.note)}</p>` : ''}`;
         grid.appendChild(card);
       });
@@ -129,6 +133,17 @@
 
   q.addEventListener('input', draw);
   catSel.addEventListener('change', draw);
+  const showHide = () => {
+    hideBtn.setAttribute('aria-pressed', String(hideLm));
+    hideBtn.textContent = hideLm ? 'Show Linux / macOS' : 'Hide Linux / macOS';
+    hideBtn.title = hideLm ? 'Show the Linux / macOS commands again' : 'Show only the Windows commands';
+  };
+  hideBtn.addEventListener('click', () => {
+    hideLm = !hideLm;
+    try { localStorage.setItem('netdeck.sheet.hideLm', hideLm ? '1' : ''); } catch { /* a convenience */ }
+    showHide(); draw();
+  });
+  showHide();
   document.getElementById('print').addEventListener('click', () => window.print());
   draw();
 })();
