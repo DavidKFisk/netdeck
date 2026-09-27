@@ -1230,6 +1230,27 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-clear { color: var(--muted); }
 .dash-clear:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
 
+/* ---------- outage log ---------- */
+.dash-pill { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.dash-pill[data-state="ok"] { color: var(--ok); border-color: var(--ok-line); }
+.dash-pill[data-state="err"] { color: var(--err); border-color: var(--err); background: var(--err-dim); }
+#dash-outage .card-head { align-items: center; }
+#dash-outage .card-head .dash-head-tools { margin-left: auto; }
+.dash-live { margin: 0; padding: 8px 10px; border-left: 3px solid var(--err); border-radius: 4px; background: var(--err-dim); color: var(--bright); font-size: 13px; }
+.dash-otl .trk, .dash-swatch.trk { fill: var(--ground); background: var(--ground); outline: 1px solid var(--border-soft); outline-offset: -1px; }
+.dash-otl .cov, .dash-swatch.cov { fill: var(--ok-dim); background: var(--ok-dim); outline: 1px solid var(--ok-line); outline-offset: -1px; }
+.dash-otl .o-isp, .dash-swatch.o-isp { fill: var(--err); background: var(--err); }
+.dash-otl .o-lan { fill: url(#nd-hatch-lan); }
+.dash-otl .o-lan-bg { fill: var(--warn-dim); }
+.dash-otl .o-lan-fg { fill: var(--warn); }
+.dash-swatch.o-lan { background: repeating-linear-gradient(45deg, var(--warn) 0 2px, var(--warn-dim) 2px 4px); outline: 1px solid var(--warn); outline-offset: -1px; }
+.dash-otl .o-offline, .dash-swatch.o-offline { fill: var(--muted); background: var(--muted); }
+.dash-otl .o-unknown, .dash-swatch.o-unknown { fill: var(--text); background: var(--text); opacity: 0.55; }
+.dash-otl rect[class^="o-"]:hover { stroke: var(--bright); stroke-width: 1; }
+.dash-outage-list .dash-check { grid-template-columns: 10px 8.5em minmax(0, 1fr); }
+.dash-outage-list .dim { color: var(--muted); }
+#dash-outage .tbtn.is-on { color: var(--bright); border-color: var(--muted); }
+
 /* ================= network calculator ================= */
 .calc-btn + .theme-btn { margin-left: -14px; }
 #calc-modal { padding: 16px; }

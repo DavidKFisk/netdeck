@@ -9,6 +9,8 @@ node_modules/
 
 # Local data
 custom-commands.json
+outage-log.json
+outage-log.json.tmp
 *.log
 
 # OS / editor

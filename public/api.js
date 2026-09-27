@@ -15,6 +15,11 @@ window.NetDeckAPI = (() => {
       commands: () => invoke('list_commands'),
       context: (refresh) => invoke('get_context', { refresh: Boolean(refresh) }),
       health: () => invoke('health'),
+      // Outage log: watched by the Rust backend, so it carries on while the window is closed to the tray.
+      outage: () => invoke('outage_status'),
+      outageSet: ({ enabled = null, notify = null } = {}) => invoke('outage_set', { enabled, notify }),
+      outageClear: () => invoke('outage_clear'),
+      onOutage: (cb) => (tauri.event?.listen ? tauri.event.listen('outage', (e) => cb(e.payload)) : Promise.resolve(null)),
       async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
         const runId = ++seq;
         let output = '';
@@ -73,6 +78,10 @@ window.NetDeckAPI = (() => {
     commands: () => request('/api/commands').then(jsonOrThrow),
     context: (refresh) => request(`/api/context${refresh ? '?refresh=1' : ''}`).then(jsonOrThrow),
     health: () => request('/api/health').then(jsonOrThrow),
+    outage: () => request('/api/outage').then(jsonOrThrow),
+    outageSet: (opts) => request('/api/outage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts || {}) }).then(jsonOrThrow),
+    outageClear: () => request('/api/outage', { method: 'DELETE' }).then(jsonOrThrow),
+    onOutage: null,
     async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
       let output = '';
       try {

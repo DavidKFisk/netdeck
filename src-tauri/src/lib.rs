@@ -21,6 +21,8 @@ use tauri::{
     AppHandle, Manager, State, WindowEvent,
 };
 use tauri_plugin_dialog::DialogExt;
+
+mod outage;
 use tauri_plugin_notification::NotificationExt;
 
 const BUILTIN: &str = include_str!("../../commands.json");
@@ -575,6 +577,23 @@ async fn health(state: State<'_, Arc<AppState>>) -> Result<Value, String> {
     .map_err(|e| e.to_string())
 }
 
+/* ---------------- outage log ---------------- */
+
+#[tauri::command]
+fn outage_status(mon: State<'_, Arc<outage::Monitor>>) -> Value {
+    mon.status()
+}
+
+#[tauri::command]
+fn outage_set(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>, enabled: Option<bool>, notify: Option<bool>) -> Value {
+    mon.inner().set(&app, enabled, notify)
+}
+
+#[tauri::command]
+fn outage_clear(mon: State<'_, Arc<outage::Monitor>>) -> Value {
+    mon.clear()
+}
+
 /* ---------------- custom (reference-only) commands ---------------- */
 
 fn str_field(v: &Value, key: &str, max: usize) -> String {
@@ -824,6 +843,8 @@ pub fn run() {
 
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| PathBuf::from("."));
             let custom_file = data_dir.join("custom-commands.json");
+            let monitor = outage::Monitor::load(data_dir.join("outage-log.json"));
+            app.manage(monitor.clone());
             // One-time migration from the pre-1.4.1 identifier (com.netdeck.app).
             if !custom_file.exists() {
                 if let Some(old) = data_dir.parent().map(|p| p.join("com.netdeck.app").join("custom-commands.json")) {
@@ -874,6 +895,8 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+            // The outage log carries on from the last session when it was left on.
+            monitor.start(app.handle());
             Ok(())
         })
         // Closing the window keeps NetDeck in the tray (runs in progress keep streaming); Quit is in the tray menu.
@@ -899,7 +922,10 @@ pub fn run() {
             notify,
             restart_elevated,
             open_doc,
-            open_site
+            open_site,
+            outage_status,
+            outage_set,
+            outage_clear
         ])
         .run(tauri::generate_context!())
         .expect("error while running NetDeck");

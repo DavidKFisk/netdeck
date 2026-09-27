@@ -287,6 +287,113 @@ async function handleHealth(req, res) {
   json(res, 200, { t: Date.now(), gateway, internet, gatewayHost: ctx.gateway });
 }
 
+
+// ---------- outage log: mirrors src-tauri/src/outage.rs (same rules, same file shape) ----------
+// While the server runs, ping the router and the internet every 5 s and record each outage (2+ failed checks in
+// a row), which side failed, and the stretches NetDeck was watching. NETDECK_OUTAGE_TEST=<file>: see outage.rs.
+const OUTAGE_FILE = path.join(DATA_DIR, 'outage-log.json');
+const OUTAGE = { interval: 5000, gap: 20000, grace: 60000, minFails: 2, keep: 90 * 864e5, ctxEvery: 600000, saveEvery: 60000 };
+const OUTAGE_LAYERS = ['isp', 'lan', 'offline', 'unknown'];
+const outageDominant = (c) => { let best = 3; for (let i = 0; i < 4; i++) if (c.counts[i] > c.counts[best] || (c.counts[i] === c.counts[best] && i < best)) best = i; return OUTAGE_LAYERS[best]; };
+const outageClose = (c, end, open) => ({ start: c.start, end, layer: outageDominant(c), fails: c.fails, ...(c.adapter ? { adapter: c.adapter } : {}), ...(c.gateway ? { gateway: c.gateway } : {}), ...(open ? { open: true } : {}) });
+function outagePrune(log, now) {
+  const cut = now - OUTAGE.keep;
+  log.outages = log.outages.filter((o) => o.end >= cut);
+  log.blips = log.blips.filter((b) => b >= cut).slice(-5000);
+  log.coverage = log.coverage.filter((c) => c[1] >= cut);
+}
+function outageLoad() {
+  let log = {};
+  try { log = JSON.parse(fs.readFileSync(OUTAGE_FILE, 'utf8')); } catch { /* none yet */ }
+  log = { enabled: false, notify: false, coverage: [], outages: [], blips: [], gatewayAnswers: false, current: null, ...log };
+  if (log.current) { if (log.current.fails >= OUTAGE.minFails) log.outages.push(outageClose(log.current, log.current.last, true)); log.current = null; }
+  outagePrune(log, Date.now());
+  return log;
+}
+let outage = outageLoad();
+let outageRunning = false;
+const outageRun = { lastCtx: 0, lastSave: 0, watchStart: 0 };
+function outageSave() {
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(`${OUTAGE_FILE}.tmp`, JSON.stringify(outage)); fs.renameSync(`${OUTAGE_FILE}.tmp`, OUTAGE_FILE); } catch { /* read-only folder: the log lives for this session */ }
+}
+function outageStatus() {
+  const c = outage.current;
+  return {
+    enabled: outage.enabled, notify: outage.notify, running: outageRunning, now: Date.now(), intervalMs: OUTAGE.interval, minFails: OUTAGE.minFails,
+    coverage: outage.coverage, outages: outage.outages, blips: outage.blips, gatewayAnswers: outage.gatewayAnswers,
+    current: c ? { start: c.start, last: c.last, fails: c.fails, layer: outageDominant(c) } : null, notifyNative: false,
+  };
+}
+async function outageTick() {
+  let test = null;
+  if (process.env.NETDECK_OUTAGE_TEST) { try { test = fs.readFileSync(process.env.NETDECK_OUTAGE_TEST, 'utf8').trim(); } catch { test = ''; } }
+  const now = Date.now();
+  const last = outage.coverage[outage.coverage.length - 1];
+  if (last && now - last[1] <= OUTAGE.gap && outageRun.watchStart) last[1] = now;
+  else {
+    outage.coverage.push([now, now]);
+    outageRun.watchStart = now;
+    if (outage.current) { if (outage.current.fails >= OUTAGE.minFails) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
+    outageSave();
+  }
+  const failing = Boolean(outage.current);
+  if (now - outageRun.lastCtx > OUTAGE.ctxEvery) { await getContext(true).catch(() => null); outageRun.lastCtx = now; }
+  let ctx = contextCache || {};
+  const gwTarget = test === 'lan' ? '192.0.2.3' : ctx.gateway;
+  const fake = test === 'isp' || test === 'lan';
+  const [gw, internet] = await Promise.all([
+    pingOnce(gwTarget),
+    pingOnce(fake ? '192.0.2.1' : '1.1.1.1').then((v) => v ?? pingOnce(fake ? '192.0.2.2' : '8.8.8.8')),
+  ]);
+  const settling = now - outageRun.watchStart < (test !== null ? 0 : OUTAGE.grace);
+  if (internet == null && !settling && !failing) { ctx = await getContext(true).catch(() => ctx) || ctx; outageRun.lastCtx = now; }
+  if (gw != null) outage.gatewayAnswers = true;
+  let ended = false, started = false;
+  if (internet != null) {
+    const c = outage.current;
+    if (c) { if (c.fails >= OUTAGE.minFails) { outage.outages.push(outageClose(c, now, false)); ended = true; } else outage.blips.push(c.start); outage.current = null; }
+  } else if (!settling) {
+    const layer = !ctx.gateway || !ctx.ip ? 2 : gw != null ? 0 : outage.gatewayAnswers ? 1 : 3;
+    const c = outage.current || (outage.current = { start: now, last: now, fails: 0, counts: [0, 0, 0, 0], adapter: ctx.adapter || null, gateway: ctx.gateway || null });
+    c.fails += 1; c.last = now; c.counts[layer] += 1;
+    started = c.fails === OUTAGE.minFails;
+  }
+  if (ended || started || now - outageRun.lastSave > OUTAGE.saveEvery) { outagePrune(outage, now); outageSave(); outageRun.lastSave = now; }
+}
+function outageStart() {
+  if (!outage.enabled || outageRunning) return;
+  outageRunning = true;
+  outageRun.watchStart = 0;
+  const loop = async () => {
+    if (!outage.enabled) { outageRunning = false; return; }
+    const t0 = Date.now();
+    try { await outageTick(); } catch { /* the next tick tries again */ }
+    setTimeout(loop, Math.max(0, OUTAGE.interval - (Date.now() - t0)));
+  };
+  loop();
+}
+async function handleOutage(req, res) {
+  if (req.method === 'GET') return json(res, 200, outageStatus());
+  if (req.method === 'DELETE') {
+    outage.outages = []; outage.blips = []; outage.coverage = []; outage.current = null; outageRun.watchStart = 0;
+    outageSave();
+    return json(res, 200, outageStatus());
+  }
+  try {
+    const body = JSON.parse(await readBody(req) || '{}');
+    if (typeof body.notify === 'boolean') outage.notify = body.notify;
+    if (typeof body.enabled === 'boolean') {
+      outage.enabled = body.enabled;
+      if (!body.enabled && outage.current) { if (outage.current.fails >= OUTAGE.minFails) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
+    }
+    outageSave();
+    if (outage.enabled) outageStart();
+    json(res, 200, outageStatus());
+  } catch (e) {
+    res.writeHead(400).end('Invalid request.');
+  }
+}
+
 // ---------- run ----------
 // {key} is ours; %{name} belongs to the tool (curl's -w format) and passes through untouched.
 function fillParams(template, params, paramSpecs) {
@@ -482,6 +589,7 @@ const server = http.createServer((req, res) => {
     return getContext(url.searchParams.get('refresh') === '1').then((ctx) => json(res, 200, ctx));
   }
   if (req.method === 'GET' && url.pathname === '/api/health') return handleHealth(req, res);
+  if (url.pathname === '/api/outage' && ['GET', 'POST', 'DELETE'].includes(req.method)) return handleOutage(req, res);
   if (req.method === 'GET') return serveStatic(req, res);
   res.writeHead(405).end('Method not allowed');
 });
@@ -518,6 +626,7 @@ server.on('listening', () => {
   }
   console.log('Keep this window open while you use NetDeck; close it (or press Ctrl+C) to stop.');
   getContext(false); // warm the cache so the first page load is instant
+  outageStart(); // carries on from the last session when the outage log was left on
   if (OPEN_BROWSER) openBrowser(url);
 });
 

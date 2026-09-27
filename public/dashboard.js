@@ -64,6 +64,8 @@ window.NetDeckDashboard = (() => {
       D.$('snapshot-go').addEventListener('click', () => { modal.hidden = true; snapshot(D.$('snapshot-anon').checked); });
     }
     backfill();
+    // the desktop app says when an outage starts or ends, so the card updates without waiting for the next poll
+    if (window.NetDeckAPI && window.NetDeckAPI.onOutage) window.NetDeckAPI.onOutage(() => loadOutage().then(() => { if (shown) patchOutage(); })).catch(() => {});
   }
 
   /* Any button on the dashboard that names a command or playbook runs it in the terminal, visibly. */
@@ -76,6 +78,10 @@ window.NetDeckDashboard = (() => {
     if (clear) { clearSeries(clear.dataset.clear); return; }
     const r = e.target.closest('[data-range]');
     if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
+    const or = e.target.closest('[data-orange]');
+    if (or) { orange = or.dataset.orange; try { localStorage.setItem('netdeck.dashboard.orange', orange); } catch (err) { /* fine */ } patchOutage(); return; }
+    const oa = e.target.closest('[data-outage]');
+    if (oa) { outageAction(oa.dataset.outage); return; }
     const b = e.target.closest('[data-run],[data-pb]');
     if (!b || !D.canRun()) return;
     if (b.dataset.pb) { const pb = D.PB.get(b.dataset.pb); if (pb) D.runPlaybook(pb, {}); return; }
@@ -92,8 +98,8 @@ window.NetDeckDashboard = (() => {
   }
 
   // refresh on opening when the snapshot is stale — or predates a tile added in a newer version
-  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun() && !collapsed.has('traffic')) startTraffic(); }
-  function hide() { shown = false; stopTraffic(); }
+  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun() && !collapsed.has('traffic')) startTraffic(); if (D.canRun()) { loadOutage().then(() => { if (shown) patchOutage(); }); if (!collapsed.has('outage')) startOutagePoll(); } }
+  function hide() { shown = false; stopTraffic(); stopOutagePoll(); }
   /* health tick: record the sample and patch the two ping tiles and the latency chart in place (a full redraw
      every 10 s would wipe hover and focus); a saved run: take what the charts need, then redraw. */
   function poke(what, entry) {
@@ -202,7 +208,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), latencyCard(), trafficCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), outageCard(), latencyCard(), trafficCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -303,7 +309,7 @@ window.NetDeckDashboard = (() => {
   }
 
   /* The same book icon as the command and playbook cards: opens the manual at this card's row. */
-  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic' };
+  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic', 'Outage log': 'd-outages' };
   const manualBtn = (anchor) => `<button type="button" class="icon-btn manual-btn dash-manual" data-manual="${esc(anchor)}" title="Open the manual at this card" aria-label="Open the manual at this card">${D.bookSvg || ''}</button>`;
   function card(title, meta, body, foot, cls) {
     return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="dash-head-tools"><span class="card-cat">${esc(meta || '')}</span>${manualBtn(MANUAL_ROW[title] || 'dashboard')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
@@ -534,7 +540,8 @@ window.NetDeckDashboard = (() => {
   function toggleCollapse(key) {
     if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
     const el = els.grid.querySelector(`#dash-${key}`);
-    if (el) el.outerHTML = key === 'latency' ? latencyCard() : trafficCard();
+    if (el) el.outerHTML = key === 'latency' ? latencyCard() : key === 'outage' ? outageCard() : trafficCard();
+    if (key === 'outage') { if (collapsed.has(key)) stopOutagePoll(); else if (shown) startOutagePoll(); }
     if (key === 'traffic') { if (collapsed.has(key)) stopTraffic(); else if (shown && D.canRun()) startTraffic(); }
   }
 
@@ -667,6 +674,215 @@ window.NetDeckDashboard = (() => {
     }
     const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
     return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${manualBtn('d-traffic')}${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+  }
+
+  /* ================= outage log: watched by the backend (outage.rs / server.js), shown here ================= */
+  const ORANGES = { '24 h': 864e5, '7 days': 7 * 864e5, '30 days': 30 * 864e5 };
+  let orange = (() => { try { const r = localStorage.getItem('netdeck.dashboard.orange'); return ORANGES[r] ? r : '7 days'; } catch (e) { return '7 days'; } })();
+  let ostate = null, oerr = '', otimer = null, obusy = false;
+  const LAYER = {
+    isp: { long: 'past your router — your internet provider or the modem', status: 'fail' },
+    lan: { long: 'between this PC and the router — Wi-Fi, cable or the router itself', status: 'warn' },
+    offline: { long: 'this PC had no network connection at all', status: 'warn' },
+    unknown: { long: 'somewhere — your router does not answer pings, so which side is unclear', status: 'info' },
+  };
+  const dur = (ms) => {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return `${s} s`;
+    if (s < 3600) return `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
+    const m = Math.floor((s % 3600) / 60);
+    return `${Math.floor(s / 3600)} h${m ? ` ${m} min` : ''}`;
+  };
+  const api = () => window.NetDeckAPI;
+  async function loadOutage() {
+    if (!api() || !api().outage) { oerr = 'This edition cannot keep an outage log.'; return; }
+    try { ostate = await api().outage(); oerr = ''; } catch (e) { oerr = String((e && e.message) || e); }
+  }
+  function patchOutage() { const el = els && els.grid.querySelector('#dash-outage'); if (el) el.outerHTML = outageCard(); }
+  function startOutagePoll() { if (otimer) return; otimer = setInterval(async () => { await loadOutage(); if (shown) patchOutage(); }, 5000); }
+  function stopOutagePoll() { clearInterval(otimer); otimer = null; }
+
+  async function outageAction(what) {
+    if (what === 'report') { outageReport(); return; }
+    if (obusy || !api() || !api().outageSet) return;
+    if (what === 'clear') {
+      const n = ostate ? ostate.outages.length : 0;
+      if (!window.confirm(`Forget the whole outage log${n ? ` (${n} outage${n === 1 ? '' : 's'})` : ''} and the record of when NetDeck was watching? This cannot be undone.`)) return;
+    }
+    obusy = true;
+    patchOutage();
+    try {
+      ostate = what === 'on' ? await api().outageSet({ enabled: true })
+        : what === 'off' ? await api().outageSet({ enabled: false })
+        : what === 'notify' ? await api().outageSet({ notify: !(ostate && ostate.notify) })
+        : what === 'clear' ? await api().outageClear() : ostate;
+      oerr = '';
+    } catch (e) { oerr = String((e && e.message) || e); }
+    obusy = false;
+    patchOutage();
+  }
+
+  /* Everything the card and the report say about [from, to]. An outage still going on counts up to now. */
+  function outageStats(s, from, to) {
+    const clip = (a, b) => Math.max(0, Math.min(b, to) - Math.max(a, from));
+    const cur = s.current && s.current.fails >= s.minFails ? { start: s.current.start, end: s.now, layer: s.current.layer, live: true } : null;
+    const all = s.outages.filter((o) => o.end >= from && o.start <= to).concat(cur ? [cur] : []);
+    const by = { isp: 0, lan: 0, offline: 0, unknown: 0 };
+    all.forEach((o) => { by[o.layer] = (by[o.layer] || 0) + 1; });
+    return {
+      all, cur, by,
+      down: all.reduce((n, o) => n + clip(o.start, o.end), 0),
+      longest: all.reduce((m, o) => Math.max(m, o.end - o.start), 0),
+      watched: s.coverage.reduce((n, c) => n + clip(c[0], c[1]), 0),
+      blips: s.blips.filter((b) => b >= from && b <= to).length,
+    };
+  }
+
+  /* One row per day (or a single row for 24 h): watched time in green, not watched left empty, outages on top. */
+  function outageTimeline(s, from, to) {
+    const W = 720;
+    let rows;
+    if (orange === '24 h') rows = [[from, to, '']];
+    else {
+      const days = Math.round(ORANGES[orange] / 864e5);
+      const mid = new Date(to); mid.setHours(0, 0, 0, 0);
+      rows = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d0 = new Date(mid); d0.setDate(d0.getDate() - i);
+        const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+        rows.push([d0.getTime(), d1.getTime(), `${d0.toLocaleDateString(undefined, { weekday: 'short' })} ${d0.getDate()}`]);
+      }
+    }
+    const rh = orange === '24 h' ? 26 : orange === '7 days' ? 15 : 7, gap = orange === '30 days' ? 2 : 4;
+    const padL = orange === '24 h' ? 4 : 56, padR = 6, padT = 2, padB = 16, plotW = W - padL - padR;
+    const H = padT + rows.length * (rh + gap) - gap + padB;
+    const cur = s.current && s.current.fails >= s.minFails ? [{ start: s.current.start, end: s.now, layer: s.current.layer, live: true }] : [];
+    const outs = s.outages.concat(cur);
+    let body = '';
+    rows.forEach(([a, b, label], i) => {
+      const y = padT + i * (rh + gap);
+      const x = (tt) => padL + ((tt - a) / (b - a)) * plotW;
+      body += `<rect x="${padL}" y="${y}" width="${plotW}" height="${rh}" rx="2" class="trk"/>`;
+      if (label && (orange === '7 days' || i % 5 === 4 || i === rows.length - 1)) body += `<text x="${padL - 6}" y="${(y + rh / 2 + 3.5).toFixed(1)}" class="ax" text-anchor="end">${esc(label)}</text>`;
+      for (const [c0, c1] of s.coverage) {
+        const p = Math.max(c0, a), q = Math.min(c1, b, s.now);
+        if (q > p) body += `<rect x="${x(p).toFixed(1)}" y="${y}" width="${Math.max(0.6, x(q) - x(p)).toFixed(1)}" height="${rh}" class="cov"/>`;
+      }
+      for (const o of outs) {
+        if (o.end < a || o.start > b) continue;
+        const p = Math.max(o.start, a), q = Math.min(o.end, b);
+        const w = Math.max(2.5, x(q) - x(p));
+        const L = LAYER[o.layer] || LAYER.unknown;
+        body += `<rect x="${Math.min(x(p), padL + plotW - w).toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${rh}" class="o-${esc(o.layer)}"><title>${esc(when(o.start))} — down ${esc(dur(o.end - o.start))}${o.live ? ' so far' : ''}, ${esc(L.long)}</title></rect>`;
+      }
+    });
+    const [a0, b0] = rows[0];
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((fr) => {
+      const lbl = orange === '24 h' ? clockShort(a0 + fr * (b0 - a0)) : `${String(Math.round(fr * 24)).padStart(2, '0')}:00`;
+      return `<text x="${(padL + fr * plotW).toFixed(1)}" y="${H - 3}" class="ax" text-anchor="${fr === 0 ? 'start' : fr === 1 ? 'end' : 'middle'}">${esc(lbl)}</text>`;
+    }).join('');
+    // router-side outages are striped: in the dark theme the warning and error colors are close
+    const defs = '<defs><pattern id="nd-hatch-lan" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" class="o-lan-bg"/><rect width="2" height="4" class="o-lan-fg"/></pattern></defs>';
+    return `<svg class="dash-chart-svg dash-otl" viewBox="0 0 ${W} ${H}" role="img" aria-label="Outages over the last ${esc(orange)}">${defs}${body}${ticks}</svg>`;
+  }
+  const outageLegend = () => '<div class="dash-stats"><span class="dash-stat"><span class="dash-swatch cov"></span>watched, connected</span><span class="dash-stat"><span class="dash-swatch trk"></span>not watching</span><span class="dash-stat"><span class="dash-swatch o-isp"></span>past your router</span><span class="dash-stat"><span class="dash-swatch o-lan"></span>PC ↔ router</span><span class="dash-stat"><span class="dash-swatch o-offline"></span>PC disconnected</span><span class="dash-stat"><span class="dash-swatch o-unknown"></span>unclear</span></div>';
+
+  /* The plain-English reading of the period. */
+  function outageVerdict(s, st) {
+    const span = Math.min(ORANGES[orange], Math.max(1, s.now - (s.coverage[0] ? s.coverage[0][0] : s.now)));
+    const partial = st.watched && st.watched / span < 0.6 ? ` NetDeck only sees outages while it is running; it was watching for ${dur(st.watched)} of this period.` : '';
+    const blips = st.blips ? ` ${st.blips} single missed check${st.blips === 1 ? '' : 's'} (a few seconds each) did not count as outages — an occasional one is normal.` : '';
+    if (!st.all.length) {
+      if (!st.watched) return { tone: 'info', text: 'Nothing recorded in this period yet.' };
+      return { tone: 'ok', text: `No outages in the last ${orange} while NetDeck was watching (${dur(st.watched)} watched).${blips}${partial}` };
+    }
+    const top = Object.keys(st.by).sort((x, y) => st.by[y] - st.by[x])[0];
+    const n = st.all.length, many = `${n} outage${n === 1 ? '' : 's'}, ${dur(st.down)} down in total`;
+    if (st.by[top] * 2 <= n) {
+      const parts = [['isp', 'past your router'], ['lan', 'between this PC and the router'], ['offline', 'this PC disconnected'], ['unknown', 'unclear']].filter(([k]) => st.by[k]).map(([k, label]) => `${st.by[k]} ${label}`);
+      const text = st.by.isp
+        ? `${many}, on both sides of the router: ${parts.join(', ')}. Those past the router are your internet provider's to fix (a report lists them with times); the others are on your side — Wi-Fi, cable or the router.`
+        : `${many}, all on your side of the router: ${parts.join(', ')}. Look at the Wi-Fi signal (the Wi-Fi health playbook), the cable and the router — your internet provider is not the cause of these.`;
+      return { tone: st.by.isp ? 'err' : 'warn', text: text + blips + partial };
+    }
+    const most = st.by[top] === n ? (n === 1 ? 'It was' : 'All were') : 'Most were';
+    const text = {
+      isp: `${many}. ${most} past your router: the router kept answering while the internet did not, so the fault is on your internet provider's side — their line, or the modem. Save a report and send it to them; it lists every outage with its time and length.`,
+      lan: `${many}. ${most} between this PC and the router: the router itself stopped answering. Look at the Wi-Fi signal (the Wi-Fi health playbook), the cable, or a router that restarts on its own — your internet provider is not the cause of these.`,
+      offline: `${many}. ${most} this PC dropping off the network entirely (no router address): Wi-Fi disconnecting or a cable coming loose. Run Wi-Fi health, and check that Windows is not allowed to switch the adapter off to save power.`,
+      unknown: `${many}. Your router does not answer pings, so NetDeck cannot tell whether ${n === 1 ? 'it was' : 'they were'} on your side or your provider's. Run "Does my connection drop out?" during a bad spell for a closer look.`,
+    }[top];
+    return { tone: top === 'isp' ? 'err' : 'warn', text: text + blips + partial };
+  }
+
+  function outageCard() {
+    const s = ostate, folded = collapsed.has('outage');
+    const on = Boolean(s && s.enabled);
+    const to = s ? s.now : Date.now(), from = to - ORANGES[orange];
+    const st = s ? outageStats(s, from, to) : null;
+    const since = on && s.coverage.length ? s.coverage[s.coverage.length - 1][0] : null;
+    const pill = !s ? '' : st.cur ? `<span class="dash-pill" data-state="err">down now · ${esc(dur(st.cur.end - st.cur.start))}</span>`
+      : on ? `<span class="dash-pill" data-state="ok">watching${since ? ` since ${esc(when(since))}` : ''}</span>` : '<span class="dash-pill">off</span>';
+    if (folded) {
+      const sum = !s ? (oerr || 'loading…') : st.all.length ? `${st.all.length} outage${st.all.length === 1 ? '' : 's'} in the last ${orange} · ${dur(st.down)} down · longest ${dur(st.longest)}` : on ? `no outages in the last ${orange}` : 'off — expand to start watching';
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-outage"><header class="card-head"><h2 class="card-name">Outage log</h2>${pill}<span class="dash-collapsed-sum">${esc(sum)}</span>${manualBtn('d-outages')}${collapseBtn('outage')}</header></article>`;
+    }
+    const hasData = Boolean(s && (s.outages.length || s.coverage.length));
+    const ranges = !hasData ? '' : Object.keys(ORANGES).map((r) => `<button type="button" class="tbtn tbtn-sm${r === orange ? ' is-on' : ''}" data-orange="${r}" aria-pressed="${r === orange}">${r}</button>`).join('');
+    const head = `<header class="card-head"><h2 class="card-name">Outage log</h2>${pill}<span class="dash-head-tools">${ranges ? `<span class="dash-ranges" role="group" aria-label="Range">${ranges}</span>` : ''}${manualBtn('d-outages')}${collapseBtn('outage')}</span></header>`;
+    const obtn = (label, what, extra = '', title = '') => `<button type="button" class="${extra.includes('run-btn') ? 'run-btn' : 'tbtn tbtn-sm'}${extra.replace('run-btn', '')}" data-outage="${what}"${title ? ` title="${esc(title)}"` : ''}${obusy ? ' disabled' : ''}>${esc(label)}</button>`;
+    let body;
+    if (!s) body = `<p class="dash-empty">${esc(oerr || 'Loading the outage log…')}</p>`;
+    else if (!on && !hasData) {
+      body = `<p class="dash-empty">Catches the drop you never see. While it is on, NetDeck checks the router and the internet every 5 seconds — with the window open or closed to the tray — and writes down every outage: when it started, how long it lasted, and whether the fault was <b>past your router</b> (your internet provider) or <b>between this PC and the router</b> (Wi-Fi, cable, the router). You get a timeline and a report you can send your provider. It costs one tiny ping every few seconds, and the log stays on this PC.</p><div class="dash-links">${obtn('Start watching', 'on', ' run-btn')}</div>`;
+    } else {
+      const v = outageVerdict(s, st);
+      const live = st.cur ? `<p class="dash-live">Down now — since ${esc(clock(st.cur.start))} (${esc(dur(st.cur.end - st.cur.start))}), ${esc((LAYER[st.cur.layer] || LAYER.unknown).long)}.</p>` : '';
+      const big = `<div class="dash-big"><div><span class="dash-big-n"${st.all.length ? ' data-state="err"' : ''}>${st.all.length}</span><span class="dash-big-l">outages</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.down) : '0 s')}</span><span class="dash-big-l">down in total</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.longest) : '—')}</span><span class="dash-big-l">longest</span></div><div><span class="dash-big-n">${esc(st.watched >= 36e5 ? `${Math.round(st.watched / 36e5)} h` : dur(st.watched))}</span><span class="dash-big-l">watched</span></div></div>`;
+      const list = st.all.slice().sort((a, b) => b.start - a.start).slice(0, 12).map((o) => {
+        const L = LAYER[o.layer] || LAYER.unknown;
+        const tail = [o.adapter, o.live ? 'still down' : o.open ? 'NetDeck stopped watching before it came back' : ''].filter(Boolean).join(' · ');
+        return `<li class="dash-check" data-status="${L.status}"><span class="dash-dot"></span><span class="dash-check-name">${esc(when(o.start))}</span><span class="dash-check-sum">${esc(dur(o.end - o.start))} — ${esc(L.long)}${tail ? ` <span class="dim">· ${esc(tail)}</span>` : ''}</span></li>`;
+      }).join('');
+      const more = st.all.length > 12 ? `<p class="dash-sub">and ${st.all.length - 12} more — the report lists them all.</p>` : '';
+      body = `${live}${big}<div class="dash-chart">${outageTimeline(s, from, to)}</div>${outageLegend()}<p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${list ? `<ul class="dash-checks dash-outage-list">${list}</ul>${more}` : ''}`;
+    }
+    const notifyBtn = s && s.notifyNative ? obtn(s.notify ? 'Notify: on' : 'Notify: off', 'notify', s.notify ? ' is-on' : '', s.notify ? 'A desktop notification each time the connection comes back after an outage (on)' : 'Get a desktop notification each time the connection comes back after an outage') : '';
+    const acts = !s ? '' : (on ? obtn('Stop watching', 'off') : hasData ? obtn('Start watching', 'on', ' run-btn') : '')
+      + notifyBtn + (hasData ? obtn('Save report', 'report', '', 'One HTML file for your internet provider: every outage in this range with its time, length and where it failed') + obtn('Clear', 'clear', ' dash-clear', 'Forget the outage log') : '');
+    const foot = `<footer class="dash-foot"><span>router + 1.1.1.1 every 5 s while NetDeck runs — open or in the tray; quitting stops it</span><span class="dash-links">${acts}</span></footer>`;
+    return `<article class="card dash-card dash-wide" id="dash-outage">${head}${body}${foot}</article>`;
+  }
+
+  /* A report to hand your internet provider: the period, the totals, the timeline and every outage. */
+  async function outageReport() {
+    const s = ostate;
+    if (!s) return;
+    const to = s.now, from = to - ORANGES[orange], st = outageStats(s, from, to), v = outageVerdict(s, st);
+    // the report is what gets sent, so its verdict drops the advice to send a report
+    v.text = v.text.replace(' Save a report and send it to them; it lists every outage with its time and length.', '').replace(' (a report lists them with times)', '');
+    let css = '';
+    try { css = await (await fetch('styles.css')).text(); } catch (e) { css = ''; }
+    const theme = document.documentElement.dataset.theme || '';
+    const rows = st.all.slice().sort((a, b) => a.start - b.start).map((o) => `<tr><td>${esc(new Date(o.start).toLocaleString())}</td><td>${o.live ? 'still down' : esc(new Date(o.end).toLocaleString())}</td><td>${esc(dur(o.end - o.start))}</td><td>${esc((LAYER[o.layer] || LAYER.unknown).long)}${o.open ? ' (NetDeck stopped watching before it came back)' : ''}</td><td>${esc(o.adapter || '')}</td></tr>`).join('');
+    const html = `<!doctype html><html lang="en"${theme ? ` data-theme="${esc(theme)}"` : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Internet outage report — ${esc(new Date(from).toLocaleDateString())} to ${esc(new Date(to).toLocaleDateString())}</title>
+<style>${css}
+body { padding-block: 24px; max-width: 980px; }
+.snap-head h1 { margin: 0 0 4px; font-size: 18px; color: var(--bright); }
+.snap-meta, .snap-foot { color: var(--muted); font-size: 12.5px; }
+.card { margin: 14px 0; }
+.print { font: 12px var(--mono); padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); cursor: pointer; }
+table.rep { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.rep th, table.rep td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+table.rep th { font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+@media print { .print { display: none; } }
+</style></head><body>
+<div class="snap-head"><h1>Internet outage report</h1><div class="snap-meta">${esc(new Date(from).toLocaleString())} – ${esc(new Date(to).toLocaleString())} · watched for ${esc(dur(st.watched))} · NetDeck ${esc(window.NETDECK_VERSION || '')} · <button class="print" onclick="print()">Print / save PDF</button></div></div>
+<article class="card dash-card"><div class="dash-big"><div><span class="dash-big-n">${st.all.length}</span><span class="dash-big-l">outages</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.down) : '0 s')}</span><span class="dash-big-l">down in total</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.longest) : '—')}</span><span class="dash-big-l">longest</span></div><div><span class="dash-big-n">${st.by.isp}</span><span class="dash-big-l">past the router</span></div></div><div class="dash-chart">${outageTimeline(s, from, to)}</div>${outageLegend()}<p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p></article>
+${rows ? `<table class="rep"><thead><tr><th>Started</th><th>Ended</th><th>Length</th><th>Where it failed</th><th>Connection</th></tr></thead><tbody>${rows}</tbody></table>` : '<p>No outages in this period.</p>'}
+<p class="snap-foot">How this was measured: every 5 seconds NetDeck pinged the home router and a public internet address (1.1.1.1, with 8.8.8.8 as a second opinion). An outage is two or more checks in a row with no reply from the internet, so each start and end time is accurate to about 5 seconds, and drops shorter than about 10 seconds are not listed. "Past your router" means the router kept answering while the internet did not. Time when NetDeck was not running (the computer asleep or off) is not counted either way. Generated by NetDeck on this computer; nothing was sent anywhere.</p>
+</body></html>`;
+    D.saveFile(`netdeck-outages-${new Date(to).toISOString().slice(0, 10)}.html`, html, 'text/html');
   }
 
   /* ================= security posture: the live firewall state plus the latest run of each security check ================= */

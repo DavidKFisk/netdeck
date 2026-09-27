@@ -204,6 +204,7 @@
       <li class="sub"><a href="#d-route">Route to the internet</a></li>
       <li class="sub"><a href="#d-traffic">Traffic</a></li>
       <li class="sub"><a href="#d-posture">Security posture</a></li>
+      <li class="sub"><a href="#d-outages">Outage log</a></li>
       <li><a href="#calculator">Network calculator</a></li>
       <li class="sub"><a href="#nc-basics">How IP addresses work</a></li>
       <li class="sub"><a href="#nc-subnetting">Subnetting, step by step</a></li>
@@ -252,7 +253,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.28.7</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.28.7</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.29.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.29.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -278,7 +279,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.7</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.29.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -521,6 +522,46 @@
   <tr><td><strong>DNS honesty</strong> / <strong>Hosts file &amp; DNS cache</strong></td><td>From <a href="#pb-dnshonest">Is my DNS honest?</a>: who really answers your lookups and whether anything is tampered with; and whether this PC's own hosts file pins any sites.</td><td>"honest" and a hosts file with no surprises. A hosts file redirecting security or update sites is the classic malware move.</td></tr>
   <tr><td><strong>Router</strong></td><td>From the <a href="#pb-routercheck">Router check-up</a>.</td><td>"healthy".</td></tr>
 </table></div>
+
+<h3 id="d-outages">Outage log</h3>
+<p>Most connection problems hide from you: the internet drops for forty seconds at 3 a.m., or twice during a call, and by the time you run a test everything looks fine. The outage log catches those drops. Once you press <span class="btn">Start watching</span>, NetDeck checks the connection every 5 seconds for as long as it runs — with the window open or closed to the tray — and writes down every outage: when it started, how long it lasted, and <em>which side of your router</em> it happened on. That last part is what settles the usual argument: whether the fault is your internet provider's or something at home.</p>
+<figure class="shot"><img src="manual-img/outage-log.webp" width="1824" height="984" alt="The Outage log card: totals, a week of days with outages marked, the verdict and the list of outages" loading="lazy"><figcaption>An example week. Each row is a day, midnight to midnight; green is time NetDeck was watching and connected, and each mark is an outage, colored by where it failed.</figcaption></figure>
+
+<h4>How it tells where the fault is</h4>
+<p>Every 5 seconds NetDeck sends two pings at once: one to your <strong>router</strong> (the default gateway, the first box your traffic reaches) and one to the <strong>internet</strong> (1.1.1.1, with 8.8.8.8 as a second opinion so one company's hiccup is not blamed on your line). A ping is a tiny "are you there?" message; the reply comes back in a few milliseconds. When the internet stops answering, what the router did at the same moment says where the break is:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Where it failed</th><th>What NetDeck saw</th><th>Whose to fix</th></tr>
+  <tr><td><strong>Past your router</strong></td><td>The router kept answering; the internet did not. Your PC, the Wi-Fi or cable and the router were all working — the break was further out.</td><td>Your <strong>internet provider</strong>: their line, their network, or the modem they supplied. (If a VPN is on, its server counts as "past the router" too.)</td></tr>
+  <tr><td><strong>Between this PC and the router</strong></td><td>Neither answered: the router itself went quiet.</td><td>You: weak or crowded <strong>Wi-Fi</strong>, a bad <strong>cable</strong>, or a <strong>router</strong> that freezes or restarts on its own.</td></tr>
+  <tr><td><strong>PC disconnected</strong></td><td>This PC had no router address at all — it had dropped off the network.</td><td>You: <strong>Wi-Fi disconnecting</strong>, a cable coming out, or Windows switching the adapter off to save power.</td></tr>
+  <tr><td><strong>Unclear</strong></td><td>The router has never answered a ping (some are set up to ignore them), so there is nothing to compare against.</td><td>Unknown. Run <a href="#pb-dropouts">Does my connection drop out?</a> during a bad spell for a closer look.</td></tr>
+</table></div>
+<p>An <strong>outage</strong> is two or more checks in a row with no reply from the internet, so it lasted at least about 10 seconds. A single missed check is a <em>blip</em>: it is counted but not listed, because one lost ping now and then is normal on any network. Start and end times are accurate to about 5 seconds.</p>
+
+<h4>What you see</h4>
+<div class="tbl-wrap"><table>
+  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
+  <tr><td><strong>watching since 09:41</strong> / <strong>off</strong> / <strong>down now · 34 s</strong></td><td>Whether the log is on, since when, or — in red — an outage happening right now and how long it has lasted.</td><td>"watching".</td></tr>
+  <tr><td><strong>outages · down in total · longest · watched</strong></td><td>For the chosen range: how many outages, their combined length, the longest single one, and how long NetDeck was actually watching.</td><td>0 outages. A few short ones a week can happen on any line; several a day, or any lasting minutes, is worth acting on.</td></tr>
+  <tr><td><strong>the timeline</strong></td><td>One row per day (or one row for the last 24 h). Green: watching and connected. Dark: not watching — NetDeck closed, or the PC asleep or off. Colored marks: outages — red past your router, striped between this PC and the router, gray PC disconnected or unclear. Hover a mark for its time and length.</td><td>Green, no marks. Marks that bunch at the same time of day point to a pattern — evening congestion on the provider's side, or a device at home that interferes on a schedule.</td></tr>
+  <tr><td><strong>the verdict</strong></td><td>The period in one paragraph: how many outages, where most of them were, and what to do next.</td><td>"No outages in the last 7 days while NetDeck was watching."</td></tr>
+  <tr><td><strong>the list</strong></td><td>The latest outages, newest first: when, how long, where, and the adapter in use (Wi-Fi or Ethernet). "NetDeck stopped watching before it came back" means the PC went to sleep or NetDeck was closed during that outage, so its true end is not known.</td><td>—</td></tr>
+  <tr><td><strong>24 h · 7 days · 30 days</strong></td><td>The range everything on the card covers. The log itself keeps 90 days.</td><td>—</td></tr>
+  <tr><td><span class="btn">Stop watching</span> / <span class="btn">Start watching</span></td><td>Turns the checks off or on. The setting is remembered: when NetDeck starts again, watching carries on by itself.</td><td>—</td></tr>
+  <tr><td><span class="btn">Notify: on</span></td><td>Desktop app only: a notification each time the connection comes back after an outage, saying how long it was down and where — even while NetDeck is in the tray.</td><td>—</td></tr>
+  <tr><td><span class="btn">Save report</span></td><td>One HTML file for your internet provider: the period, the totals, the timeline, every outage with its start, end, length and where it failed, and a note on how it was measured. It opens in any browser and prints to PDF.</td><td>—</td></tr>
+  <tr><td><span class="btn">Clear</span></td><td>Forgets the whole log (it asks first).</td><td>—</td></tr>
+</table></div>
+
+<h4>Things to know</h4>
+<ul>
+  <li><strong>It only sees what happens while NetDeck runs.</strong> Closing the window keeps it going in the tray; <em>Quit NetDeck</em> stops it. NetDeck does not start with Windows, so after a restart, open it again to resume watching. The local-server edition watches while its window is open.</li>
+  <li><strong>Sleep is not an outage.</strong> Time the PC spends asleep or off shows as "not watching", never as downtime, and the first minute after NetDeck starts or the PC wakes is ignored, because reconnecting takes a few seconds.</li>
+  <li><strong>"Past your router" includes everything beyond it.</strong> With <a href="#pb-doublenat">double NAT</a> — a provider's box in front of your own router — an outage in that box shows as past your router, which is right: it is the provider's equipment.</li>
+  <li><strong>The cost is tiny.</strong> About two small pings every 5 seconds — a few kilobytes an hour. Nothing else is sent anywhere.</li>
+  <li><strong>The log stays on this PC</strong>, in <code>outage-log.json</code>: <code>%APPDATA%\com.netdeck.desktop\</code> for the desktop app, or next to <code>server.js</code> for the local-server edition.</li>
+</ul>
+<div class="callout"><span class="lbl">Talking to your provider</span><p>Support lines usually test the line while you are on the phone, find nothing and close the ticket. A report changes that: give them the exact times and lengths of the outages, and ask them to check their records for your line at those moments. If every outage is "past your router" while the PC was on a cable to the router, the fault is theirs to find. If they are "between this PC and the router", start with Wi-Fi: move closer to the router, or try a cable, and watch whether the outages stop.</p></div>
 
 <div class="callout"><span class="lbl">Hosted version</span><p>A web page cannot read your network, so the hosted dashboard shows a note instead — until a local NetDeck is connected, when it works like the desktop app's.</p></div>
 
@@ -2080,7 +2121,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.28.7</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.29.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
