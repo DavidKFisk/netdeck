@@ -118,11 +118,20 @@ npx @tauri-apps/cli@^2 build
 
 builds a native desktop app from `src-tauri/` — a Rust backend that reuses the same `commands.json` whitelist and the same UI files, talking over Tauri IPC instead of HTTP. On Windows it produces `src-tauri/target/release/netdeck.exe` (~6 MB, uses the system WebView2) and an NSIS installer in `src-tauri/target/release/bundle/nsis/`. Prerequisites: Rust (stable, MSVC toolchain on Windows), the Visual Studio C++ build tools, and the WebView2 runtime (present on Windows 10/11). `npx @tauri-apps/cli@^2 dev` runs it unbundled for development.
 
+**Two Windows installers.** `node tools/build-installers.js` builds both for the current version (`--normal-only` skips the second):
+
+| Installer | Size | WebView2 |
+|---|---|---|
+| `NetDeck_<version>_x64-setup.exe` | ~5 MB | Downloaded from Microsoft during setup, only on a PC that lacks it (Windows 11 and current Windows 10 already have it) |
+| `NetDeck_<version>_x64-offline-setup.exe` | ~210 MB | Microsoft's full WebView2 installer is inside, so setup needs no internet at all — for air-gapped machines, lab benches and PCs whose network is the problem |
+
+The offline one is the same app built with `src-tauri/tauri.offline.conf.json` merged in (`webviewInstallMode: offlineInstaller`). Either way WebView2 is Microsoft's self-updating (Evergreen) runtime, and it updates itself once the PC is online.
+
 The desktop app adds a **tray icon** (Open / Quit), **close-to-tray** (closing the window keeps runs going; Quit is in the tray menu), **native notifications** and a **native save dialog**, and is **single-instance** — launching it again just brings the running window to the front. Custom commands are stored in the per-user app-data folder (`%APPDATA%\com.netdeck.desktop\`). Builds are per-OS: run the same command on a Mac or Linux box for those targets.
 
 **Administrator rights.** A few variants (`netstat -anob`) and Windows 11 Wi-Fi details need elevation. The desktop app has a **Run as admin** button beside the STANDARD USER badge: it exits, relaunches itself through the UAC prompt (`Start-Process -Verb RunAs`), and falls back to a normal start if the prompt is declined. The Node editions show a *How to run as admin* dialog with the exact commands for their own folder instead — a page cannot restart its server.
 
-**Installing on Windows.** Run `NetDeck_<version>_x64-setup.exe`. It installs per-user (no admin prompt) to `%LOCALAPPDATA%\NetDeck`, adds **NetDeck** to the Start menu (folder "NetDeck") and a **desktop shortcut**, and registers in *Settings → Apps* for uninstalling (which removes both shortcuts). Re-running a newer installer upgrades in place. `setup.exe /S` installs silently. Because the installer is unsigned, SmartScreen shows "unknown publisher" the first time — choose *More info → Run anyway*.
+**Installing on Windows.** Run `NetDeck_<version>_x64-setup.exe` — or `NetDeck_<version>_x64-offline-setup.exe` on a PC with no internet. It installs per-user (no admin prompt) to `%LOCALAPPDATA%\NetDeck`, adds **NetDeck** to the Start menu (folder "NetDeck") and a **desktop shortcut**, and registers in *Settings → Apps* for uninstalling (which removes both shortcuts). Re-running a newer installer upgrades in place. `setup.exe /S` installs silently. Because the installer is unsigned, SmartScreen shows "unknown publisher" the first time — choose *More info → Run anyway*.
 
 `public/api.js` is the adapter that lets the one UI run against all three backends (Node server, hosted static page, Tauri).
 
