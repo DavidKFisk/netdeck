@@ -16,9 +16,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use tauri::{
     ipc::Channel,
-    menu::{Menu, MenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, State, WindowEvent,
+    AppHandle, Emitter, Manager, State, WindowEvent,
 };
 use tauri_plugin_dialog::DialogExt;
 
@@ -594,6 +594,121 @@ fn outage_clear(mon: State<'_, Arc<outage::Monitor>>) -> Value {
     mon.clear()
 }
 
+/* ---------------- start with Windows ---------------- */
+// A per-user entry under HKCU\...\Run (no admin rights), which Windows runs at sign-in. NetDeck then starts with
+// --tray: hidden in the tray, so the outage log and schedules carry on without a window popping up.
+
+const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+const RUN_VALUE: &str = "NetDeck";
+
+#[cfg(windows)]
+mod winreg {
+    use super::wide;
+    #[link(name = "advapi32")]
+    extern "system" {
+        fn RegGetValueW(hkey: isize, sub: *const u16, value: *const u16, flags: u32, ty: *mut u32, data: *mut u16, cb: *mut u32) -> i32;
+        fn RegSetKeyValueW(hkey: isize, sub: *const u16, value: *const u16, ty: u32, data: *const u16, cb: u32) -> i32;
+        fn RegDeleteKeyValueW(hkey: isize, sub: *const u16, value: *const u16) -> i32;
+    }
+    // HKEY_CURRENT_USER is ((HKEY)(LONG)0x80000001): sign-extended on 64-bit.
+    const HKCU: isize = 0x8000_0001u32 as i32 as isize;
+    const RRF_RT_REG_SZ: u32 = 0x2;
+    const REG_SZ: u32 = 1;
+
+    pub fn get(key: &str, value: &str) -> Option<String> {
+        let mut buf = vec![0u16; 2048];
+        let mut cb = (buf.len() * 2) as u32;
+        let rc = unsafe { RegGetValueW(HKCU, wide(key).as_ptr(), wide(value).as_ptr(), RRF_RT_REG_SZ, std::ptr::null_mut(), buf.as_mut_ptr(), &mut cb) };
+        if rc != 0 {
+            return None;
+        }
+        let len = (cb as usize / 2).saturating_sub(1);
+        Some(String::from_utf16_lossy(&buf[..len.min(buf.len())]))
+    }
+
+    pub fn set(key: &str, value: &str, data: &str) -> Result<(), String> {
+        let w = wide(data);
+        let rc = unsafe { RegSetKeyValueW(HKCU, wide(key).as_ptr(), wide(value).as_ptr(), REG_SZ, w.as_ptr(), (w.len() * 2) as u32) };
+        if rc == 0 { Ok(()) } else { Err(format!("Windows refused the startup entry (error {rc}).")) }
+    }
+
+    pub fn delete(key: &str, value: &str) -> Result<(), String> {
+        let rc = unsafe { RegDeleteKeyValueW(HKCU, wide(key).as_ptr(), wide(value).as_ptr()) };
+        // 2 = ERROR_FILE_NOT_FOUND: already gone
+        if rc == 0 || rc == 2 { Ok(()) } else { Err(format!("Windows refused to remove the startup entry (error {rc}).")) }
+    }
+}
+
+fn autostart_command() -> Option<String> {
+    std::env::current_exe().ok().map(|p| format!("\"{}\" --tray", p.display()))
+}
+
+fn autostart_enabled() -> bool {
+    #[cfg(windows)]
+    {
+        winreg::get(RUN_KEY, RUN_VALUE).is_some()
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+fn autostart_write(on: bool) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        if on {
+            let cmd = autostart_command().ok_or("Could not find NetDeck's own path.")?;
+            winreg::set(RUN_KEY, RUN_VALUE, &cmd)
+        } else {
+            winreg::delete(RUN_KEY, RUN_VALUE)
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = on;
+        Err("Start with Windows is only available on Windows.".into())
+    }
+}
+
+/// An entry left by an older install in another folder is pointed at this copy.
+fn autostart_repair() {
+    #[cfg(windows)]
+    if let (Some(cur), Some(want)) = (winreg::get(RUN_KEY, RUN_VALUE), autostart_command()) {
+        if cur != want {
+            let _ = winreg::set(RUN_KEY, RUN_VALUE, &want);
+        }
+    }
+}
+
+struct TrayItems {
+    autostart: CheckMenuItem<tauri::Wry>,
+}
+
+fn autostart_status() -> Value {
+    json!({ "supported": cfg!(windows), "enabled": autostart_enabled() })
+}
+
+fn apply_autostart(app: &AppHandle, on: bool) -> Result<Value, String> {
+    autostart_write(on)?;
+    let now = autostart_enabled();
+    if let Some(items) = app.try_state::<TrayItems>() {
+        let _ = items.autostart.set_checked(now);
+    }
+    let _ = app.emit("autostart", json!({ "enabled": now }));
+    Ok(autostart_status())
+}
+
+#[tauri::command]
+fn autostart_get() -> Value {
+    autostart_status()
+}
+
+#[tauri::command]
+fn autostart_set(app: AppHandle, enabled: bool) -> Result<Value, String> {
+    apply_autostart(&app, enabled)
+}
+
 /* ---------------- custom (reference-only) commands ---------------- */
 
 fn str_field(v: &Value, key: &str, max: usize) -> String {
@@ -877,8 +992,12 @@ pub fn run() {
             });
 
             let open = MenuItem::with_id(app, "open", "Open NetDeck", true, None::<&str>)?;
+            autostart_repair();
+            let autostart = CheckMenuItem::with_id(app, "autostart", "Start with Windows", cfg!(windows), autostart_enabled(), None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit NetDeck", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &quit])?;
+            let sep = PredefinedMenuItem::separator(app)?;
+            let menu = Menu::with_items(app, &[&open, &autostart, &sep, &quit])?;
+            app.manage(TrayItems { autostart: autostart.clone() });
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
                 .tooltip("NetDeck")
@@ -886,6 +1005,9 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main(app),
+                    "autostart" => {
+                        let _ = apply_autostart(app, !autostart_enabled());
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -897,6 +1019,10 @@ pub fn run() {
                 .build(app)?;
             // The outage log carries on from the last session when it was left on.
             monitor.start(app.handle());
+            // The window starts hidden (tauri.conf.json); a sign-in launch (--tray) leaves it in the tray.
+            if !std::env::args().any(|a| a == "--tray") {
+                show_main(app.handle());
+            }
             Ok(())
         })
         // Closing the window keeps NetDeck in the tray (runs in progress keep streaming); Quit is in the tray menu.
@@ -925,7 +1051,9 @@ pub fn run() {
             open_site,
             outage_status,
             outage_set,
-            outage_clear
+            outage_clear,
+            autostart_get,
+            autostart_set
         ])
         .run(tauri::generate_context!())
         .expect("error while running NetDeck");

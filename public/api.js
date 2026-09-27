@@ -20,6 +20,10 @@ window.NetDeckAPI = (() => {
       outageSet: ({ enabled = null, notify = null } = {}) => invoke('outage_set', { enabled, notify }),
       outageClear: () => invoke('outage_clear'),
       onOutage: (cb) => (tauri.event?.listen ? tauri.event.listen('outage', (e) => cb(e.payload)) : Promise.resolve(null)),
+      // Start with Windows: a per-user startup entry that opens NetDeck hidden in the tray (also in the tray menu).
+      autostart: () => invoke('autostart_get'),
+      autostartSet: (enabled) => invoke('autostart_set', { enabled: Boolean(enabled) }),
+      onAutostart: (cb) => (tauri.event?.listen ? tauri.event.listen('autostart', (e) => cb(e.payload)) : Promise.resolve(null)),
       async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
         const runId = ++seq;
         let output = '';
@@ -82,6 +86,9 @@ window.NetDeckAPI = (() => {
     outageSet: (opts) => request('/api/outage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts || {}) }).then(jsonOrThrow),
     outageClear: () => request('/api/outage', { method: 'DELETE' }).then(jsonOrThrow),
     onOutage: null,
+    autostart: null,
+    autostartSet: null,
+    onAutostart: null,
     async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
       let output = '';
       try {

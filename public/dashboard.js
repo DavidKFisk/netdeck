@@ -66,6 +66,8 @@ window.NetDeckDashboard = (() => {
     backfill();
     // the desktop app says when an outage starts or ends, so the card updates without waiting for the next poll
     if (window.NetDeckAPI && window.NetDeckAPI.onOutage) window.NetDeckAPI.onOutage(() => loadOutage().then(() => { if (shown) patchOutage(); })).catch(() => {});
+    // the tray menu's Start with Windows and the card's button stay in step
+    if (window.NetDeckAPI && window.NetDeckAPI.onAutostart) window.NetDeckAPI.onAutostart((p) => { astate = { supported: true, enabled: Boolean(p && p.enabled) }; if (shown) patchOutage(); }).catch(() => {});
   }
 
   /* Any button on the dashboard that names a command or playbook runs it in the terminal, visibly. */
@@ -680,6 +682,7 @@ window.NetDeckDashboard = (() => {
   const ORANGES = { '24 h': 864e5, '7 days': 7 * 864e5, '30 days': 30 * 864e5 };
   let orange = (() => { try { const r = localStorage.getItem('netdeck.dashboard.orange'); return ORANGES[r] ? r : '7 days'; } catch (e) { return '7 days'; } })();
   let ostate = null, oerr = '', otimer = null, obusy = false;
+  let astate = null;   // Start with Windows: { supported, enabled } in the desktop app, null elsewhere
   const LAYER = {
     isp: { long: 'past your router — your internet provider or the modem', status: 'fail' },
     lan: { long: 'between this PC and the router — Wi-Fi, cable or the router itself', status: 'warn' },
@@ -697,6 +700,7 @@ window.NetDeckDashboard = (() => {
   async function loadOutage() {
     if (!api() || !api().outage) { oerr = 'This edition cannot keep an outage log.'; return; }
     try { ostate = await api().outage(); oerr = ''; } catch (e) { oerr = String((e && e.message) || e); }
+    if (api().autostart) { try { astate = await api().autostart(); } catch (e) { astate = null; } }
   }
   function patchOutage() { const el = els && els.grid.querySelector('#dash-outage'); if (el) el.outerHTML = outageCard(); }
   function startOutagePoll() { if (otimer) return; otimer = setInterval(async () => { await loadOutage(); if (shown) patchOutage(); }, 5000); }
@@ -704,6 +708,12 @@ window.NetDeckDashboard = (() => {
 
   async function outageAction(what) {
     if (what === 'report') { outageReport(); return; }
+    if (what === 'autostart') {
+      if (!api().autostartSet || !astate) return;
+      try { astate = await api().autostartSet(!astate.enabled); oerr = ''; } catch (e) { oerr = String((e && e.message) || e); window.alert(oerr); }
+      patchOutage();
+      return;
+    }
     if (obusy || !api() || !api().outageSet) return;
     if (what === 'clear') {
       const n = ostate ? ostate.outages.length : 0;
@@ -790,7 +800,7 @@ window.NetDeckDashboard = (() => {
   /* The plain-English reading of the period. */
   function outageVerdict(s, st) {
     const span = Math.min(ORANGES[orange], Math.max(1, s.now - (s.coverage[0] ? s.coverage[0][0] : s.now)));
-    const partial = st.watched && st.watched / span < 0.6 ? ` NetDeck only sees outages while it is running; it was watching for ${dur(st.watched)} of this period.` : '';
+    const partial = st.watched && st.watched / span < 0.6 ? ` NetDeck only sees outages while it is running; it was watching for ${dur(st.watched)} of this period.${astate && astate.supported && !astate.enabled ? ' Turn on Start with Windows so it watches from the moment you sign in.' : ''}` : '';
     const blips = st.blips ? ` ${st.blips} single missed check${st.blips === 1 ? '' : 's'} (a few seconds each) did not count as outages — an occasional one is normal.` : '';
     if (!st.all.length) {
       if (!st.watched) return { tone: 'info', text: 'Nothing recorded in this period yet.' };
@@ -834,7 +844,7 @@ window.NetDeckDashboard = (() => {
     let body;
     if (!s) body = `<p class="dash-empty">${esc(oerr || 'Loading the outage log…')}</p>`;
     else if (!on && !hasData) {
-      body = `<p class="dash-empty">Catches the drop you never see. While it is on, NetDeck checks the router and the internet every 5 seconds — with the window open or closed to the tray — and writes down every outage: when it started, how long it lasted, and whether the fault was <b>past your router</b> (your internet provider) or <b>between this PC and the router</b> (Wi-Fi, cable, the router). You get a timeline and a report you can send your provider. It costs one tiny ping every few seconds, and the log stays on this PC.</p><div class="dash-links">${obtn('Start watching', 'on', ' run-btn')}</div>`;
+      body = `<p class="dash-empty">Catches the drop you never see. While it is on, NetDeck checks the router and the internet every 5 seconds — with the window open or closed to the tray — and writes down every outage: when it started, how long it lasted, and whether the fault was <b>past your router</b> (your internet provider) or <b>between this PC and the router</b> (Wi-Fi, cable, the router). You get a timeline and a report you can send your provider. It costs one tiny ping every few seconds, and the log stays on this PC.${astate && astate.supported ? ' Turn on <b>Start with Windows</b> too, and it watches from the moment you sign in.' : ''}</p><div class="dash-links">${obtn('Start watching', 'on', ' run-btn')}</div>`;
     } else {
       const v = outageVerdict(s, st);
       const live = st.cur ? `<p class="dash-live">Down now — since ${esc(clock(st.cur.start))} (${esc(dur(st.cur.end - st.cur.start))}), ${esc((LAYER[st.cur.layer] || LAYER.unknown).long)}.</p>` : '';
@@ -848,8 +858,9 @@ window.NetDeckDashboard = (() => {
       body = `${live}${big}<div class="dash-chart">${outageTimeline(s, from, to)}</div>${outageLegend()}<p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${list ? `<ul class="dash-checks dash-outage-list">${list}</ul>${more}` : ''}`;
     }
     const notifyBtn = s && s.notifyNative ? obtn(s.notify ? 'Notify: on' : 'Notify: off', 'notify', s.notify ? ' is-on' : '', s.notify ? 'A desktop notification each time the connection comes back after an outage (on)' : 'Get a desktop notification each time the connection comes back after an outage') : '';
+    const autoBtn = astate && astate.supported ? obtn(astate.enabled ? 'Start with Windows: on' : 'Start with Windows: off', 'autostart', astate.enabled ? ' is-on' : '', astate.enabled ? 'NetDeck starts hidden in the tray when you sign in to Windows, so the outage log keeps watching after a restart (on)' : 'Start NetDeck hidden in the tray when you sign in to Windows, so the outage log keeps watching after a restart') : '';
     const acts = !s ? '' : (on ? obtn('Stop watching', 'off') : hasData ? obtn('Start watching', 'on', ' run-btn') : '')
-      + notifyBtn + (hasData ? obtn('Save report', 'report', '', 'One HTML file for your internet provider: every outage in this range with its time, length and where it failed') + obtn('Clear', 'clear', ' dash-clear', 'Forget the outage log') : '');
+      + notifyBtn + autoBtn + (hasData ? obtn('Save report', 'report', '', 'One HTML file for your internet provider: every outage in this range with its time, length and where it failed') + obtn('Clear', 'clear', ' dash-clear', 'Forget the outage log') : '');
     const foot = `<footer class="dash-foot"><span>router + 1.1.1.1 every 5 s while NetDeck runs — open or in the tray; quitting stops it</span><span class="dash-links">${acts}</span></footer>`;
     return `<article class="card dash-card dash-wide" id="dash-outage">${head}${body}${foot}</article>`;
   }
