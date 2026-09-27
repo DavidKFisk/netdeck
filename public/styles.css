@@ -1230,6 +1230,26 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-clear { color: var(--muted); }
 .dash-clear:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
 
+/* ---------- live path ---------- */
+.dash-path-wrap { overflow-x: auto; }
+table.dash-path { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.dash-path th { text-align: right; font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 4px 8px 6px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+table.dash-path td { text-align: right; font-family: var(--mono); padding: 5px 8px; border-bottom: 1px solid var(--border-soft); color: var(--text); white-space: nowrap; }
+table.dash-path th:nth-child(2), table.dash-path td.addr { text-align: left; }
+table.dash-path th:last-child { text-align: left; }
+table.dash-path td.n { color: var(--bright); font-weight: 600; width: 2em; }
+table.dash-path td.addr { color: var(--bright); max-width: 26em; overflow: hidden; text-overflow: ellipsis; }
+.dash-path-name { display: block; font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+table.dash-path td.loss.has-loss { color: var(--err); font-weight: 600; }
+table.dash-path tr.is-silent td { color: var(--muted); }
+table.dash-path tr[data-net="private"] td.n { box-shadow: inset 3px 0 0 var(--ok); }
+table.dash-path tr[data-net="cgnat"] td.n { box-shadow: inset 3px 0 0 var(--warn); }
+table.dash-path tr[data-net="public"] td.n { box-shadow: inset 3px 0 0 var(--text); }
+table.dash-path td.range { width: 30%; min-width: 120px; }
+.dash-path-bar { position: relative; display: block; height: 8px; background: var(--ground); border-radius: 2px; }
+.dash-path-bar span { position: absolute; top: 0; bottom: 0; background: var(--ok-line); border-radius: 2px; }
+.dash-path-bar i { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--bright); }
+
 /* ---------- outage log ---------- */
 .dash-pill { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 .dash-pill[data-state="ok"] { color: var(--ok); border-color: var(--ok-line); }

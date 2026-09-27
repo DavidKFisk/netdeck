@@ -1225,12 +1225,13 @@
   }
 
   /* ================= single command run ================= */
-  async function startRun(cmd, params, { preset = null, help = false } = {}) {
+  async function startRun(cmd, params, { preset = null, help = false, onChunk = null } = {}) {
     const title = help ? `${cmd.name.split(' ')[0]} — help` : titleFor(cmd, params, preset);
     const tab = createTab({ kind: 'run', title, cmdId: cmd.id, params, preset, help });
     const result = await execute(cmd, params, {
       signal: tab.controller.signal, preset, help,
-      onChunk: (chunk) => { tab.output += chunk; appendRaw(tab, chunk); },
+      // a watcher (the dashboard's live path card) can read the output as it arrives
+      onChunk: (chunk) => { tab.output += chunk; appendRaw(tab, chunk); if (onChunk) { try { onChunk(chunk); } catch (e) { /* the run carries on */ } } },
     });
     tab.exitCode = result.exitCode;
     if (result.aborted) {

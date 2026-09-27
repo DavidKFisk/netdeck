@@ -315,7 +315,19 @@ window.NetDeckParsers = (() => {
     return map;
   }
 
+  /* Live path monitor: the last snapshot it printed (SUMMARY at the end, PM lines while it runs), one row per hop. */
+  function pathMonitor(text) {
+    const m = [...text.matchAll(/^(?:SUMMARY|PM) (\{.*\})\s*$/gm)].pop();
+    if (!m) return null;
+    let d;
+    try { d = JSON.parse(m[1]); } catch { return null; }
+    const ms = (v) => (v == null || v < 0 ? '' : v < 1 ? '<1' : String(Math.round(v)));
+    const rows = (d.hops || []).map((h) => [String(h.n), h.a || '(no reply)', h.h || '', h.s ? `${Math.round((100 * h.l) / h.s)}%` : '', String(h.s), ms(h.last), ms(h.avg), ms(h.best), ms(h.worst), ms(h.j)]);
+    return rows.length ? { columns: ['Hop', 'Address', 'Name', 'Loss', 'Sent', 'Last ms', 'Avg ms', 'Best ms', 'Worst ms', 'Jitter ms'], rows } : null;
+  }
+
   const WIN = {
+    'path-monitor': pathMonitor,
     'netstat-ano': netstat,
     'arp-a': arp,
     'route-print': route,

@@ -80,6 +80,8 @@ window.NetDeckDashboard = (() => {
     if (clear) { clearSeries(clear.dataset.clear); return; }
     const r = e.target.closest('[data-range]');
     if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
+    const lv = e.target.closest('[data-live]');
+    if (lv) { startLive(Number(lv.dataset.live) || 60); return; }
     const or = e.target.closest('[data-orange]');
     if (or) { orange = or.dataset.orange; try { localStorage.setItem('netdeck.dashboard.orange', orange); } catch (err) { /* fine */ } patchOutage(); return; }
     const oa = e.target.closest('[data-outage]');
@@ -210,7 +212,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), outageCard(), latencyCard(), trafficCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), pathCard(), outageCard(), latencyCard(), trafficCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -311,7 +313,7 @@ window.NetDeckDashboard = (() => {
   }
 
   /* The same book icon as the command and playbook cards: opens the manual at this card's row. */
-  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic', 'Outage log': 'd-outages' };
+  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic', 'Outage log': 'd-outages', 'Live path': 'd-path' };
   const manualBtn = (anchor) => `<button type="button" class="icon-btn manual-btn dash-manual" data-manual="${esc(anchor)}" title="Open the manual at this card" aria-label="Open the manual at this card">${D.bookSvg || ''}</button>`;
   function card(title, meta, body, foot, cls) {
     return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="dash-head-tools"><span class="card-cat">${esc(meta || '')}</span>${manualBtn(MANUAL_ROW[title] || 'dashboard')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
@@ -426,8 +428,8 @@ window.NetDeckDashboard = (() => {
   let saveTimer = null;
 
   function loadSeries() {
-    try { const j = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (j && Array.isArray(j.samples)) return { samples: j.samples, speed: j.speed || [], monitors: j.monitors || [], trace: j.trace || null, ingested: j.ingested || [], traffic: j.traffic || [] }; } catch (e) { /* blocked or corrupt */ }
-    return { samples: [], speed: [], monitors: [], trace: null, ingested: [], traffic: [] };
+    try { const j = JSON.parse(localStorage.getItem(SKEY) || 'null'); if (j && Array.isArray(j.samples)) return { samples: j.samples, speed: j.speed || [], monitors: j.monitors || [], trace: j.trace || null, ingested: j.ingested || [], traffic: j.traffic || [], live: j.live || null }; } catch (e) { /* blocked or corrupt */ }
+    return { samples: [], speed: [], monitors: [], trace: null, ingested: [], traffic: [], live: null };
   }
   function saveSeries() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(SKEY, JSON.stringify(series)); } catch (e) { /* quota: the charts just get shorter */ } }, 400); }
   const num = (x) => (Number.isFinite(+x) && +x >= 0 ? +x : null);
@@ -462,6 +464,10 @@ window.NetDeckDashboard = (() => {
         const d = summary(); if (!d || !d.internet) return;
         series.monitors.push({ t, hid: h.hid, router: d.router || null, internet: d.internet });
         used = true;
+      } else if (cmdId === 'path-monitor') {
+        const d = summary(); if (!d || !Array.isArray(d.hops) || !d.hops.length) return;
+        series.live = { t, hid: h.hid, target: d.target, ip: d.ip, secs: d.secs, c: d.c, hops: d.hops };
+        used = true;
       } else if (cmdId === 'tracert') {
         const c = D.PB.check('tracertPath', out, params || {}, ctx, {});
         if (!c.data || !c.data.hops || !c.data.hops.length) return;
@@ -482,6 +488,7 @@ window.NetDeckDashboard = (() => {
   /* Forget kept results. The runs stay in History; their ids stay in the ingested list, so they are not picked up again. */
   function clearSeries(what) {
     if (what === 'speed') { if (!series.speed.length || !window.confirm(`Forget all ${series.speed.length} speed test${series.speed.length === 1 ? '' : 's'} kept on the dashboard? The runs themselves stay in History.`)) return; series.speed = []; }
+    else if (what === 'live') { if (!series.live || !window.confirm('Forget the last live path run shown on the dashboard? The run itself stays in History.')) return; series.live = null; }
     else if (what === 'trace') { if (!series.trace || !window.confirm('Forget the last traceroute shown on the dashboard? The run itself stays in History.')) return; series.trace = null; }
     else return;
     saveSeries();
@@ -583,7 +590,7 @@ window.NetDeckDashboard = (() => {
   function routeCard() {
     const tr = series.trace;
     const host = (tr && tr.host) || '1.1.1.1';
-    const links = `${btn('Trace now', 'tracert', { host }, 'quick')}${pbBtn('Where does the path break?', 'path')}`;
+    const links = `${btn('Trace now', 'tracert', { host }, 'quick')}<button type="button" class="tbtn tbtn-sm" data-live="60" title="Every hop to ${esc(host)} probed once a second for a minute, shown live in a table below"${live ? ' disabled' : ''}>Watch live</button>${pbBtn('Where does the path break?', 'path')}`;
     if (!tr) return card('Route to the internet', '', '<p class="dash-empty">No traceroute yet. "Trace now" follows the path to 1.1.1.1 hop by hop — your router first, then your provider, then the internet — and shows where the delay is added.</p>', `<span>from the run history</span><span class="dash-links">${links}</span>`);
     const answered = tr.hops.filter((h) => h.ms != null);
     const max = Math.max(1, ...answered.map((h) => h.ms));
@@ -676,6 +683,135 @@ window.NetDeckDashboard = (() => {
     }
     const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
     return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${manualBtn('d-traffic')}${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+  }
+
+  /* ================= live path: the path-monitor command, read as it streams ================= */
+  let live = null;          // the run in progress: { target, secs, snap, started }
+  let liveBuf = '', livePatch = null;
+  const PRESET_FOR = { 60: null, 300: 'min-5', 600: 'min-10' };
+
+  function startLive(secs) {
+    if (live || !D.canRun()) return;
+    const cmd = D.byId.get('path-monitor');
+    if (!cmd || !cmd.runnable) return;
+    const host = (series.trace && series.trace.host && /^[A-Za-z0-9._-]+$/.test(series.trace.host)) ? series.trace.host : '1.1.1.1';
+    live = { target: host, secs, snap: null, started: Date.now() };
+    liveBuf = '';
+    render();
+    const el = els.grid.querySelector('#dash-path');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    Promise.resolve(D.startRun(cmd, { host }, { preset: PRESET_FOR[secs] ? presetIdx(cmd, PRESET_FOR[secs]) : null, onChunk: liveChunk }))
+      .finally(() => { live = null; if (shown) render(); });   // redraw all: the Route card's Watch live button comes back too
+  }
+  function liveChunk(chunk) {
+    liveBuf += chunk;
+    const nl = liveBuf.lastIndexOf('\n');
+    if (nl === -1) return;
+    const done = liveBuf.slice(0, nl);
+    liveBuf = liveBuf.slice(nl + 1);
+    for (const line of done.split(/\r?\n/)) {
+      const m = line.match(/^(?:PM|SUMMARY) (\{.*\})\s*$/);
+      if (!m || !live) continue;
+      try { live.snap = JSON.parse(m[1]); } catch (e) { /* a partial line */ }
+    }
+    if (!livePatch) livePatch = setTimeout(() => { livePatch = null; patchPath(); }, 400);
+  }
+  function patchPath() {
+    if (!shown || !els) return;
+    const el = els.grid.querySelector('#dash-path');
+    const html = pathCard();
+    if (el && html) el.outerHTML = html;
+    else if (!el && html) render();
+    else if (el && !html) el.remove();
+  }
+
+  /* Where loss or delay starts, the way MTR output is read: only loss that carries on to the target is real. */
+  function pathVerdict(snap, running) {
+    const hops = (snap && snap.hops) || [];
+    if (!hops.length) return { tone: 'idle', text: 'Finding the path…' };
+    const pct = (h) => (h.s ? (100 * h.l) / h.s : 0);
+    const answers = (h) => h.s > 0 && h.l < h.s;
+    const dest = hops[hops.length - 1];
+    const who = (h) => `hop ${h.n} (${h.h || h.a || 'no reply'})`;
+    const net = (h) => (h.a ? D.P.classifyIp(h.a) : 'silent');
+    const firstPublic = hops.find((h) => net(h) === 'public');
+    const pubIdx = firstPublic ? hops.indexOf(firstPublic) : -1;
+    const domain = (name) => String(name || '').split('.').slice(-2).join('.');
+    const provDomain = firstPublic && firstPublic.h ? domain(firstPublic.h) : '';
+    const where = (h) => {
+      if (h.n === 1) return ['between this PC and your router', 'Check the Wi-Fi signal, or try a cable, and watch whether it clears.'];
+      if (net(h) === 'private') return ['inside your home network — a second router or the modem', 'Look at the modem or the second router (see "Am I behind double NAT or CGNAT?").'];
+      const i = hops.indexOf(h);
+      const inProvider = net(h) === 'cgnat' || (provDomain && h.h ? domain(h.h) === provDomain : i <= pubIdx + 2);
+      if (inProvider) return ["in your internet provider's network", 'If it keeps happening, save this run (Report, in its terminal tab) and send it to them — it shows exactly where the loss starts.'];
+      return ['out on the internet, beyond your provider', 'That is usually temporary and not something you or your provider can fix; try another target to see whether only this destination is affected.'];
+    };
+    const parts = [];
+    let tone = 'ok';
+    const destAnswers = answers(dest);
+    if (!destAnswers && dest.s >= 5) { parts.push(`${snap.target} does not answer probes (many servers ignore them), so its row stays empty — judge by the hops before it.`); tone = 'warn'; }
+    const dl = pct(dest);
+    if (destAnswers && dl >= 1 && dest.l >= 2) {
+      let at = dest;
+      for (const h of hops) {
+        const p = pct(h);
+        if (h === dest || !answers(h) || p < Math.max(1, dl * 0.5) || h.l < 2) continue;
+        if (hops.filter((x) => x.n > h.n && answers(x)).every((x) => pct(x) >= Math.min(p, dl) * 0.5)) { at = h; break; }
+      }
+      const [place, advice] = where(at);
+      tone = dl >= 3 ? 'err' : 'warn';
+      parts.push(`${Math.round(dl * 10) / 10}% of probes to ${snap.target} were lost, and the loss starts at ${who(at)} — ${place}. ${advice}`);
+    } else if (destAnswers) {
+      parts.push(`No loss reaches ${snap.target}: ${Math.round(dest.avg)} ms on average${dest.j >= 0 ? `, jitter ${Math.round(dest.j)} ms` : ''}.`);
+      const noisy = hops.filter((h) => h !== dest && answers(h) && pct(h) >= 5);
+      if (noisy.length) parts.push(`${noisy.map((h) => `Hop ${h.n}`).join(', ')} show${noisy.length === 1 ? 's' : ''} loss that does not carry on to the hops after ${noisy.length === 1 ? 'it' : 'them'} — that router just answers probes slowly or not at all, which is normal.`);
+    }
+    // where the delay is added: the biggest rise over every earlier hop that the later hops keep
+    const resp = hops.filter((h) => answers(h) && h.avg >= 0);
+    let jump = null;
+    resp.forEach((h, i) => {
+      if (!i) return;
+      const before = Math.max(...resp.slice(0, i).map((x) => x.avg));
+      const rise = h.avg - before;
+      if (rise >= 30 && resp.slice(i + 1).every((x) => x.avg >= h.avg - rise * 0.4) && (!jump || rise > jump.rise)) jump = { h, rise };
+    });
+    if (jump) {
+      parts.push(`Latency rises by ${Math.round(jump.rise)} ms at ${who(jump.h)}, ${where(jump.h)[0]}, and stays higher after it — that link adds the delay. A long-distance link does this normally; a jump close to home, or one that comes and goes, does not.`);
+      if (tone === 'ok') tone = 'warn';
+    }
+    const first = hops[0];
+    if (answers(first) && first.avg > 20) { parts.push(`Even your router takes ${Math.round(first.avg)} ms on average (it should be a few ms) — the Wi-Fi link is slow or busy.`); if (tone === 'ok') tone = 'warn'; }
+    return { tone, text: (running ? `So far (${snap.c} s): ` : '') + parts.join(' ') };
+  }
+
+  function pathCard() {
+    if (!live && !series.live) return '';
+    const running = Boolean(live);
+    const snap = running ? live.snap : series.live;
+    const target = running ? live.target : snap.target;
+    const hops = (snap && snap.hops) || [];
+    const scale = Math.max(1, ...hops.map((h) => (h.worst > 0 ? h.worst : 0)));
+    const ms = (v) => (v == null || v < 0 ? '—' : v < 1 ? '<1' : String(Math.round(v)));
+    const pos = (v) => ((Math.max(0, v) / scale) * 100).toFixed(1);
+    const v = pathVerdict(snap, running);
+    const rows = hops.map((h) => {
+      const loss = h.s ? Math.round((100 * h.l) / h.s) : 0;
+      const silent = h.s && h.l === h.s;
+      const net = h.a ? D.P.classifyIp(h.a) : 'silent';
+      const bar = h.avg >= 0 ? `<span class="dash-path-bar"><span style="left:${pos(h.best)}%;width:${Math.max(1.5, ((h.worst - h.best) / scale) * 100).toFixed(1)}%"></span><i style="left:${pos(h.avg)}%"></i></span>` : '';
+      const name = h.h ? `<span class="dash-path-name">${esc(h.h)}</span>` : '';
+      return `<tr data-net="${net}"${silent ? ' class="is-silent"' : ''}><td class="n">${h.n}</td><td class="addr">${esc(h.a || '(no reply)')}${name}</td><td class="loss${loss && !silent ? ' has-loss' : ''}">${h.s ? `${loss}%` : ''}</td><td>${h.s}</td><td>${ms(h.last)}</td><td>${ms(h.avg)}</td><td>${ms(h.best)}</td><td>${ms(h.worst)}</td><td>${ms(h.j)}</td><td class="range">${bar}</td></tr>`;
+    }).join('');
+    const table = hops.length
+      ? `<div class="dash-path-wrap"><table class="dash-path"><thead><tr><th>#</th><th>hop</th><th>loss</th><th>sent</th><th>last</th><th>avg</th><th>best</th><th>worst</th><th>jitter</th><th>best – worst, tick = avg</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      : '<p class="dash-empty">Finding the path — the first figures arrive in a few seconds.</p>';
+    const pill = running ? `<span class="dash-pill" data-state="ok">live · ${snap ? snap.c : 0} / ${live.secs} s</span>` : '';
+    const meta = running ? esc(target) : `${esc(target)} · ${esc(when(series.live.t))} · ${esc(String(Math.max(1, Math.round(series.live.secs / 60))))} min`;
+    const watch = (label, secs) => `<button type="button" class="tbtn tbtn-sm" data-live="${secs}"${running ? ' disabled' : ''}>${esc(label)}</button>`;
+    const clear = running ? '' : '<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="live" title="Forget this live run">Clear</button>';
+    const note = running ? 'every hop probed once a second — Stop is in its terminal tab' : 'the last live run';
+    const foot = `<footer class="dash-foot"><span>${note} · each bar runs from the hop's best to its worst time, the tick is its average</span><span class="dash-links">${watch('Watch 1 min', 60)}${watch('5 min', 300)}${watch('10 min', 600)}${clear}</span></footer>`;
+    return `<article class="card dash-card dash-wide" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${pill}<span class="dash-head-tools"><span class="card-cat">${meta}</span>${manualBtn('d-path')}</span></header><p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${table}${foot}</article>`;
   }
 
   /* ================= outage log: watched by the backend (outage.rs / server.js), shown here ================= */
