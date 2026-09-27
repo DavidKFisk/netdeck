@@ -255,7 +255,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.1</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.1</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -281,7 +281,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.1</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -479,7 +479,7 @@
   <tr><td><strong>N samples</strong></td><td>How many ten-second pings fall in the range.</td><td>6 per minute while NetDeck is open and showing.</td></tr>
   <tr><td><strong>Longer monitors</strong> — 180/180, 0 ms, jitter 0 ms</td><td>Results of <a href="#pb-dropouts">Does my connection drop out?</a>: one ping a second for three minutes to each of the router and the internet — answered/sent, average, jitter, and "loss runs" (several lost in a row, which is what a dropout feels like).</td><td>All answered, jitter under 10 ms to the router and under 30 ms to the internet, no loss runs. A monitor with loss runs on the internet leg only is the pattern of a flaky provider link.</td></tr>
 </table></div>
-<p>This card and the Traffic card start folded to their header, with a one-line summary, each time NetDeck opens. The <strong>▸</strong> in the corner opens one for the rest of the session; <strong>▾</strong> folds it again.</p>
+<p>This card, Traffic, Outage log and Live path start folded to their header, with a one-line summary, each time NetDeck opens (Live path unfolds by itself when you start a live run). The <strong>▸</strong> in the corner opens one for the rest of the session; <strong>▾</strong> folds it again.</p>
 
 <h3 id="d-speed">Speed tests</h3>
 <p>Every <a href="#cmd-speed-test">speed test</a> you run — from this card, the command, or a playbook — is kept here, up to a hundred, so you can see whether the line is getting better or worse rather than remembering one number.</p>
@@ -2155,7 +2155,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.31.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.31.1</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>

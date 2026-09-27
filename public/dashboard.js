@@ -544,12 +544,12 @@ window.NetDeckDashboard = (() => {
 
   /* The two chart cards start folded to their header with a one-line summary, every time NetDeck opens;
      unfolding one lasts for the session. */
-  const collapsed = new Set(['latency', 'traffic']);
+  const collapsed = new Set(['latency', 'traffic', 'outage', 'path']);
   const collapseBtn = (key) => `<button type="button" class="dash-collapse" data-collapse="${key}" aria-expanded="${!collapsed.has(key)}" title="${collapsed.has(key) ? 'Expand' : 'Collapse'} this card">${collapsed.has(key) ? '&#x25B8;' : '&#x25BE;'}</button>`;
   function toggleCollapse(key) {
     if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
     const el = els.grid.querySelector(`#dash-${key}`);
-    if (el) el.outerHTML = key === 'latency' ? latencyCard() : key === 'outage' ? outageCard() : trafficCard();
+    if (el) el.outerHTML = key === 'latency' ? latencyCard() : key === 'outage' ? outageCard() : key === 'path' ? pathCard() : trafficCard();
     if (key === 'outage') { if (collapsed.has(key)) stopOutagePoll(); else if (shown) startOutagePoll(); }
     if (key === 'traffic') { if (collapsed.has(key)) stopTraffic(); else if (shown && D.canRun()) startTraffic(); }
   }
@@ -697,6 +697,7 @@ window.NetDeckDashboard = (() => {
     const host = (series.trace && series.trace.host && /^[A-Za-z0-9._-]+$/.test(series.trace.host)) ? series.trace.host : '1.1.1.1';
     live = { target: host, secs, snap: null, started: Date.now() };
     liveBuf = '';
+    collapsed.delete('path');
     render();
     const el = els.grid.querySelector('#dash-path');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -794,6 +795,12 @@ window.NetDeckDashboard = (() => {
     const ms = (v) => (v == null || v < 0 ? '—' : v < 1 ? '<1' : String(Math.round(v)));
     const pos = (v) => ((Math.max(0, v) / scale) * 100).toFixed(1);
     const v = pathVerdict(snap, running);
+    if (collapsed.has('path')) {
+      const first = v.text.split(/(?<=\.) /)[0];
+      const sum = running ? `${esc(target)} · ${esc(first)}` : `${esc(target)} · ${esc(when(series.live.t))} · ${esc(first)}`;
+      const livePill = running ? `<span class="dash-pill" data-state="ok">live · ${snap ? snap.c : 0} / ${live.secs} s</span>` : '';
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${livePill}<span class="dash-collapsed-sum">${sum}</span>${manualBtn('d-path')}${collapseBtn('path')}</header></article>`;
+    }
     const rows = hops.map((h) => {
       const loss = h.s ? Math.round((100 * h.l) / h.s) : 0;
       const silent = h.s && h.l === h.s;
@@ -811,7 +818,7 @@ window.NetDeckDashboard = (() => {
     const clear = running ? '' : '<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="live" title="Forget this live run">Clear</button>';
     const note = running ? 'every hop probed once a second — Stop is in its terminal tab' : 'the last live run';
     const foot = `<footer class="dash-foot"><span>${note} · each bar runs from the hop's best to its worst time, the tick is its average</span><span class="dash-links">${watch('Watch 1 min', 60)}${watch('5 min', 300)}${watch('10 min', 600)}${clear}</span></footer>`;
-    return `<article class="card dash-card dash-wide" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${pill}<span class="dash-head-tools"><span class="card-cat">${meta}</span>${manualBtn('d-path')}</span></header><p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${table}${foot}</article>`;
+    return `<article class="card dash-card dash-wide" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${pill}<span class="dash-head-tools"><span class="card-cat">${meta}</span>${manualBtn('d-path')}${collapseBtn('path')}</span></header><p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${table}${foot}</article>`;
   }
 
   /* ================= outage log: watched by the backend (outage.rs / server.js), shown here ================= */
