@@ -58,9 +58,9 @@ SOFTWARE.</pre>
   <li><strong>Tauri</strong> (desktop app framework) and the Rust libraries it is built from — ${crates.length} crates, listed by license below. Most offer a choice of MIT or Apache-2.0.</li>
   <li><strong>Microsoft Edge WebView2</strong> — the browser engine that draws the desktop app's window; part of Windows, under Microsoft's own terms.</li>
   <li><strong>IEEE MAC address registry</strong> (MA-L, MA-M, MA-S) — the manufacturer names in the network scan; public data published by the IEEE Registration Authority.</li>
-  <li><strong>IBM Plex Mono and IBM Plex Sans</strong> — the typefaces, loaded from Google Fonts; SIL Open Font License 1.1.</li>
+  <li><strong>IBM Plex Mono and IBM Plex Sans</strong> — the typefaces, © IBM Corp.; included with NetDeck, unmodified, under the SIL Open Font License 1.1 (the license text ships beside them as <code>fonts/OFL.txt</code>).</li>
   <li><strong>Windows tools</strong> (ipconfig, netsh, pktmon, PowerShell and the rest) — NetDeck runs the copies already on your computer; it does not include or redistribute them.</li>
-  <li>The local-server and hosted editions (<code>server.js</code>, the web page) use no third-party packages at all.</li>
+  <li>The local-server and hosted editions (<code>server.js</code>, the web page) use no third-party packages — only the same fonts and manufacturer list.</li>
 </ul>
 <table class="licenses">
   <thead><tr><th>License (any one of)</th><th>Crates</th></tr></thead>

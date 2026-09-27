@@ -2109,7 +2109,7 @@ dependencies = [
 
 [[package]]
 name = "netdeck"
-version = "1.28.2"
+version = "1.28.3"
 dependencies = [
  "serde",
  "serde_json",

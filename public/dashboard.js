@@ -730,7 +730,6 @@ window.NetDeckDashboard = (() => {
     const when = new Date();
     const ctx = D.context() || {};
     const html = `<!doctype html><html lang="en"${theme ? ` data-theme="${esc(theme)}"` : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NetDeck dashboard — ${esc(when.toLocaleString())}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>${css}
 body { padding-block: 24px; }
 .snap-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
