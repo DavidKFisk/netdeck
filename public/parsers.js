@@ -205,7 +205,7 @@ window.NetDeckParsers = (() => {
   }
 
   function arpUnix(text) {
-    // "? (192.168.1.1) at f8:bb:bf:53:eb:32 on en0 ifscope [ethernet]"  |  "router (192.168.1.1) at f8:.. [ether] on wlan0"
+    // "? (192.168.1.1) at f8:bb:bf:00:11:22 on en0 ifscope [ethernet]"  |  "router (192.168.1.1) at f8:.. [ether] on wlan0"
     const rows = [];
     for (const line of lines(text)) {
       const m = line.match(/^(\S+)\s+\((\d{1,3}(?:\.\d{1,3}){3})\)\s+at\s+(\S+)(?:.*?\bon\s+(\S+))?/);
@@ -262,7 +262,7 @@ window.NetDeckParsers = (() => {
   const NETWORK_LABEL = { private: 'your network', cgnat: 'provider access (CGNAT)', public: 'internet', apipa: 'self-assigned', loopback: 'this machine' };
 
   function tracert(text) {
-    // Windows: "  3    12 ms    11 ms    12 ms  68.85.107.33"   Unix: " 3  68.85.107.33  12.1 ms  11.8 ms  12.0 ms"
+    // Windows: "  3    12 ms    11 ms    12 ms  203.0.113.9"   Unix: " 3  203.0.113.9  12.1 ms  11.8 ms  12.0 ms"
     const rows = [];
     for (const line of lines(text)) {
       const m = line.match(/^\s*(\d+)\s+(.*)$/);

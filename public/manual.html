@@ -252,7 +252,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.28.4</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.28.4</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.28.5</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.28.5</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -278,7 +278,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.4</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.28.5</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -1191,7 +1191,7 @@ Network        Band    Channel Signal Security      Standard BSSID             N
 HomeNet        2.4 GHz       6 84%    WPA2-Personal ax       f8:bb:bf:00:11:22 yours
 HomeNet        5 GHz        36 71%    WPA2-Personal ax       f8:bb:bf:00:11:23 your network, other AP
 NETGEAR42      2.4 GHz       6 62%    WPA2-Personal ac       a0:04:60:aa:bb:cc overlaps your channel
-xfinitywifi    2.4 GHz       8 55%    Open          n        5c:e3:0e:11:22:33 overlaps your channel
+neighbor-guest 2.4 GHz       8 55%    Open          n        5c:e3:0e:11:22:33 overlaps your channel
 …
 <span class="hl">Fine: 84% signal on channel 6 (2.4 GHz); 2 strong networks overlap it, which is normal in a neighborhood. Channel 1 has only 1 strong network on or near it; 6 has 2. Setting the router to channel 1 (or to Auto) should help.</span></pre>
   <p><strong>How to read it:</strong> signal above ~60% is good, below ~40% is the reason for drops and slow rates. "Overlaps your channel" networks share airtime with you — every one of them that is busy slows you down. If your network appears twice, once per band, prefer 5 GHz (faster, far less crowded) whenever its signal is decent; the 2.4 GHz band carries further but is where every neighbor, microwave and baby monitor lives. The suggested channel only counts strong networks; weak ones barely matter.</p>
@@ -1521,7 +1521,7 @@ Addresses:  2606:2800:21f:cb07:6820:80da:af6b:8b2c
   <p>Who really answers your name lookups, and whether anyone is interfering. Four parts: <strong>1.</strong> the resolvers each adapter is configured with, and who runs them (your ISP, Cloudflare, Google, Quad9, a device on your network…); <strong>2.</strong> the address your lookups actually leave from, learned by asking Google's own servers what address the query arrived from; <strong>3.</strong> tampering tests — a random non-existent name (an honest resolver says "no such name", a redirecting one invents an address), a query sent straight to 8.8.8.8 to see whether something on the path intercepts port 53, and a well-known site checked for a private-address answer; <strong>4.</strong> whether DNS over HTTPS is configured. Then a verdict, including a VPN-leak check when a VPN adapter is up.</p>
   <pre>2. Where your lookups actually go
    Your public address: 203.0.113.5
-   Resolver egress address: 96.120.x.x (cdns01.comcast.net) - Comcast/Xfinity (your ISP)
+   Resolver egress address: 203.0.113.x (dns1.example-isp.net) - Example ISP (your ISP)
 
 3. Tampering tests
    Non-existent name (netdeck-481233-nxtest.example.com): correctly returned no address
@@ -1531,7 +1531,7 @@ Addresses:  2606:2800:21f:cb07:6820:80da:af6b:8b2c
 4. Encrypted DNS (DNS over HTTPS)
    Not configured: every name you look up crosses the network in the clear…
 
-<span class="hl">Honest but visible: lookups go to Comcast/Xfinity (your ISP), unencrypted, with no tampering found.</span></pre>
+<span class="hl">Honest but visible: lookups go to Example ISP (your ISP), unencrypted, with no tampering found.</span></pre>
   <p><strong>How to read it:</strong> <em>Honest</em> is the normal result. <em>Intercepted</em> means the network answers DNS itself whatever you configure — deliberate on office and school networks, an ISP habit at home; encrypted DNS gets around it. <em>Tampering</em> (invented answers, private addresses for public sites) is either an advertising resolver or a hijack; switching the resolver tells you which. <em>DNS leak</em> means a VPN is up but names still go to the ISP. Encrypted DNS takes a minute to set up in Windows 11: Settings → Network &amp; internet → your adapter → DNS server assignment → Manual → 1.1.1.1 with "Encrypted only".</p>
   <p><strong>Linux / macOS:</strong> <code>dig +short TXT o-o.myaddr.l.google.com</code> (your resolver's egress) vs <code>… @ns1.google.com</code> (your own address); <code>resolvectl status</code> for the configuration.</p>
 </article>
@@ -2080,7 +2080,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.28.4</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.28.5</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
