@@ -20,15 +20,16 @@
   .sheet-tools select { background: var(--ground); border: 1px solid var(--border-soft); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 8px; }
   .sheet-intro { font-size: 13px; color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
   .cat { margin: 18px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); border-bottom: 1px solid var(--border-soft); padding-bottom: 4px; break-after: avoid; }
-  table.sheet { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.sheet th { text-align: left; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 500; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--border-soft); }
-  table.sheet td { padding: 5px 10px 5px 0; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
-  table.sheet tr { break-inside: avoid; }
-  table.sheet code { font-family: var(--mono); font-size: 12px; color: var(--bright); white-space: nowrap; }
-  table.sheet .alt { display: block; }
-  table.sheet .purpose { color: var(--text); }
-  table.sheet .star { color: var(--ok); }
-  table.sheet .name { font-family: var(--mono); font-weight: 600; color: var(--bright); white-space: nowrap; }
+  .sheet-grid { grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 12px; }
+  .sheet-card { padding: 14px 14px 12px; gap: 8px; break-inside: avoid; }
+  .sheet-card .card-name { font-size: 14.5px; }
+  .sheet-card .card-purpose { font-size: 13px; }
+  .sheet-card .card-note { margin: 0; font-size: 12px; color: var(--muted); }
+  /* a cheat sheet shows the whole command: long ones wrap instead of scrolling out of sight */
+  .sheet-card .cmd-row { align-items: flex-start; padding: 6px 8px; }
+  .sheet-card .cmd-row code { white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible; font-size: 12.5px; color: var(--bright); }
+  .sheet-card .os-tag { margin-top: 1px; }
+  .star { color: var(--ok); }
   .help-syntax { margin-top: 24px; font-size: 12.5px; color: var(--muted); }
   .help-syntax code { font-family: var(--mono); color: var(--bright); }
   .sheet-empty { font-family: var(--mono); color: var(--muted); padding: 32px 0; text-align: center; }
@@ -37,8 +38,12 @@
     body { padding: 0; font-size: 11px; }
     .sheet-tools, .no-print { display: none !important; }
     .sheet-head { padding-block: 0 8px; }
-    table.sheet { font-size: 9.5pt; }
-    table.sheet code { font-size: 9pt; white-space: normal; }
+    .sheet-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sheet-card { padding: 6px 8px; gap: 4px; border-radius: 6px; }
+    .sheet-card .card-name { font-size: 10pt; }
+    .sheet-card .card-purpose, .sheet-card .card-note { font-size: 8.5pt; }
+    .sheet-card .cmd-row { padding: 2px 5px; }
+    .sheet-card .cmd-row code { font-size: 8.5pt; }
     .cat { margin-top: 12px; }
     a { color: inherit; text-decoration: none; }
     @page { margin: 12mm; }
@@ -55,7 +60,7 @@
       <a class="tbtn no-print" href="index.html">Back to NetDeck</a>
     </div>
   </header>
-  <p class="sheet-intro">One line per command. <span class="star">★</span> marks the most useful commands on Windows. Angle brackets are placeholders: replace <code>&lt;host&gt;</code> with a name or IP address.</p>
+  <p class="sheet-intro">One card per command. <span class="star">★</span> marks the most useful commands on Windows. Angle brackets are placeholders: replace <code>&lt;host&gt;</code> with a name or IP address.</p>
   <div id="sheet"></div>
   <p class="help-syntax">Built-in help: Windows <code>&lt;command&gt; /?</code> · PowerShell <code>Get-Help &lt;cmdlet&gt;</code> · Linux/macOS <code>man &lt;command&gt;</code> or <code>&lt;command&gt; --help</code></p>
 
@@ -89,6 +94,7 @@
   if (params.get('cat')) catSel.value = params.get('cat');
   if (params.get('q')) q.value = params.get('q');
 
+  const TAG_MEANING = { WIN: 'Windows (Command Prompt)', PS: 'Windows PowerShell', 'L/M': 'Linux / macOS', ALL: 'All platforms — the same command everywhere' };
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
   function draw() {
@@ -104,19 +110,20 @@
       h.className = 'cat';
       h.textContent = category;
       sheet.appendChild(h);
-      const t = document.createElement('table');
-      t.className = 'sheet';
-      t.innerHTML = '<thead><tr><th style="width:18%">Command</th><th style="width:27%">Windows</th><th style="width:27%">Linux / macOS</th><th>Purpose</th></tr></thead><tbody></tbody>';
-      const tb = t.querySelector('tbody');
+      const grid = document.createElement('div');
+      grid.className = 'grid sheet-grid';
       cmds.forEach((c) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="name">${esc(c.name)}${c.essential ? ' <span class="star">★</span>' : ''}</td>
-          <td>${c.win ? `<code>${esc(c.win)}</code>` : '<span class="dim">—</span>'}</td>
-          <td>${(c.unix || []).length ? c.unix.map((u) => `<code class="alt">${esc(u)}</code>`).join('') : '<span class="dim">—</span>'}</td>
-          <td class="purpose">${esc(c.purpose)}${c.note ? ` <em>(${esc(c.note)})</em>` : ''}</td>`;
-        tb.appendChild(tr);
+        const tag = (c.platforms || []).includes('powershell') ? 'PS' : (c.platforms || []).includes('cross') ? 'ALL' : 'WIN';
+        const row = (t, syntax) => `<div class="cmd-row"><span class="os-tag" title="${TAG_MEANING[t]}">${t}</span><code>${esc(syntax)}</code></div>`;
+        const card = document.createElement('article');
+        card.className = 'card sheet-card';
+        card.innerHTML = `<div class="card-head"><h3 class="card-name">${esc(c.name)}${c.essential ? ' <span class="star" title="Most useful on Windows">★</span>' : ''}</h3></div>
+          <p class="card-purpose">${esc(c.purpose)}</p>
+          <div class="card-rows">${c.win ? row(tag, c.win) : ''}${(c.unix || []).map((u) => row('L/M', u)).join('')}</div>
+          ${c.note ? `<p class="card-note">${esc(c.note)}</p>` : ''}`;
+        grid.appendChild(card);
       });
-      sheet.appendChild(t);
+      sheet.appendChild(grid);
     }
   }
 

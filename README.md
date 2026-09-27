@@ -89,7 +89,7 @@ Then open http://localhost:4573 (set `PORT` to change).
 - **Custom commands** — "+ Add command" creates reference-only cards (copy buttons, never a run button). Stored in `custom-commands.json` next to the app; in the hosted build they live in the browser.
 - **Desktop notifications** — the 🔔 button in the terminal bar; when on, a run that finishes while the tab is in the background raises a system notification.
 - **Keyboard navigation** — `j`/`k` or arrows move between cards, `Enter` runs (or focuses an empty host box), `c` copies, `p` pins, `h` opens help, `l` copies a link, `Esc` clears.
-- **Cheat sheet** — `/cheatsheet.html`: the whole reference as compact tables with a print stylesheet (Print → Save as PDF).
+- **Cheat sheet** — `/cheatsheet.html`: the whole reference as compact cards, one per command, with a print stylesheet (Print → Save as PDF).
 - **Linux/macOS table view** — parsers for `ss`, `lsof`, `ip addr`, `ifconfig`, `arp`, `ip route`, `netstat -rn`, `ps aux` and `dig`.
 - ★ marks the "most useful on Windows" commands from the source reference
 
