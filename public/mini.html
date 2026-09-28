@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetDeck — live</title>
+<script>
+  try { if (localStorage.getItem('netdeck.theme') === 'light') document.documentElement.dataset.theme = 'light'; } catch (e) {}
+</script>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+<script src="api.js"></script>
+<script src="sensors.js"></script>
+<style>
+  /* The mini monitor: one reading line, a Ping / Traffic switch, and a graph that fills the rest of the window. */
+  html, body { height: 100%; }
+  body { margin: 0; padding: 8px 10px 6px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; box-sizing: border-box; min-height: 0; }
+  .mm-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mm-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); flex: none; }
+  .mm-dot[data-state="ok"] { background: var(--ok); }
+  .mm-dot[data-state="warn"] { background: var(--warn); }
+  .mm-dot[data-state="down"], .mm-dot[data-state="offline"] { background: var(--err); }
+  .mm-big { font: 600 20px var(--mono); color: var(--bright); line-height: 1; }
+  .mm-big small { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+  .mm-sub { font-size: 11.5px; color: var(--muted); }
+  .mm-sub b { color: var(--text); font: 500 11.5px var(--mono); }
+  .mm-modes { margin-left: auto; display: inline-flex; gap: 4px; }
+  .mm-modes .tbtn.is-on { background: var(--border); color: var(--bright); }
+  .mm-graph { flex: 1; min-height: 60px; position: relative; }
+  .mm-graph svg { position: absolute; inset: 0; }
+  .mm-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--muted); }
+  .mm-key i { display: inline-block; width: 10px; height: 2px; vertical-align: 3px; margin: 0 4px 0 8px; }
+  .mm-key i.k-r { background: var(--ok); } .mm-key i.k-i { background: var(--text); } .mm-key i.k-d { background: var(--ok); } .mm-key i.k-u { background: var(--warn); } .mm-key i.k-l { background: var(--err); height: 8px; width: 3px; vertical-align: -1px; }
+  .mm-msg { margin: auto; color: var(--muted); font-size: 12.5px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="mm-top">
+    <span class="mm-dot" id="dot"></span>
+    <span class="mm-big" id="big">—</span>
+    <span class="mm-sub" id="sub"></span>
+    <span class="mm-modes" role="group" aria-label="Graph">
+      <button type="button" class="tbtn tbtn-sm is-on" data-mode="ping" aria-pressed="true">Ping</button>
+      <button type="button" class="tbtn tbtn-sm" data-mode="traffic" aria-pressed="false">Traffic</button>
+    </span>
+  </div>
+  <div class="mm-graph" id="graph"><p class="mm-msg">Starting…</p></div>
+  <div class="mm-foot"><span class="mm-key" id="key"></span><span id="note">last 5 min</span></div>
+
+<script>
+(() => {
+  const api = window.NetDeckAPI, SN = window.NetDeckSensors;
+  const $ = (id) => document.getElementById(id);
+  let mode = (() => { try { return localStorage.getItem('netdeck.mini.mode') === 'traffic' ? 'traffic' : 'ping'; } catch (e) { return 'ping'; } })();
+  let snap = null, hist = [], sampler = null, adapter = '', busy = false, commands = null;
+
+  async function runStats() {
+    if (!commands) { try { const c = await api.commands(); commands = Array.isArray(c) ? c : c.commands; } catch (e) { commands = []; } }
+    if (!commands.some((c) => c.id === 'adapter-stats')) throw new Error('no adapter-stats');
+    return (await api.run({ id: 'adapter-stats', params: {} })).output;
+  }
+  async function sampleTraffic() {
+    if (busy) return;
+    busy = true;
+    try {
+      if (!sampler) { try { adapter = (await api.context(false)).adapter || ''; } catch (e) { adapter = ''; } sampler = SN.trafficSampler(runStats, () => adapter); }
+      const r = await sampler();
+      if (r) { hist.push(r); if (hist.length > 150) hist.shift(); }
+    } catch (e) { /* next round */ }
+    busy = false;
+  }
+  async function tick() {
+    try { snap = await api.sensors(); } catch (e) { snap = null; }
+    if (mode === 'traffic') await sampleTraffic();
+    draw();
+  }
+  function draw() {
+    const g = $('graph'), w = Math.max(120, g.clientWidth), h = Math.max(60, g.clientHeight);
+    if (!snap) { $('big').textContent = '—'; $('sub').textContent = 'no connection to NetDeck'; g.innerHTML = '<p class="mm-msg">NetDeck is not answering. Is it still running?</p>'; return; }
+    $('dot').dataset.state = snap.state;
+    $('dot').title = { ok: 'connected', warn: 'unsteady', down: 'internet down', offline: 'no network connection' }[snap.state] || '';
+    const loss = SN.recentLoss(snap.ring, 2, snap.now);
+    if (mode === 'ping') {
+      $('big').innerHTML = `${SN.esc(SN.fmtMs(snap.internet.last))}<small>ms internet</small>`;
+      $('sub').innerHTML = `router <b>${SN.esc(SN.fmtMs(snap.router.last))} ms</b> · loss <b>${loss == null ? '—' : Math.round(loss)}%</b> <span title="last minute">(1 min)</span>`;
+      g.innerHTML = SN.latencyGraph(snap.ring, { w, h, now: snap.now });
+      $('key').innerHTML = '<i class="k-i"></i>internet<i class="k-r"></i>router<i class="k-l"></i>lost';
+      $('note').textContent = `last 5 min · every ${Math.round((snap.intervalMs || 2000) / 1000)} s`;
+    } else {
+      const last = hist[hist.length - 1];
+      $('big').innerHTML = `${SN.esc(SN.fmtRate(last ? last.down : null))}<small>Mbit/s down</small>`;
+      $('sub').innerHTML = `up <b>${SN.esc(SN.fmtRate(last ? last.up : null))} Mbit/s</b> · ping <b>${SN.esc(SN.fmtMs(snap.internet.last))} ms</b>`;
+      g.innerHTML = hist.length > 1 ? SN.trafficGraph(hist, { w, h, now: Date.now() }) : '<p class="mm-msg">Measuring traffic…</p>';
+      $('key').innerHTML = '<i class="k-d"></i>download<i class="k-u"></i>upload';
+      $('note').textContent = `${last ? last.name : adapter || 'adapter'} · every 4 s`;
+    }
+  }
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    try { localStorage.setItem('netdeck.mini.mode', mode); } catch (e) { /* fine */ }
+    document.querySelectorAll('[data-mode]').forEach((x) => { const on = x.dataset.mode === mode; x.classList.toggle('is-on', on); x.setAttribute('aria-pressed', String(on)); });
+    draw();
+    if (mode === 'traffic') sampleTraffic().then(draw);
+  }));
+  document.querySelectorAll('[data-mode]').forEach((x) => { const on = x.dataset.mode === mode; x.classList.toggle('is-on', on); x.setAttribute('aria-pressed', String(on)); });
+  window.addEventListener('resize', draw);
+  // the ping graph every 2 s (asking also keeps the watcher at 2 s); traffic every other round
+  let round = 0;
+  tick();
+  setInterval(() => { round++; if (mode === 'traffic' && round % 2) { api.sensors().then((s) => { snap = s; draw(); }).catch(() => {}); return; } tick(); }, 2000);
+})();
+</script>
+</body>
+</html>

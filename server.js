@@ -288,13 +288,15 @@ async function handleHealth(req, res) {
 }
 
 
-// ---------- outage log: mirrors src-tauri/src/outage.rs (same rules, same file shape) ----------
-// While the server runs, ping the router and the internet every 5 s and record each outage (2+ failed checks in
-// a row), which side failed, and the stretches NetDeck was watching. NETDECK_OUTAGE_TEST=<file>: see outage.rs.
+// ---------- connection watcher: outage log + network sensors. Mirrors src-tauri/src/outage.rs (same rules, same
+// shapes; no tray here). Pings the router and the internet every 5 s while the outage log is on, and every 2 s while
+// a sensors view polls (/api/sensors keeps that going for 12 s). An outage is no internet reply for about 10 s or
+// longer; shorter is a blip. NETDECK_OUTAGE_TEST=<file>: see outage.rs.
 const OUTAGE_FILE = path.join(DATA_DIR, 'outage-log.json');
-const OUTAGE = { interval: 5000, gap: 20000, grace: 60000, minFails: 2, keep: 90 * 864e5, ctxEvery: 600000, saveEvery: 60000 };
+const OUTAGE = { interval: 5000, liveInterval: 2000, liveHold: 12000, gap: 20000, grace: 60000, downMs: 10000, keep: 90 * 864e5, ctxEvery: 600000, saveEvery: 60000, ring: 900 };
 const OUTAGE_LAYERS = ['isp', 'lan', 'offline', 'unknown'];
 const outageDominant = (c) => { let best = 3; for (let i = 0; i < 4; i++) if (c.counts[i] > c.counts[best] || (c.counts[i] === c.counts[best] && i < best)) best = i; return OUTAGE_LAYERS[best]; };
+const outageDown = (c) => (c.last - c.start) + (c.tick || OUTAGE.interval) >= OUTAGE.downMs;
 const outageClose = (c, end, open) => ({ start: c.start, end, layer: outageDominant(c), fails: c.fails, ...(c.adapter ? { adapter: c.adapter } : {}), ...(c.gateway ? { gateway: c.gateway } : {}), ...(open ? { open: true } : {}) });
 function outagePrune(log, now) {
   const cut = now - OUTAGE.keep;
@@ -305,13 +307,14 @@ function outagePrune(log, now) {
 function outageLoad() {
   let log = {};
   try { log = JSON.parse(fs.readFileSync(OUTAGE_FILE, 'utf8')); } catch { /* none yet */ }
-  log = { enabled: false, notify: false, coverage: [], outages: [], blips: [], gatewayAnswers: false, current: null, ...log };
-  if (log.current) { if (log.current.fails >= OUTAGE.minFails) log.outages.push(outageClose(log.current, log.current.last, true)); log.current = null; }
+  log = { enabled: false, notify: false, tray: true, coverage: [], outages: [], blips: [], gatewayAnswers: false, current: null, ...log };
+  if (log.current) { if (outageDown(log.current)) log.outages.push(outageClose(log.current, log.current.last, true)); log.current = null; }
   outagePrune(log, Date.now());
   return log;
 }
 let outage = outageLoad();
 let outageRunning = false;
+let liveUntil = 0;
 const outageRun = { lastCtx: 0, lastSave: 0, watchStart: 0 };
 function outageSave() {
   try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(`${OUTAGE_FILE}.tmp`, JSON.stringify(outage)); fs.renameSync(`${OUTAGE_FILE}.tmp`, OUTAGE_FILE); } catch { /* read-only folder: the log lives for this session */ }
@@ -319,56 +322,98 @@ function outageSave() {
 function outageStatus() {
   const c = outage.current;
   return {
-    enabled: outage.enabled, notify: outage.notify, running: outageRunning, now: Date.now(), intervalMs: OUTAGE.interval, minFails: OUTAGE.minFails,
+    enabled: outage.enabled, notify: outage.notify, running: outageRunning, now: Date.now(), intervalMs: OUTAGE.interval, minFails: 2,
     coverage: outage.coverage, outages: outage.outages, blips: outage.blips, gatewayAnswers: outage.gatewayAnswers,
-    current: c ? { start: c.start, last: c.last, fails: c.fails, layer: outageDominant(c) } : null, notifyNative: false,
+    current: c ? { start: c.start, last: c.last, fails: c.fails, down: outageDown(c), layer: outageDominant(c) } : null, notifyNative: false,
   };
 }
-async function outageTick() {
+
+/* sensors: one accumulator per reading since the last reset (latest, lowest, highest, average, loss overall and per minute) */
+const newAcc = () => ({ last: null, min: null, max: null, sum: 0, n: 0, sent: 0, lost: 0, bStart: 0, bSent: 0, bLost: 0, worst: 0 });
+function accAdd(a, v, now) {
+  if (now - a.bStart >= 60000) { if (a.bSent >= 10) a.worst = Math.max(a.worst, (100 * a.bLost) / a.bSent); a.bSent = 0; a.bLost = 0; a.bStart = now; }
+  a.sent++; a.bSent++;
+  if (v == null) { a.last = null; a.lost++; a.bLost++; return; }
+  a.last = v; a.min = a.min == null ? v : Math.min(a.min, v); a.max = a.max == null ? v : Math.max(a.max, v); a.sum += v; a.n++;
+}
+const accJson = (a) => ({ last: a.last, min: a.min, max: a.max, avg: a.n ? a.sum / a.n : null, sent: a.sent, lost: a.lost, lossPct: a.sent ? (100 * a.lost) / a.sent : 0, worstMinutePct: Math.max(a.worst, a.bSent >= 10 ? (100 * a.bLost) / a.bSent : 0) });
+const sensors = { since: Date.now(), router: newAcc(), internet: newAcc(), jitter: newAcc(), prevInternet: null, ring: [], failStart: null, tick: OUTAGE.interval, gateway: null, state: 'unknown' };
+function recordSensors(now, tick, gateway, gw, internet) {
+  const s = sensors;
+  s.tick = tick; s.gateway = gateway || null;
+  if (gateway) accAdd(s.router, gw, now);
+  accAdd(s.internet, internet, now);
+  if (s.prevInternet != null && internet != null) accAdd(s.jitter, Math.abs(internet - s.prevInternet), now);
+  s.prevInternet = internet;
+  if (internet != null) s.failStart = null; else if (s.failStart == null) s.failStart = now;
+  s.ring.push([now, gateway ? gw : -1, internet]);
+  if (s.ring.length > OUTAGE.ring) s.ring.splice(0, s.ring.length - OUTAGE.ring);
+  const recentLoss = s.ring.filter((e) => now - e[0] <= 60000 && e[2] == null).length;
+  s.state = !gateway ? 'offline' : s.failStart != null ? (now - s.failStart + tick >= OUTAGE.downMs ? 'down' : 'warn') : recentLoss || internet > 150 || gw > 60 ? 'warn' : 'ok';
+}
+function sensorsStatus() {
+  const s = sensors, now = Date.now();
+  return {
+    now, since: s.since, intervalMs: s.tick, gateway: s.gateway, state: s.state === 'warn' && s.failStart != null && now - s.failStart + s.tick >= OUTAGE.downMs ? 'down' : s.state,
+    router: accJson(s.router), internet: accJson(s.internet), jitter: accJson(s.jitter),
+    downSince: s.failStart != null && now - s.failStart + s.tick >= OUTAGE.downMs ? s.failStart : null,
+    ring: s.ring, tray: false, trayNative: false,
+  };
+}
+
+async function outageTick(tick) {
   let test = null;
   if (process.env.NETDECK_OUTAGE_TEST) { try { test = fs.readFileSync(process.env.NETDECK_OUTAGE_TEST, 'utf8').trim(); } catch { test = ''; } }
   const now = Date.now();
-  const last = outage.coverage[outage.coverage.length - 1];
-  if (last && now - last[1] <= OUTAGE.gap && outageRun.watchStart) last[1] = now;
-  else {
-    outage.coverage.push([now, now]);
-    outageRun.watchStart = now;
-    if (outage.current) { if (outage.current.fails >= OUTAGE.minFails) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
-    outageSave();
+  const logging = outage.enabled;
+  if (logging) {
+    const last = outage.coverage[outage.coverage.length - 1];
+    if (last && now - last[1] <= OUTAGE.gap && outageRun.watchStart) last[1] = now;
+    else {
+      outage.coverage.push([now, now]);
+      outageRun.watchStart = now;
+      if (outage.current) { if (outageDown(outage.current)) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
+      outageSave();
+    }
   }
-  const failing = Boolean(outage.current);
+  const failing = sensors.failStart != null;
   if (now - outageRun.lastCtx > OUTAGE.ctxEvery) { await getContext(true).catch(() => null); outageRun.lastCtx = now; }
   let ctx = contextCache || {};
-  const gwTarget = test === 'lan' ? '192.0.2.3' : ctx.gateway;
+  const gwTarget = test === 'lan' ? '203.0.113.252' : ctx.gateway;
   const fake = test === 'isp' || test === 'lan';
   const [gw, internet] = await Promise.all([
     pingOnce(gwTarget),
-    pingOnce(fake ? '192.0.2.1' : '1.1.1.1').then((v) => v ?? pingOnce(fake ? '192.0.2.2' : '8.8.8.8')),
+    pingOnce(fake ? '203.0.113.251' : '1.1.1.1').then((v) => v ?? pingOnce(fake ? '198.51.100.251' : '8.8.8.8')),
   ]);
+  if (internet == null && !failing) { ctx = await getContext(true).catch(() => ctx) || ctx; outageRun.lastCtx = now; }
+  recordSensors(now, tick, ctx.gateway, gw, internet);
+  if (!logging) return;
   const settling = now - outageRun.watchStart < (test !== null ? 0 : OUTAGE.grace);
-  if (internet == null && !settling && !failing) { ctx = await getContext(true).catch(() => ctx) || ctx; outageRun.lastCtx = now; }
   if (gw != null) outage.gatewayAnswers = true;
   let ended = false, started = false;
   if (internet != null) {
     const c = outage.current;
-    if (c) { if (c.fails >= OUTAGE.minFails) { outage.outages.push(outageClose(c, now, false)); ended = true; } else outage.blips.push(c.start); outage.current = null; }
+    if (c) { if (outageDown(c)) { outage.outages.push(outageClose(c, now, false)); ended = true; } else outage.blips.push(c.start); outage.current = null; }
   } else if (!settling) {
     const layer = !ctx.gateway || !ctx.ip ? 2 : gw != null ? 0 : outage.gatewayAnswers ? 1 : 3;
-    const c = outage.current || (outage.current = { start: now, last: now, fails: 0, counts: [0, 0, 0, 0], adapter: ctx.adapter || null, gateway: ctx.gateway || null });
-    c.fails += 1; c.last = now; c.counts[layer] += 1;
-    started = c.fails === OUTAGE.minFails;
+    const c = outage.current || (outage.current = { start: now, last: now, fails: 0, counts: [0, 0, 0, 0], adapter: ctx.adapter || null, gateway: ctx.gateway || null, tick });
+    const wasDown = outageDown(c);
+    c.fails += 1; c.last = now; c.tick = tick; c.counts[layer] += 1;
+    started = !wasDown && outageDown(c);
   }
   if (ended || started || now - outageRun.lastSave > OUTAGE.saveEvery) { outagePrune(outage, now); outageSave(); outageRun.lastSave = now; }
 }
+const outageShouldRun = () => outage.enabled || Date.now() < liveUntil;
 function outageStart() {
-  if (!outage.enabled || outageRunning) return;
+  if (!outageShouldRun() || outageRunning) return;
   outageRunning = true;
   outageRun.watchStart = 0;
   const loop = async () => {
-    if (!outage.enabled) { outageRunning = false; return; }
+    if (!outageShouldRun()) { outageRunning = false; return; }
     const t0 = Date.now();
-    try { await outageTick(); } catch { /* the next tick tries again */ }
-    setTimeout(loop, Math.max(0, OUTAGE.interval - (Date.now() - t0)));
+    const tick = Date.now() < liveUntil ? OUTAGE.liveInterval : OUTAGE.interval;
+    try { await outageTick(tick); } catch { /* the next tick tries again */ }
+    setTimeout(loop, Math.max(0, tick - (Date.now() - t0)));
   };
   loop();
 }
@@ -384,14 +429,20 @@ async function handleOutage(req, res) {
     if (typeof body.notify === 'boolean') outage.notify = body.notify;
     if (typeof body.enabled === 'boolean') {
       outage.enabled = body.enabled;
-      if (!body.enabled && outage.current) { if (outage.current.fails >= OUTAGE.minFails) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
+      if (!body.enabled && outage.current) { if (outageDown(outage.current)) outage.outages.push(outageClose(outage.current, outage.current.last, true)); outage.current = null; }
     }
     outageSave();
-    if (outage.enabled) outageStart();
+    outageStart();
     json(res, 200, outageStatus());
   } catch (e) {
     res.writeHead(400).end('Invalid request.');
   }
+}
+function handleSensors(req, res, reset) {
+  liveUntil = Date.now() + OUTAGE.liveHold;
+  if (reset) Object.assign(sensors, { since: Date.now(), router: newAcc(), internet: newAcc(), jitter: newAcc(), prevInternet: null });
+  outageStart();
+  json(res, 200, sensorsStatus());
 }
 
 // ---------- run ----------
@@ -590,6 +641,8 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && url.pathname === '/api/health') return handleHealth(req, res);
   if (url.pathname === '/api/outage' && ['GET', 'POST', 'DELETE'].includes(req.method)) return handleOutage(req, res);
+  if (url.pathname === '/api/sensors' && req.method === 'GET') return handleSensors(req, res, false);
+  if (url.pathname === '/api/sensors/reset' && req.method === 'POST') return handleSensors(req, res, true);
   if (req.method === 'GET') return serveStatic(req, res);
   res.writeHead(405).end('Method not allowed');
 });

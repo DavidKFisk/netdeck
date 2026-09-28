@@ -24,6 +24,13 @@ window.NetDeckAPI = (() => {
       autostart: () => invoke('autostart_get'),
       autostartSet: (enabled) => invoke('autostart_set', { enabled: Boolean(enabled) }),
       onAutostart: (cb) => (tauri.event?.listen ? tauri.event.listen('autostart', (e) => cb(e.payload)) : Promise.resolve(null)),
+      // Network sensors: the watcher's readings since the last reset and its recent history (asking keeps it at 2 s).
+      sensors: () => invoke('sensors_status'),
+      sensorsReset: () => invoke('sensors_reset'),
+      // The tray icon as a connection light; the mini monitor is a small always-on-top window.
+      traySet: (enabled) => invoke('tray_status_set', { enabled: Boolean(enabled) }),
+      onTrayStatus: (cb) => (tauri.event?.listen ? tauri.event.listen('traystatus', (e) => cb(e.payload)) : Promise.resolve(null)),
+      openMini: () => invoke('open_mini'),
       async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
         const runId = ++seq;
         let output = '';
@@ -89,6 +96,12 @@ window.NetDeckAPI = (() => {
     autostart: null,
     autostartSet: null,
     onAutostart: null,
+    sensors: () => request('/api/sensors').then(jsonOrThrow),
+    sensorsReset: () => request('/api/sensors/reset', { method: 'POST' }).then(jsonOrThrow),
+    traySet: null,
+    onTrayStatus: null,
+    // no always-on-top window in a browser: a small popup window instead
+    openMini: () => { window.open('mini.html', 'netdeck-mini', 'popup,width=420,height=280'); return Promise.resolve(); },
     async run({ id, params, preset = null, help = false }, { onChunk, signal } = {}) {
       let output = '';
       try {

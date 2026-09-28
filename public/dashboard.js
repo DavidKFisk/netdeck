@@ -80,6 +80,8 @@ window.NetDeckDashboard = (() => {
     if (clear) { clearSeries(clear.dataset.clear); return; }
     const r = e.target.closest('[data-range]');
     if (r) { range = r.dataset.range; try { localStorage.setItem('netdeck.dashboard.range', range); } catch (err) { /* fine */ } const c = els.grid.querySelector('#dash-latency'); if (c) c.outerHTML = latencyCard(); return; }
+    const sn = e.target.closest('[data-sensors]');
+    if (sn) { sensorsAction(sn.dataset.sensors); return; }
     const lv = e.target.closest('[data-live]');
     if (lv) { startLive(Number(lv.dataset.live) || 60); return; }
     const or = e.target.closest('[data-orange]');
@@ -102,8 +104,8 @@ window.NetDeckDashboard = (() => {
   }
 
   // refresh on opening when the snapshot is stale — or predates a tile added in a newer version
-  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun() && !collapsed.has('traffic')) startTraffic(); if (D.canRun()) { loadOutage().then(() => { if (shown) patchOutage(); }); if (!collapsed.has('outage')) startOutagePoll(); } }
-  function hide() { shown = false; stopTraffic(); stopOutagePoll(); }
+  function show() { shown = true; render(); if (D.canRun() && (!snap.at || Date.now() - snap.at > STALE_MS || QUICK.some((q) => !snap.tiles[q.key]))) refresh(); if (D.canRun() && !collapsed.has('traffic')) startTraffic(); if (D.canRun()) { loadOutage().then(() => { if (shown) patchOutage(); }); if (!collapsed.has('outage')) startOutagePoll(); startSensors(); } }
+  function hide() { shown = false; stopTraffic(); stopOutagePoll(); stopSensors(); }
   /* health tick: record the sample and patch the two ping tiles and the latency chart in place (a full redraw
      every 10 s would wipe hover and focus); a saved run: take what the charts need, then redraw. */
   function poke(what, entry) {
@@ -212,7 +214,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), pathCard(), outageCard(), latencyCard(), trafficCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), sensorsCard(), speedCard(), routeCard(), postureCard(), pathCard(), outageCard(), latencyCard(), trafficCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {
@@ -313,7 +315,7 @@ window.NetDeckDashboard = (() => {
   }
 
   /* The same book icon as the command and playbook cards: opens the manual at this card's row. */
-  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic', 'Outage log': 'd-outages', 'Live path': 'd-path' };
+  const MANUAL_ROW = { 'This computer': 'd-computer', Connection: 'd-connection', Network: 'd-network', 'Speed tests': 'd-speed', 'Route to the internet': 'd-route', 'Security posture': 'd-posture', 'Latency & loss': 'd-latency', Traffic: 'd-traffic', 'Outage log': 'd-outages', 'Live path': 'd-path', 'Network sensors': 'd-sensors' };
   const manualBtn = (anchor) => `<button type="button" class="icon-btn manual-btn dash-manual" data-manual="${esc(anchor)}" title="Open the manual at this card" aria-label="Open the manual at this card">${D.bookSvg || ''}</button>`;
   function card(title, meta, body, foot, cls) {
     return `<article class="card dash-card${cls ? ' ' + cls : ''}"><header class="card-head"><h2 class="card-name">${esc(title)}</h2><span class="dash-head-tools"><span class="card-cat">${esc(meta || '')}</span>${manualBtn(MANUAL_ROW[title] || 'dashboard')}</span></header>${body}<footer class="dash-foot">${foot}</footer></article>`;
@@ -544,13 +546,14 @@ window.NetDeckDashboard = (() => {
 
   /* The two chart cards start folded to their header with a one-line summary, every time NetDeck opens;
      unfolding one lasts for the session. */
-  const collapsed = new Set(['latency', 'traffic', 'outage', 'path']);
+  const collapsed = new Set(['sensors', 'latency', 'traffic', 'outage', 'path']);
   const collapseBtn = (key) => `<button type="button" class="dash-collapse" data-collapse="${key}" aria-expanded="${!collapsed.has(key)}" title="${collapsed.has(key) ? 'Expand' : 'Collapse'} this card">${collapsed.has(key) ? '&#x25B8;' : '&#x25BE;'}</button>`;
   function toggleCollapse(key) {
     if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
     const el = els.grid.querySelector(`#dash-${key}`);
-    if (el) el.outerHTML = key === 'latency' ? latencyCard() : key === 'outage' ? outageCard() : key === 'path' ? pathCard() : trafficCard();
+    if (el) el.outerHTML = key === 'latency' ? latencyCard() : key === 'outage' ? outageCard() : key === 'path' ? pathCard() : key === 'sensors' ? sensorsCard() : trafficCard();
     if (key === 'outage') { if (collapsed.has(key)) stopOutagePoll(); else if (shown) startOutagePoll(); }
+    if (key === 'sensors') startSensors();
     if (key === 'traffic') { if (collapsed.has(key)) stopTraffic(); else if (shown && D.canRun()) startTraffic(); }
   }
 
@@ -694,6 +697,118 @@ window.NetDeckDashboard = (() => {
     }
     const foot = `<span>Get-NetAdapterStatistics every 6 s while this view is open · rates are over each interval</span><span class="dash-links">${btn('Throughput monitor', 'throughput')}${pbBtn('Who is this PC talking to?', 'outbound')}</span>`;
     return `<article class="card dash-card dash-wide" id="dash-traffic"><header class="card-head"><h2 class="card-name">Traffic</h2><span class="dash-head-tools"><span class="card-cat">${trafficLatest ? esc(clock(trafficLatest.t)) : ''}</span>${manualBtn('d-traffic')}${collapseBtn('traffic')}</span></header><div id="dash-traffic-body">${trafficBody()}</div><footer class="dash-foot">${foot}</footer></article>`;
+  }
+
+  /* ================= network sensors: current / minimum / maximum / average since the last reset ================= */
+  // Ping, loss and jitter come from the backend watcher (it keeps counting with the window closed to the tray);
+  // traffic and Wi-Fi are sampled here while the card is open.
+  const SN = () => window.NetDeckSensors;
+  let sstate = null, stimer = null, sbusy = false, spage = null, swifiAt = 0, swifiNote = '', sround = 0;
+  const newPage = () => ({ down: SN().acc(), up: SN().acc(), sig: SN().acc(), rx: SN().acc(), tx: SN().acc(), hist: [], sampler: null, adapter: '' });
+  async function pollSensors() {
+    if (!window.NetDeckAPI || !window.NetDeckAPI.sensors || !D.canRun()) return;
+    try { sstate = await window.NetDeckAPI.sensors(); } catch (e) { sstate = null; }
+    // traffic every other round (4 s), Wi-Fi every 15 s — only while the card is open
+    if (!collapsed.has('sensors') && shown && (sround++ % 2 === 0)) await samplePage();
+    if (shown) patchSensors();
+  }
+  async function samplePage() {
+    if (sbusy) return;
+    sbusy = true;
+    try {
+      if (!spage) spage = newPage();
+      if (!spage.sampler) {
+        const cmd = D.byId.get('adapter-stats');
+        if (cmd && cmd.runnable) spage.sampler = SN().trafficSampler(async () => (await D.execute(cmd, {})).output, () => (D.context() || {}).adapter);
+      }
+      if (spage.sampler) {
+        const r = await spage.sampler();
+        if (r) { SN().accAdd(spage.down, r.down, r.t); SN().accAdd(spage.up, r.up, r.t); spage.hist.push(r); if (spage.hist.length > 300) spage.hist.shift(); spage.adapter = r.name; }
+      }
+      if (Date.now() - swifiAt > 15000 && D.isWin()) {
+        swifiAt = Date.now();
+        const cmd = D.byId.get('netsh');
+        if (cmd && cmd.runnable) {
+          const out = (await D.execute(cmd, {})).output || '';
+          const c = D.PB.check('wlan', out, {}, D.context() || {}, {});
+          const d = c.data || {};
+          if (d.wifi && Number.isFinite(d.signal)) { const t = Date.now(); SN().accAdd(spage.sig, d.signal, t); SN().accAdd(spage.rx, d.rx, t); SN().accAdd(spage.tx, d.tx, t); swifiNote = ''; }
+          else swifiNote = /withholding/i.test(c.summary || '') ? 'withheld — Windows shares Wi-Fi details only with Location services on' : (c.summary || 'no Wi-Fi in use');
+        }
+      }
+    } catch (e) { /* the next round tries again */ }
+    sbusy = false;
+  }
+  function startSensors() {
+    clearInterval(stimer);
+    stimer = null;
+    if (!shown || !D.canRun() || !window.NetDeckAPI || !window.NetDeckAPI.sensors) return;
+    pollSensors();
+    // open: every 2 s (and that keeps the watcher at 2 s); folded: every 15 s, just for the summary line
+    stimer = setInterval(pollSensors, collapsed.has('sensors') ? 15000 : 2000);
+  }
+  function stopSensors() { clearInterval(stimer); stimer = null; }
+  function patchSensors() {
+    const el = els && els.grid.querySelector('#dash-sensors');
+    if (el) el.outerHTML = sensorsCard();
+  }
+  async function sensorsAction(what) {
+    const api = window.NetDeckAPI;
+    if (what === 'mini') { if (api.openMini) api.openMini().catch(() => {}); return; }
+    if (what === 'reset') {
+      try { sstate = await api.sensorsReset(); } catch (e) { /* keep the old figures */ }
+      spage = newPage();
+      swifiAt = 0;
+      patchSensors();
+      return;
+    }
+    if (what === 'tray' && api.traySet && sstate) {
+      try { const on = await api.traySet(!sstate.tray); sstate = { ...sstate, tray: on }; } catch (e) { /* unchanged */ }
+      patchSensors();
+    }
+  }
+
+  const SN_STATE = { ok: ['ok', 'connected'], warn: ['warn', 'unsteady'], down: ['err', 'internet down'], offline: ['err', 'no network'], unknown: ['', 'starting'] };
+  function sensorsCard() {
+    const s = sstate, folded = collapsed.has('sensors');
+    const pct = (v) => (v == null ? '—' : v === 0 ? '0' : v < 0.1 ? '<0.1' : v.toFixed(v < 10 ? 1 : 0));
+    const [tone, label] = SN_STATE[(s && s.state) || 'unknown'] || SN_STATE.unknown;
+    const pill = s ? `<span class="dash-pill" data-state="${tone}">${esc(label)} · ${esc(SN().clock(s.now - s.since))}</span>` : '';
+    const btns = `<button type="button" class="tbtn tbtn-sm" data-sensors="reset" title="Start the minimum, maximum and average over from now">Reset</button><button type="button" class="tbtn tbtn-sm" data-sensors="mini" title="A small window with the live graph${window.__TAURI__ ? ' that stays on top of other windows' : ''}">Pop out</button>`;
+    if (folded) {
+      const sum = !s ? 'starting…' : `internet ${SN().fmtMs(s.internet.last)} ms (${SN().fmtMs(s.internet.min)}–${SN().fmtMs(s.internet.max)}) · router ${SN().fmtMs(s.router.last)} ms · loss ${pct(s.internet.lossPct)}%`;
+      return `<article class="card dash-card dash-wide is-collapsed" id="dash-sensors"><header class="card-head"><h2 class="card-name">Network sensors</h2>${pill}<span class="dash-collapsed-sum">${esc(sum)}</span>${manualBtn('d-sensors')}${collapseBtn('sensors')}</header></article>`;
+    }
+    const head = `<header class="card-head"><h2 class="card-name">Network sensors</h2>${pill}<span class="dash-head-tools">${btns}${manualBtn('d-sensors')}${collapseBtn('sensors')}</span></header>`;
+    if (!s) return `<article class="card dash-card dash-wide" id="dash-sensors">${head}<p class="dash-empty">Starting the sensors…</p></article>`;
+    const now = s.now;
+    const ring = s.ring || [];
+    const inetPairs = ring.map((e) => [e[0], e[2]]);
+    const rtrPairs = ring.map((e) => [e[0], e[1] === -1 ? null : e[1]]);
+    const jitPairs = [];
+    for (let i = 1; i < ring.length; i++) if (ring[i][2] != null && ring[i - 1][2] != null) jitPairs.push([ring[i][0], Math.abs(ring[i][2] - ring[i - 1][2])]);
+    const P = spage || newPage();
+    const row = (name, where, unit, cur, min, max, avg, spark, tone) => `<tr${tone ? ` data-tone="${tone}"` : ''}><td class="sn-name">${esc(name)}${where ? `<span class="sn-where">${esc(where)}</span>` : ''}</td><td class="sn-cur">${esc(cur)}</td><td>${esc(min)}</td><td>${esc(max)}</td><td>${esc(avg)}</td><td class="sn-unit">${esc(unit)}</td><td class="sn-sp">${spark || ''}</td></tr>`;
+    const ms = SN().fmtMs, rate = SN().fmtRate;
+    const lossNow = (k) => SN().recentLoss(ring, k, now);
+    const inetTone = s.state === 'down' ? 'err' : (s.internet.last != null && s.internet.last > 150) ? 'warn' : '';
+    const rows = [
+      row('Internet ping', '1.1.1.1', 'ms', ms(s.internet.last), ms(s.internet.min), ms(s.internet.max), ms(s.internet.avg), SN().spark(inetPairs, { now, cls: 'sn-internet' }), inetTone),
+      s.gateway ? row('Router ping', s.gateway, 'ms', ms(s.router.last), ms(s.router.min), ms(s.router.max), ms(s.router.avg), SN().spark(rtrPairs, { now, cls: 'sn-router' }), s.router.last != null && s.router.last > 60 ? 'warn' : '') : row('Router ping', 'no router — not connected', 'ms', '—', '—', '—', '—', '', 'err'),
+      row('Internet jitter', 'change between pings', 'ms', ms(s.jitter.last), ms(s.jitter.min), ms(s.jitter.max), ms(s.jitter.avg), SN().spark(jitPairs, { now, cls: 'sn-internet' })),
+      row('Internet loss', 'now = last minute · max = worst minute', '%', pct(lossNow(2)), '—', pct(s.internet.worstMinutePct), pct(s.internet.lossPct), '', lossNow(2) ? 'err' : ''),
+      s.gateway ? row('Router loss', 'now = last minute · max = worst minute', '%', pct(lossNow(1)), '—', pct(s.router.worstMinutePct), pct(s.router.lossPct), '', lossNow(1) ? 'err' : '') : '',
+      row('Download', P.adapter || (D.context() || {}).adapter || 'this adapter', 'Mbit/s', rate(P.down.last), rate(P.down.min), rate(P.down.max), rate(SN().accAvg(P.down)), SN().spark(P.hist.map((e) => [e.t, e.down]), { now, cls: 'sn-down' })),
+      row('Upload', '', 'Mbit/s', rate(P.up.last), rate(P.up.min), rate(P.up.max), rate(SN().accAvg(P.up)), SN().spark(P.hist.map((e) => [e.t, e.up]), { now, cls: 'sn-up' })),
+      swifiNote
+        ? `<tr><td class="sn-name">Wi-Fi</td><td colspan="6" class="sn-note">${esc(swifiNote)}</td></tr>`
+        : row('Wi-Fi signal', 'from netsh, every 15 s', '%', P.sig.last == null ? '—' : String(P.sig.last), P.sig.min == null ? '—' : String(P.sig.min), P.sig.max == null ? '—' : String(P.sig.max), P.sig.n ? String(Math.round(SN().accAvg(P.sig))) : '—', SN().spark(P.sig.hist, { now, cls: 'sn-router' }), P.sig.last != null && P.sig.last < 55 ? 'warn' : '')
+          + row('Wi-Fi link rate', 'receive / send', 'Mbit/s', P.rx.last == null ? '—' : `${Math.round(P.rx.last)} / ${Math.round(P.tx.last)}`, P.rx.min == null ? '—' : `${Math.round(P.rx.min)} / ${Math.round(P.tx.min)}`, P.rx.max == null ? '—' : `${Math.round(P.rx.max)} / ${Math.round(P.tx.max)}`, P.rx.n ? `${Math.round(SN().accAvg(P.rx))} / ${Math.round(SN().accAvg(P.tx))}` : '—', ''),
+    ].join('');
+    const table = `<div class="dash-path-wrap"><table class="dash-sn"><thead><tr><th>sensor</th><th>current</th><th>minimum</th><th>maximum</th><th>average</th><th></th><th>last 5 min</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const tray = s.trayNative ? `<button type="button" class="tbtn tbtn-sm${s.tray ? ' is-on' : ''}" data-sensors="tray" title="${s.tray ? 'The tray icon shows the connection as a green, amber or red light, with the latest pings in its tooltip (on)' : 'Show the connection as a green, amber or red light on the tray icon'}">Tray light: ${s.tray ? 'on' : 'off'}</button>` : '';
+    const foot = `<footer class="dash-foot"><span>minimum, maximum and average since ${esc(clockShort(s.since))} · pings every ${Math.round((s.intervalMs || 5000) / 1000)} s${s.trayNative ? ', and keep counting with the window closed to the tray' : ''} · traffic and Wi-Fi while this card is open</span><span class="dash-links">${tray}</span></footer>`;
+    return `<article class="card dash-card dash-wide" id="dash-sensors">${head}${table}${foot}</article>`;
   }
 
   /* ================= live path: the path-monitor command, read as it streams ================= */
@@ -890,7 +1005,7 @@ window.NetDeckDashboard = (() => {
   /* Everything the card and the report say about [from, to]. An outage still going on counts up to now. */
   function outageStats(s, from, to) {
     const clip = (a, b) => Math.max(0, Math.min(b, to) - Math.max(a, from));
-    const cur = s.current && s.current.fails >= s.minFails ? { start: s.current.start, end: s.now, layer: s.current.layer, live: true } : null;
+    const cur = s.current && (s.current.down ?? s.current.fails >= s.minFails) ? { start: s.current.start, end: s.now, layer: s.current.layer, live: true } : null;
     const all = s.outages.filter((o) => o.end >= from && o.start <= to).concat(cur ? [cur] : []);
     const by = { isp: 0, lan: 0, offline: 0, unknown: 0 };
     all.forEach((o) => { by[o.layer] = (by[o.layer] || 0) + 1; });
@@ -921,7 +1036,7 @@ window.NetDeckDashboard = (() => {
     const rh = orange === '24 h' ? 26 : orange === '7 days' ? 15 : 7, gap = orange === '30 days' ? 2 : 4;
     const padL = orange === '24 h' ? 4 : 56, padR = 6, padT = 2, padB = 16, plotW = W - padL - padR;
     const H = padT + rows.length * (rh + gap) - gap + padB;
-    const cur = s.current && s.current.fails >= s.minFails ? [{ start: s.current.start, end: s.now, layer: s.current.layer, live: true }] : [];
+    const cur = s.current && (s.current.down ?? s.current.fails >= s.minFails) ? [{ start: s.current.start, end: s.now, layer: s.current.layer, live: true }] : [];
     const outs = s.outages.concat(cur);
     let body = '';
     rows.forEach(([a, b, label], i) => {
@@ -1046,7 +1161,7 @@ table.rep th { font: 500 10.5px var(--mono); text-transform: uppercase; letter-s
 <div class="snap-head"><h1>Internet outage report</h1><div class="snap-meta">${esc(new Date(from).toLocaleString())} – ${esc(new Date(to).toLocaleString())} · watched for ${esc(dur(st.watched))} · NetDeck ${esc(window.NETDECK_VERSION || '')} · <button class="print" onclick="print()">Print / save PDF</button></div></div>
 <article class="card dash-card"><div class="dash-big"><div><span class="dash-big-n">${st.all.length}</span><span class="dash-big-l">outages</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.down) : '0 s')}</span><span class="dash-big-l">down in total</span></div><div><span class="dash-big-n">${esc(st.all.length ? dur(st.longest) : '—')}</span><span class="dash-big-l">longest</span></div><div><span class="dash-big-n">${st.by.isp}</span><span class="dash-big-l">past the router</span></div></div><div class="dash-chart">${outageTimeline(s, from, to)}</div>${outageLegend()}<p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p></article>
 ${rows ? `<table class="rep"><thead><tr><th>Started</th><th>Ended</th><th>Length</th><th>Where it failed</th><th>Connection</th></tr></thead><tbody>${rows}</tbody></table>` : '<p>No outages in this period.</p>'}
-<p class="snap-foot">How this was measured: every 5 seconds NetDeck pinged the home router and a public internet address (1.1.1.1, with 8.8.8.8 as a second opinion). An outage is two or more checks in a row with no reply from the internet, so each start and end time is accurate to about 5 seconds, and drops shorter than about 10 seconds are not listed. "Past your router" means the router kept answering while the internet did not. Time when NetDeck was not running (the computer asleep or off) is not counted either way. Generated by NetDeck on this computer; nothing was sent anywhere.</p>
+<p class="snap-foot">How this was measured: every 5 seconds (every 2 while a live view was open) NetDeck pinged the home router and a public internet address (1.1.1.1, with 8.8.8.8 as a second opinion). An outage is no reply from the internet for about 10 seconds or longer, so each start and end time is accurate to about 5 seconds, and shorter drops are not listed. "Past your router" means the router kept answering while the internet did not. Time when NetDeck was not running (the computer asleep or off) is not counted either way. Generated by NetDeck on this computer; nothing was sent anywhere.</p>
 </body></html>`;
     D.saveFile(`netdeck-outages-${new Date(to).toISOString().slice(0, 10)}.html`, html, 'text/html');
   }

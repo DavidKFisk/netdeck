@@ -199,6 +199,7 @@
       <li class="sub"><a href="#d-computer">This computer</a></li>
       <li class="sub"><a href="#d-connection">Connection</a></li>
       <li class="sub"><a href="#d-network">Network</a></li>
+      <li class="sub"><a href="#d-sensors">Network sensors</a></li>
       <li class="sub"><a href="#d-latency">Latency &amp; loss</a></li>
       <li class="sub"><a href="#d-speed">Speed tests</a></li>
       <li class="sub"><a href="#d-route">Route to the internet</a></li>
@@ -251,11 +252,13 @@
   <p>You installed NetDeck with its installer, so there is nothing to set up: open it from the <strong>Start menu</strong> or the <strong>NetDeck icon on your desktop</strong>. The app window is the whole program — no browser, no terminal, no server to start.</p>
   <ul>
     <li><strong>Closing the window doesn't quit.</strong> NetDeck keeps running in the system tray (the <code>&gt;_</code> icon near the clock) so long commands carry on. Click the tray icon to bring the window back; right-click it → <em>Quit NetDeck</em> to stop completely.</li>
+    <li id="tray-light"><strong>The tray light.</strong> The tray icon doubles as a connection light: a small dot on it turns <strong>green</strong> when the connection is fine, <strong>amber</strong> when it is unsteady (internet over 150 ms, router over 60 ms, or a ping lost in the last minute) and <strong>red</strong> when the internet has been down for about 10 seconds or this PC has no network at all. Hover over it for the latest router and internet ping, or how long the internet has been down and on which side of the router. It checks every 5 seconds while NetDeck runs, even with the window closed to the tray. Turn it off or on with <em>Connection status in tray</em> in the tray menu, or <span class="btn">Tray light</span> on the <a href="#d-sensors">Network sensors</a> card.</li>
+    <li><strong>Mini monitor.</strong> Right-click the tray icon → <em>Mini monitor</em> (or <span class="btn">Pop out</span> on the Network sensors card) for a small always-on-top window with the live ping or traffic graph.</li>
     <li><strong>Start with Windows.</strong> Right-click the tray icon → <em>Start with Windows</em> (or use the button on the Dashboard's Outage log card) and NetDeck opens hidden in the tray each time you sign in — handy for the <a href="#d-outages">outage log</a> and scheduled playbooks. It needs no administrator rights, shows up in Task Manager's <em>Startup apps</em> as NetDeck, and is removed again when you uninstall.</li>
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.4</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.4</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.32.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.32.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -281,7 +284,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.4</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.32.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -481,6 +484,23 @@
 </table></div>
 <p>This card, Traffic, Outage log and Live path start folded to their header, with a one-line summary, each time NetDeck opens (Live path unfolds by itself when you start a live run). The <strong>▸</strong> in the corner opens one for the rest of the session; <strong>▾</strong> folds it again.</p>
 
+<h3 id="d-sensors">Network sensors</h3>
+<p>The connection's vital signs in one table, the way a hardware monitor shows temperatures and clock speeds: for each reading, its <strong>current</strong> value and the <strong>minimum</strong>, <strong>maximum</strong> and <strong>average</strong> since you last pressed <span class="btn">Reset</span>. The point is the columns you would otherwise never see — a connection that is 22 ms <em>now</em> but reached 480 ms at some point in the last hour, or lost a whole minute's pings while you were on a call. Press <span class="btn">Reset</span> before a call, a game or a download, and look again afterwards.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Sensor</th><th>What it measures</th><th>What is normal</th></tr>
+  <tr><td><strong>Internet ping</strong> · 1.1.1.1</td><td>Round trip from this PC to a server on the internet, in milliseconds.</td><td>10–40 ms on cable or fiber, 20–60 ms on DSL, 30–80 ms on 4G/5G. A maximum in the hundreds means moments when everything felt stuck.</td></tr>
+  <tr><td><strong>Router ping</strong> · your gateway</td><td>Round trip to your own router — the first box your traffic reaches.</td><td>1–5 ms wired, up to about 20 ms on Wi-Fi. High values here point at Wi-Fi, not your provider.</td></tr>
+  <tr><td><strong>Internet jitter</strong></td><td>How much the internet ping changes from one check to the next.</td><td>Under 10 ms. More makes calls choppy and games uneven, even when the average looks fine.</td></tr>
+  <tr><td><strong>Internet loss / Router loss</strong></td><td>Share of pings that got no answer. <em>Current</em> is the last minute, <em>maximum</em> the worst single minute, <em>average</em> the whole time since the reset.</td><td>0%. Loss at the internet but not the router is on your provider's side; loss at both is Wi-Fi or the router.</td></tr>
+  <tr><td><strong>Download / Upload</strong> · your adapter</td><td>How much is flowing through the adapter your internet traffic uses, in Mbit/s — everything on this PC, not a speed test.</td><td>Whatever you are doing. A maximum near your plan's speed means the line was full at some point.</td></tr>
+  <tr><td><strong>Wi-Fi signal</strong></td><td>Signal strength as Windows reports it, checked every 15 seconds.</td><td>Above 70% is good; below 55% is weak — move closer or add an access point. Windows only shares this with Location services turned on; otherwise the row says so.</td></tr>
+  <tr><td><strong>Wi-Fi link rate</strong></td><td>The speed the Wi-Fi link is running at, receive / send.</td><td>A few hundred Mbit/s on Wi-Fi 5 or 6 close to the router. It drops as the signal weakens.</td></tr>
+</table></div>
+<p>A small graph at the end of each row shows the last five minutes. The pill in the header shows the connection's state — <em>connected</em>, <em>unsteady</em> (slow, or a ping lost in the last minute) or <em>internet down</em> — and how long the statistics have been running.</p>
+<p><strong>Where the numbers come from.</strong> The pings come from the same connection watcher as the <a href="#d-outages">Outage log</a>: every 2 seconds while this card or the mini monitor is open, every 5 seconds otherwise. In the desktop app it keeps counting with the window closed to the tray, so the minimum, maximum and average cover the whole time. Traffic and Wi-Fi are read by this card itself, every 4 and 15 seconds, only while it is open. Like the other chart cards it starts folded, with the key numbers on its summary line.</p>
+<p><span class="btn">Pop out</span> opens the <strong>mini monitor</strong>: a small window with the live ping graph — or a traffic graph, with the <em>Ping</em> / <em>Traffic</em> switch — and the latest numbers above it. In the desktop app it stays on top of other windows, so you can keep it in a corner during a video call or a game and see a spike or a drop the moment it happens. The tray menu opens it too (<em>Mini monitor</em>). In the local-server edition it is a small browser window.</p>
+<p><span class="btn">Tray light: on</span> (desktop app) turns the NetDeck tray icon into a connection light, described in <a href="#tray-light">The tray light</a>.</p>
+
 <h3 id="d-speed">Speed tests</h3>
 <p>Every <a href="#cmd-speed-test">speed test</a> you run — from this card, the command, or a playbook — is kept here, up to a hundred, so you can see whether the line is getting better or worse rather than remembering one number.</p>
 <div class="tbl-wrap"><table>
@@ -555,7 +575,7 @@
   <tr><td><strong>PC disconnected</strong></td><td>This PC had no router address at all — it had dropped off the network.</td><td>You: <strong>Wi-Fi disconnecting</strong>, a cable coming out, or Windows switching the adapter off to save power.</td></tr>
   <tr><td><strong>Unclear</strong></td><td>The router has never answered a ping (some are set up to ignore them), so there is nothing to compare against.</td><td>Unknown. Run <a href="#pb-dropouts">Does my connection drop out?</a> during a bad spell for a closer look.</td></tr>
 </table></div>
-<p>An <strong>outage</strong> is two or more checks in a row with no reply from the internet, so it lasted at least about 10 seconds. A single missed check is a <em>blip</em>: it is counted but not listed, because one lost ping now and then is normal on any network. Start and end times are accurate to about 5 seconds.</p>
+<p>An <strong>outage</strong> is no reply from the internet for about 10 seconds or longer — two checks in a row at the usual 5-second pace, or five while the Network sensors card or mini monitor has it checking every 2 seconds. Anything shorter is a <em>blip</em>: it is counted but not listed, because one lost ping now and then is normal on any network. Start and end times are accurate to about 5 seconds.</p>
 
 <h4>What you see</h4>
 <div class="tbl-wrap"><table>
@@ -2274,7 +2294,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.31.4</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.32.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>

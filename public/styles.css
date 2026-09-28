@@ -1230,6 +1230,31 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-clear { color: var(--muted); }
 .dash-clear:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
 
+/* ---------- network sensors (card and mini monitor) ---------- */
+.dash-pill[data-state="warn"] { color: var(--warn); border-color: var(--warn-line); }
+table.dash-sn { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.dash-sn th { text-align: right; font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 4px 8px 6px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+table.dash-sn th:first-child, table.dash-sn th:last-child, table.dash-sn th:nth-child(6) { text-align: left; }
+table.dash-sn td { text-align: right; font-family: var(--mono); padding: 5px 8px; border-bottom: 1px solid var(--border-soft); color: var(--text); white-space: nowrap; }
+table.dash-sn td.sn-name { text-align: left; font-family: var(--sans); color: var(--bright); }
+.sn-where { display: block; font: 10.5px var(--mono); color: var(--muted); }
+table.dash-sn td.sn-cur { color: var(--bright); font-weight: 600; }
+table.dash-sn tr[data-tone="warn"] td.sn-cur { color: var(--warn); }
+table.dash-sn tr[data-tone="err"] td.sn-cur { color: var(--err); }
+table.dash-sn td.sn-unit { text-align: left; color: var(--muted); font-size: 11px; }
+table.dash-sn td.sn-sp { width: 22%; min-width: 110px; }
+table.dash-sn td.sn-note { text-align: left; font-family: var(--sans); color: var(--muted); white-space: normal; }
+.sn-spark { display: block; width: 100%; height: 22px; }
+.sn-graph { display: block; }
+.sn-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sn-router { stroke: var(--ok); }
+.sn-internet { stroke: var(--text); }
+.sn-down { stroke: var(--ok); }
+.sn-up { stroke: var(--warn); }
+.sn-loss { fill: var(--err); opacity: 0.55; }
+.sn-grid { stroke: var(--border-soft); stroke-width: 1; stroke-dasharray: 3 4; }
+.sn-ax { fill: var(--muted); font: 9px var(--mono); }
+
 /* a kept run from another network: still readable, clearly not current */
 .dash-chain.is-stale, .dash-path-wrap.is-stale { opacity: 0.45; }
 

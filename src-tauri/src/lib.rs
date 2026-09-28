@@ -594,6 +594,56 @@ fn outage_clear(mon: State<'_, Arc<outage::Monitor>>) -> Value {
     mon.clear()
 }
 
+/* ---------------- network sensors, tray status, mini monitor ---------------- */
+
+#[tauri::command]
+fn sensors_status(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>) -> Value {
+    mon.inner().sensors(&app)
+}
+
+#[tauri::command]
+fn sensors_reset(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>) -> Value {
+    mon.inner().sensors_reset(&app)
+}
+
+fn apply_tray_status(app: &AppHandle, on: bool) -> bool {
+    let mon = app.state::<Arc<outage::Monitor>>();
+    let now = mon.inner().set_tray(app, on);
+    if let Some(items) = app.try_state::<TrayItems>() {
+        let _ = items.tray_status.set_checked(now);
+    }
+    let _ = app.emit("traystatus", json!({ "enabled": now }));
+    now
+}
+
+#[tauri::command]
+fn tray_status_set(app: AppHandle, enabled: bool) -> bool {
+    apply_tray_status(&app, enabled)
+}
+
+/// A small always-on-top window with the live ping or traffic graph; one at a time.
+fn show_mini(app: &AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window("mini") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+        return Ok(());
+    }
+    tauri::WebviewWindowBuilder::new(app, "mini", tauri::WebviewUrl::App("mini.html".into()))
+        .title("NetDeck \u{2014} live")
+        .inner_size(400.0, 250.0)
+        .min_inner_size(300.0, 190.0)
+        .always_on_top(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn open_mini(app: AppHandle) -> Result<(), String> {
+    show_mini(&app)
+}
+
 /* ---------------- start with Windows ---------------- */
 // A per-user entry under HKCU\...\Run (no admin rights), which Windows runs at sign-in. NetDeck then starts with
 // --tray: hidden in the tray, so the outage log and schedules carry on without a window popping up.
@@ -683,6 +733,7 @@ fn autostart_repair() {
 
 struct TrayItems {
     autostart: CheckMenuItem<tauri::Wry>,
+    tray_status: CheckMenuItem<tauri::Wry>,
 }
 
 fn autostart_status() -> Value {
@@ -993,11 +1044,13 @@ pub fn run() {
 
             let open = MenuItem::with_id(app, "open", "Open NetDeck", true, None::<&str>)?;
             autostart_repair();
+            let mini = MenuItem::with_id(app, "mini", "Mini monitor", true, None::<&str>)?;
             let autostart = CheckMenuItem::with_id(app, "autostart", "Start with Windows", cfg!(windows), autostart_enabled(), None::<&str>)?;
+            let tray_status = CheckMenuItem::with_id(app, "traystatus", "Connection status in tray", true, monitor.tray_enabled(), None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit NetDeck", true, None::<&str>)?;
             let sep = PredefinedMenuItem::separator(app)?;
-            let menu = Menu::with_items(app, &[&open, &autostart, &sep, &quit])?;
-            app.manage(TrayItems { autostart: autostart.clone() });
+            let menu = Menu::with_items(app, &[&open, &mini, &tray_status, &autostart, &sep, &quit])?;
+            app.manage(TrayItems { autostart: autostart.clone(), tray_status: tray_status.clone() });
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().cloned().expect("app icon"))
                 .tooltip("NetDeck")
@@ -1007,6 +1060,13 @@ pub fn run() {
                     "open" => show_main(app),
                     "autostart" => {
                         let _ = apply_autostart(app, !autostart_enabled());
+                    }
+                    "mini" => {
+                        let _ = show_mini(app);
+                    }
+                    "traystatus" => {
+                        let on = app.state::<Arc<outage::Monitor>>().tray_enabled();
+                        apply_tray_status(app, !on);
                     }
                     "quit" => app.exit(0),
                     _ => {}
@@ -1053,7 +1113,11 @@ pub fn run() {
             outage_set,
             outage_clear,
             autostart_get,
-            autostart_set
+            autostart_set,
+            sensors_status,
+            sensors_reset,
+            tray_status_set,
+            open_mini
         ])
         .run(tauri::generate_context!())
         .expect("error while running NetDeck");
