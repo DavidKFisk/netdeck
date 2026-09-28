@@ -185,7 +185,7 @@ const CAPTURE_CSS = `
     console.log('calculator…');
     await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 2400, deviceScaleFactor: 1.5, mobile: false });
     await evalJs(`(() => { document.getElementById('term-close-all')?.click(); const s = document.createElement('style'); s.id = '__capcalc'; s.textContent = '.calc-box{max-height:none!important} .calc-body{overflow:visible!important} .calc-tablewrap{max-height:none!important} html{overflow:hidden!important} .modal{padding-top:20px!important}'; document.head.appendChild(s); return true; })()`);
-    for (const [name, tool, mode] of [['calc-ipv4', 'ipv4', 'main'], ['calc-vlsm', 'split', 'vlsm']]) {
+    for (const [name, tool, mode] of [['calc-ipv4', 'ipv4', 'main'], ['calc-vlsm', 'split', 'vlsm'], ['calc-mac', 'mac', 'main']]) {
       await evalJs(`(async () => { window.NetDeckCalc.open('${tool}', '${mode}'); await new Promise(r => setTimeout(r, 800)); document.activeElement?.blur(); return true; })()`);
       const rect = await evalJs(`(() => { const r = document.querySelector('.calc-box').getBoundingClientRect(); return { x: Math.floor(r.left), y: Math.floor(r.top + scrollY), width: Math.ceil(r.width), height: Math.ceil(r.height) }; })()`);
       await shoot(name, rect);

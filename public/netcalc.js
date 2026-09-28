@@ -646,15 +646,21 @@ window.NetDeckCalc = (() => {
             { k: 'Bare', v: c(h) },
           ] },
           { type: 'kv', title: 'What it says', rows: [
-            { k: 'Manufacturer', v: bcast ? '— (broadcast)' : vendor || 'not in the registry', note: local ? 'A locally administered address has no manufacturer.' : `From the first half (the OUI, ${c(pairs.slice(0, 3).join(':'))}) in the IEEE registry.` },
-            { k: 'Unicast / multicast', v: bcast ? 'Broadcast' : group ? 'Multicast (group)' : 'Unicast (one device)', note: 'The lowest bit of the first byte (I/G). Devices always have unicast addresses.' + (h.startsWith('01005e') ? ' 01:00:5e… is IPv4 multicast.' : h.startsWith('3333') ? ' 33:33… is IPv6 multicast.' : '') },
-            { k: 'Universal / local', v: local ? 'Locally administered' : 'Universally administered', tone: local && !group ? 'warn' : '', note: local ? 'The second-lowest bit (U/L) is set: the address was made up by software — typically a phone or laptop hiding its real address on Wi-Fi ("private" or "random" address), or a virtual machine.' : 'Burned in by the manufacturer, unique worldwide.' },
+            group
+              ? { k: 'Manufacturer', v: bcast ? '— (broadcast)' : h.startsWith('01005e') ? '— (IPv4 multicast group)' : h.startsWith('3333') ? '— (IPv6 multicast group)' : vendor ? `— (a group address of ${vendor})` : '— (a group address)', note: 'A group address names a destination that many devices listen to, not a piece of hardware, so it has no manufacturer of its own.' }
+              : { k: 'Manufacturer', v: vendor || 'not in the registry', note: local ? 'A locally administered address was made up by software, so no manufacturer can be read from it.' : `From the first half (the OUI, ${c(pairs.slice(0, 3).join(':'))}) in the IEEE registry.` },
+            { k: 'Unicast / multicast', v: bcast ? 'Broadcast' : group ? 'Multicast (group)' : 'Unicast (one device)', note: 'The lowest bit of the first byte (I/G): 0 = one device, 1 = a group. A network adapter\'s own address is always unicast.' + (bcast ? ' All ones: every device on the network.' : h.startsWith('01005e') ? ' 01:00:5e… carries IPv4 multicast.' : h.startsWith('3333') ? ' 33:33… carries IPv6 multicast.' : '') },
+            group
+              ? { k: 'Universal / local', v: 'does not apply', note: 'The U/L bit only tells whether a single device\'s address was burned in or made up; a group address is neither.' }
+              : { k: 'Universal / local', v: local ? 'Locally administered' : 'Universally administered', tone: local ? 'warn' : '', note: local ? 'The second-lowest bit (U/L) is set: the address was made up by software — typically a phone or laptop hiding its real address on Wi-Fi ("private" or "random" address), or a virtual machine.' : 'Burned in by the manufacturer, unique worldwide.' },
             ...(seen ? [{ k: 'On your network', v: `${seen.ip}${seen.name ? ` — ${seen.name}` : ''}`, note: 'From the last "Scan my network".', tone: 'ok' }] : []),
           ] },
-          { type: 'kv', title: 'IPv6', rows: [
-            { k: 'EUI-64 interface ID', v: c(eui.join('').match(/..../g).join(':')), note: 'The MAC split in two, ff:fe inserted, and the U/L bit flipped.' },
-            { k: 'Link-local address', v: ll, note: 'What an EUI-64 device would use on its link. Windows and phones use random interface IDs instead, for privacy.' },
-          ] },
+          group
+            ? { type: 'msg', text: 'IPv6: no interface ID — only a single device\'s address can become one.' }
+            : { type: 'kv', title: 'IPv6', rows: [
+              { k: 'EUI-64 interface ID', v: c(eui.join('').match(/..../g).join(':')), note: 'The MAC split in two, ff:fe inserted, and the U/L bit flipped.' },
+              { k: 'Link-local address', v: ll, note: 'What an EUI-64 device would use on its link. Windows and phones use random interface IDs instead, for privacy.' },
+            ] },
         ];
       },
     }],

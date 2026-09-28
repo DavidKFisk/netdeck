@@ -255,7 +255,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.1</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.1</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.2</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.2</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -281,7 +281,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.1</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.2</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -831,7 +831,54 @@
 <code>2001:db8:abcd:1200::/56</code> with <em>List subnets of size</em> <code>/64</code> — a home allocation divided up.</p></div>
 
 <h3 id="nc-mac">MAC</h3>
-<p>Paste a MAC address in any common format; separators are ignored and it must come to twelve hex digits. You get it in colon, dash, Cisco dot and bare forms (in upper or lower case), the manufacturer from the IEEE registry, what the two flag bits say — unicast or multicast, burned-in or locally administered (random) — and the EUI-64 interface ID and link-local IPv6 address a device would build from it. If <a href="#pb-scan">Scan my network</a> has seen the address, its IP and name are shown too.</p>
+<p>Every network adapter — the Wi-Fi in a phone, the Ethernet port on a PC, a smart plug — has a <strong>MAC address</strong>, and it shows up everywhere you look at a network: your router's list of connected devices, <code>arp -a</code>, <code>ipconfig /all</code>, <code>getmac</code>, DHCP logs. The MAC tab takes one of those addresses and tells you three things: how to write it for whichever system wants it, what it reveals about the device (who made it, and whether it is a real hardware address or one a phone made up), and the IPv6 address a device could build from it. Start with <a href="#nc-macbasics">MAC addresses in brief</a> if the term is new.</p>
+<figure class="shot"><img src="manual-img/calc-mac.webp" width="1500" height="803" alt="The network calculator on the MAC tab, showing the formats, what the address says, and the IPv6 rows for 00-00-5E-00-53-01" loading="lazy"><figcaption>The MAC tab for 00-00-5E-00-53-01 — an address set aside for examples like this one (RFC 7042), which is why its maker is the IANA.</figcaption></figure>
+
+<h4>The two inputs</h4>
+<div class="tbl-wrap"><table>
+  <tr><th>Field</th><th>What to put in it</th><th>Purpose</th></tr>
+  <tr><td><strong>MAC address</strong></td><td>The address, in any common form: <code>00:00:5e:00:53:01</code>, <code>00-00-5E-00-53-01</code>, <code>0000.5e00.5301</code> or <code>00005E005301</code>. Colons, dashes, dots and spaces are ignored, and upper or lower case makes no difference — what is left must be exactly twelve hex digits (0–9 and A–F).</td><td>The address to decode. Paste it straight from wherever you found it; there is no need to tidy it first. If it is not twelve hex digits the calculator says so instead of guessing — a common slip is the letter O for a zero.</td></tr>
+  <tr><td><strong>Letters</strong></td><td><em>UPPER CASE</em> or <em>lower case</em>.</td><td>Only how the results are written: the formats and the EUI-64 row follow it. Devices do not care — <code>5E</code> and <code>5e</code> are the same value — but <code>ipconfig</code> and <code>getmac</code> show them in upper case while <code>arp -a</code>, Linux, macOS and Cisco use lower case, so pick whichever matches where you will paste the result. The link-local address is always lower case, as IPv6 addresses are written.</td></tr>
+</table></div>
+
+<h4>Formats</h4>
+<p>The same twelve digits, written the four ways systems expect them. Copy the one you need — into a DHCP reservation, a MAC filter, a switch command or a search.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>Looks like</th><th>Where it is used</th></tr>
+  <tr><td><strong>Colon (Linux, macOS)</strong></td><td><code>00:00:5E:00:53:01</code></td><td>Six pairs separated by colons: Linux (<code>ip link</code>), macOS, and most routers' web pages.</td></tr>
+  <tr><td><strong>Dash (Windows)</strong></td><td><code>00-00-5E-00-53-01</code></td><td>Six pairs separated by dashes: what <code>ipconfig /all</code>, <code>getmac</code> and <code>arp -a</code> print, what Windows settings expect, and the IEEE's own notation.</td></tr>
+  <tr><td><strong>Dot (Cisco)</strong></td><td><code>0000.5E00.5301</code></td><td>Three groups of four separated by dots: Cisco switches and routers (<code>show mac address-table</code>, <code>show arp</code>).</td></tr>
+  <tr><td><strong>Bare</strong></td><td><code>00005E005301</code></td><td>No separators at all: spreadsheets, databases, some firewalls and inventory systems, and searching logs where the separator is unknown.</td></tr>
+</table></div>
+
+<h4>What it says</h4>
+<p>A MAC address is not just a serial number: its first half names the maker, and two bits of its very first byte carry flags. This section reads them for you. Each row explained:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it tells you</th><th>What you might see</th></tr>
+  <tr><td><strong>Manufacturer</strong></td><td>Who made the network adapter. The first three bytes of a burned-in address are the <strong>OUI</strong> (Organizationally Unique Identifier), a number the IEEE sells to each manufacturer; NetDeck looks it up in the IEEE's registry, which it carries with it, including the smaller blocks the IEEE sells to small companies. The adapter's maker is not always the brand on the box: a TV's Wi-Fi may be made by a chip company such as Realtek or Murata.</td><td>A company name — the usual case. <em>Private address (randomized)</em> or <em>not in the registry</em> for an address a device made up (see <em>Universal / local</em>). <em>— (broadcast)</em> or <em>— (IPv4/IPv6 multicast group)</em> for the special group addresses, which belong to no device.</td></tr>
+  <tr><td><strong>Unicast / multicast</strong></td><td>Whether the address belongs to <em>one device</em> or names a <em>group</em> of listeners. It is read from the lowest bit of the first byte, the <strong>I/G bit</strong> (individual / group): 0 means one device, 1 means a group. Every adapter's own address is unicast; group addresses only appear as destinations, when one sender talks to many devices at once.</td><td><em>Unicast (one device)</em> — any real device. <em>Multicast (group)</em> — for example <code>01:00:5E:…</code>, which carries IPv4 multicast (streaming, device discovery), or <code>33:33:…</code>, which carries IPv6 multicast. <em>Broadcast</em> — <code>FF:FF:FF:FF:FF:FF</code>, every device on the network at once, used for things like ARP ("who has this IP address?").</td></tr>
+  <tr><td><strong>Universal / local</strong></td><td>Whether a device's address was <em>burned in</em> by the manufacturer or <em>made up</em> by software. It is the second-lowest bit of the first byte, the <strong>U/L bit</strong>. Phones, tablets and recent laptops make up a random address for each Wi-Fi network (iPhone: <em>Private Wi-Fi Address</em>; Android: <em>Use randomized MAC</em>; Windows: <em>Random hardware addresses</em>), so that shops and public hotspots cannot recognize them from place to place. Virtual machines, containers and VPN adapters use locally administered addresses too.</td><td><em>Universally administered</em> — the real hardware address, unique worldwide, and the manufacturer row can be trusted. <em>Locally administered</em> (amber) — made up by software, so there is no manufacturer to read. <em>does not apply</em> — for multicast and broadcast, which are not a device's address.</td></tr>
+  <tr><td><strong>On your network</strong></td><td>Only shown when <a href="#pb-scan">Scan my network</a> has seen this address: the IP address and name it had in the most recent scan.</td><td>The device's IP and name — handy for "which device is this?" when all you have is a MAC from a log.</td></tr>
+</table></div>
+<p><strong>Reading the flags yourself.</strong> Both flags live in the <em>second hex digit</em> of the address — the digit written right after the first one. That digit is four bits, and the two lowest of them are the I/G and U/L bits, so it alone tells you what kind of address you have:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Second hex digit</th><th>In binary</th><th>Kind of address</th><th>Example</th></tr>
+  <tr><td><code>0 4 8 C</code></td><td>xx<strong>00</strong></td><td>One device, burned in — a real hardware address</td><td><code>0<strong>0</strong>-00-5E-00-53-01</code></td></tr>
+  <tr><td><code>2 6 A E</code></td><td>xx<strong>10</strong></td><td>One device, made up — a private (random) or virtual address</td><td><code>D<strong>A</strong>-A1-19-12-34-56</code></td></tr>
+  <tr><td><code>1 5 9 D</code></td><td>xx<strong>01</strong></td><td>A group (multicast)</td><td><code>0<strong>1</strong>-00-5E-00-00-FB</code></td></tr>
+  <tr><td><code>3 7 B F</code></td><td>xx<strong>11</strong></td><td>A group, locally defined (IPv6 multicast, broadcast)</td><td><code>3<strong>3</strong>-33-00-00-00-01</code>, <code>F<strong>F</strong>-FF-FF-FF-FF-FF</code></td></tr>
+</table></div>
+<p>So a device in your router's list whose address starts with <code>x2</code>, <code>x6</code>, <code>xA</code> or <code>xE</code> is almost certainly a phone, tablet or laptop using a private address — which is also why such a device can appear as "new" when it forgets and rejoins the network, and why a DHCP reservation for it only works if private addressing is turned off for that network on the device.</p>
+
+<h4>IPv6</h4>
+<p>Before privacy addresses, IPv6 devices built the second half of their address from their MAC. These two rows show the result, and are useful for recognizing that kind of address when you meet one — on routers, printers and older devices. See <a href="#nc-v6basics">How IPv6 addresses work</a> for the whole story.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it is</th></tr>
+  <tr><td><strong>EUI-64 interface ID</strong></td><td>The 64-bit device part of an IPv6 address, made from the MAC: split it into two halves, put <code>FF:FE</code> in the middle, and flip the U/L bit. <code>00-00-5E-00-53-01</code> becomes <code>0200:5EFF:FE00:5301</code>. If you find <code>ff:fe</code> in the middle of the last half of an IPv6 address, the device's MAC is inside it — the <a href="#nc-ipv6">IPv6 tab</a> pulls it back out.</td></tr>
+  <tr><td><strong>Link-local address</strong></td><td>That interface ID behind <code>fe80::</code>: the address such a device would give itself on the local network, <code>fe80::200:5eff:fe00:5301</code>. Windows, macOS, iOS and Android use random interface IDs instead, so for them this is what the address <em>would</em> be, not what it is.</td></tr>
+</table></div>
+<p>For a multicast or broadcast address this section says there is no interface ID: only one device's address can become one.</p>
+<p><span class="btn">Copy results</span> and <span class="btn">Save report</span> work as on every tab — handy for pasting all the formats into a ticket at once.</p>
 
 <h3 id="nc-bandwidth">Bandwidth &amp; time</h3>
 <h4>Transfer time</h4>
@@ -2155,7 +2202,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.31.1</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.31.2</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
