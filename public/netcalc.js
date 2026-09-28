@@ -128,11 +128,11 @@ window.NetDeckCalc = (() => {
   }
   function classOf(ip) {
     const a = ip >>> 24;
-    if (a < 128) return { cls: 'A', bits: 8, lead: '0', range: '1–126', note: '0 and 127 are reserved (127 is loopback)' };
+    if (a < 128) return { cls: 'A', bits: 8, lead: '0', range: '1–126', note: '0 and 127 are set aside (127 is loopback)' };
     if (a < 192) return { cls: 'B', bits: 16, lead: '10', range: '128–191' };
     if (a < 224) return { cls: 'C', bits: 24, lead: '110', range: '192–223' };
-    if (a < 240) return { cls: 'D', bits: null, lead: '1110', range: '224–239', note: 'multicast' };
-    return { cls: 'E', bits: null, lead: '1111', range: '240–255', note: 'reserved' };
+    if (a < 240) return { cls: 'D', bits: null, lead: '1110', range: '224–239', note: 'Multicast' };
+    return { cls: 'E', bits: null, lead: '1111', range: '240–255', note: 'Reserved' };
   }
   const V4_SPECIAL = [
     ['255.255.255.255/32', 'Limited broadcast — every device on this link', 'RFC 919'],
@@ -381,11 +381,14 @@ window.NetDeckCalc = (() => {
         const total = 2 ** (32 - prefix), usable = ip4.usable(prefix);
         const first = prefix >= 31 ? net : net + 1, lastH = prefix >= 31 ? bc : bc - 1;
         const cls = classOf(ip), type = v4Type(ip);
+        // 192.168.001.010 is shown and reversed as 192.168.1.10; some tools would read 010 as octal (8)
+        const zeros = ipText.split('.').some((o) => o.length > 1 && o.startsWith('0'));
+        const canon = ip4.str(ip);
         const rows = [
-          { k: 'Address', v: ipText, note: `${type.label}${type.rfc ? ` (${type.rfc})` : ''}`, tone: type.special && !type.private ? 'warn' : '' },
-          { k: 'Network', v: `${ip4.str(net)}/${prefix}`, note: 'The subnet\'s own address — the first one. It names the network; no device uses it.' },
+          { k: 'Address', v: canon, note: `${type.label}${type.rfc ? ` (${type.rfc})` : ''}${zeros ? `. You typed ${ipText}: leading zeros removed — careful, some tools (ping on Windows among them) read a number with a leading zero as octal, so 010 would mean 8.` : ''}`, tone: (type.special && !type.private) || zeros ? 'warn' : '' },
+          { k: 'Network', v: `${ip4.str(net)}/${prefix}`, note: prefix === 32 ? 'A /32 is this one address on its own.' : prefix === 31 ? 'The first of the two addresses — on a /31 it is usable, not reserved.' : 'The subnet\'s own address — the first one. It names the network; no device uses it.' },
           { k: 'Subnet mask', v: ip4.str(mask), note: `${kind === 'wildcard' ? 'Read your entry as a wildcard mask and inverted it. ' : ''}${maskFrom ? `Prefix taken ${maskFrom}. ` : ''}Ones in binary mark the network part, zeros the host part.` },
-          { k: 'Prefix length', v: `/${prefix}`, note: `CIDR notation: ${prefix} network bits, ${32 - prefix} host bits.` },
+          { k: 'Prefix length', v: `/${prefix}`, note: `CIDR notation: ${prefix} network bit${prefix === 1 ? '' : 's'}, ${32 - prefix} host bit${32 - prefix === 1 ? '' : 's'}.` },
           { k: 'Wildcard mask', v: ip4.str(wild), note: 'The mask inverted — how router access lists and OSPF write the same thing.' },
           { k: 'Usable host range', v: `${ip4.str(first)} – ${ip4.str(lastH)}`, note: prefix === 32 ? 'A /32 is a single address (a host route).' : prefix === 31 ? 'A /31 is a point-to-point link: both addresses are usable, there is no broadcast (RFC 3021).' : 'The addresses you can give to devices.' },
           { k: 'Usable hosts', v: fmtInt(usable), note: prefix >= 31 ? '' : `${fmtInt(total)} addresses minus the network and broadcast addresses.` },
@@ -395,7 +398,7 @@ window.NetDeckCalc = (() => {
         if (net + total <= 0xFFFFFFFF) rows.push({ k: 'Next subnet', v: `${ip4.str(net + total)}/${prefix}` });
         if (net >= total) rows.push({ k: 'Previous subnet', v: `${ip4.str(net - total)}/${prefix}` });
         const blocks = [{ type: 'kv', title: 'The subnet', rows }];
-        const cl = [{ k: 'Class', v: `Class ${cls.cls}`, note: `First number ${cls.range}${cls.note ? ` (${cls.note})` : ''}. Classes are history — networks have been classless (CIDR) since 1993 — but the words are still used.` }];
+        const cl = [{ k: 'Class', v: `Class ${cls.cls}`, note: `First number ${cls.range}.${cls.note ? ` ${cls.note}.` : ''} Classes are history — networks have been classless (CIDR) since 1993 — but the words are still used.` }];
         if (cls.bits !== null) {
           cl.push({ k: 'Classful default mask', v: `${ip4.str(ip4.mask(cls.bits))} (/${cls.bits})` });
           if (prefix >= cls.bits) {
@@ -411,7 +414,7 @@ window.NetDeckCalc = (() => {
           { k: 'Decimal integer', v: String(ip), note: 'The address as one 32-bit number.' },
           { k: 'Mask in hex', v: ip4.hex(mask).toLowerCase() },
           { k: 'Mask in binary', v: ip4.bin(mask).match(/.{8}/g).join('.') },
-          { k: 'Reverse DNS name', v: `${ipText.split('.').reverse().join('.')}.in-addr.arpa`, note: 'The name a PTR lookup (address → name) asks for.' },
+          { k: 'Reverse DNS name', v: `${canon.split('.').reverse().join('.')}.in-addr.arpa`, note: 'The name a PTR lookup (address → name) asks for.' },
         ];
         blocks.push({ type: 'kv', title: 'Encodings', rows: enc });
         const extra = [];
@@ -430,6 +433,8 @@ window.NetDeckCalc = (() => {
             : { k: `Subnet for ${fmtInt(h)} host${h === 1 ? '' : 's'}`, v: `/${p}  (${ip4.str(ip4.mask(p))})`, note: `${fmtInt(ip4.usable(p))} usable addresses, ${fmtInt(ip4.usable(p) - h)} to spare.${h === 2 ? ' A /31 also works for a point-to-point link between two routers.' : ''}` });
         }
         if (extra.length) blocks.unshift({ type: 'kv', title: 'Checks', rows: extra, span: true });
+        // class D and E are not host networks: say so above the arithmetic, which is still shown
+        if (cls.bits === null) blocks.unshift({ type: 'msg', tone: 'warn', text: cls.cls === 'D' ? `${canon} is a multicast group address (class D), not a device's address: masks, host ranges and broadcast do not apply to it. The rows below are only the arithmetic.` : `${canon} is in the reserved class E range (240–255), which is not used on networks: the rows below are only the arithmetic.` });
         return blocks;
       },
     }],

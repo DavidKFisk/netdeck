@@ -1,6 +1,6 @@
 [package]
 name = "netdeck"
-version = "1.31.2"
+version = "1.31.3"
 license = "MIT"
 description = "Network & system command reference with live execution"
 authors = ["NetDeck"]

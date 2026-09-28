@@ -255,7 +255,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.2</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.2</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.3</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.3</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -281,7 +281,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.2</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.3</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -759,17 +759,88 @@
 <p>A MAC address is the 48-bit hardware address of a network adapter, written as six pairs of hex digits: <code>00-00-5E-00-53-01</code> (Windows uses dashes, Linux and macOS colons, Cisco groups of four: <code>0000.5e00.5301</code>). It is used only on the local network — routers do not pass it on. The first three bytes are the <strong>OUI</strong>, the number the IEEE assigned to the manufacturer, which is how NetDeck names who made a device. Two bits in the first byte carry flags: the lowest (I/G) is 1 for a group (multicast) address, and the next (U/L) is 1 for a <em>locally administered</em> address — one made up by software rather than burned in. Phones, tablets and recent laptops use such random addresses on Wi-Fi so that networks cannot track them, which is why they show up with no manufacturer.</p>
 
 <h3 id="nc-ipv4">IPv4 subnet</h3>
-<p>Type an address and a mask. The mask can be a prefix (<code>/26</code> or <code>26</code>), a dotted mask (<code>255.255.255.192</code>), a wildcard mask (<code>0.0.0.63</code> — recognized and inverted) or hex (<code>ff.ff.ff.c0</code> or <code>0xffffffc0</code>); or type both at once as <code>192.168.1.100/26</code>. The mask box offers every prefix from /8 to /32 with its mask and host count as you type. <span class="btn">Use this PC</span> fills in this computer's own address and mask.</p>
-<ul>
-  <li><strong>The subnet</strong> — the address and what kind it is (private, public, loopback, documentation…, with the RFC that defines it), the network, the mask in each notation, the wildcard mask, the usable host range and count, the total, the broadcast address, and the subnets on either side.</li>
-  <li><strong>Class</strong> — the historical class, its default mask, and measured against it the <em>subnet bits</em> (how many were borrowed) and the <em>maximum subnets</em> of this size the classful network holds; a prefix shorter than the classful one is a <em>supernet</em>. The <em>bitmap</em> writes the pattern as fixed class bits, then <code>n</code> for network, <code>s</code> for subnet and <code>h</code> for host bits.</li>
-  <li><strong>Encodings</strong> — the address in binary, colored red for classful network bits, amber for subnet bits and green for host bits; in hex; as one 32-bit integer; the mask in hex and binary; and the reverse-DNS name a PTR lookup would ask for.</li>
-</ul>
-<p>The last two boxes are optional questions. Their answers appear first, under <strong>Checks</strong>, above everything else:</p>
-<ul>
-  <li><em>Same subnet as</em> — another address, such as a printer's. The calculator says whether it is on the same subnet as the first address with the mask you gave, so the two can talk directly; if not, it names the subnet the other address is in, and traffic between them has to go through a router.</li>
-  <li><em>Hosts needed</em> — how many devices a network must hold. The answer is the smallest subnet that fits them, with how many addresses are left over: 500 hosts need a /23 (255.255.254.0), 510 usable, 10 to spare.</li>
-</ul>
+<p>The IPv4 tab answers the questions that come up whenever you set up or troubleshoot a network: <em>which network is this address on, which addresses can I hand out, what is its broadcast address, can these two devices talk directly,</em> and <em>how big a subnet do I need?</em> You give it an address and a mask; everything else is worked out as you type. If the ideas are new, read <a href="#nc-basics">How IP addresses work</a> and <a href="#nc-subnetting">Subnetting, step by step</a> first — this section explains what each box and row on the screen means. The <a href="#calculator">screenshot at the start of this chapter</a> shows this tab.</p>
+
+<h4>The inputs</h4>
+<div class="tbl-wrap"><table>
+  <tr><th>Field</th><th>What to put in it</th><th>Purpose</th></tr>
+  <tr><td><strong>IP address</strong></td><td>Four numbers from 0 to 255 separated by dots: <code>192.168.1.100</code>. You can also type the address and its prefix together — <code>192.168.1.100/26</code> — and the mask box is then ignored. Leading zeros (<code>192.168.001.010</code>) are accepted and removed, with a warning, because some tools read a number with a leading zero as octal: to Windows <code>ping</code>, <code>010</code> means 8.</td><td>The address you are asking about — a device's, a router's, or any address in the network you are planning. Any address inside a subnet gives the same subnet: 192.168.1.65 and 192.168.1.100 are both in 192.168.1.64/26.</td></tr>
+  <tr><td><strong>Mask or prefix</strong></td><td>The subnet mask in whichever form you have it:
+    <ul>
+      <li>a <strong>prefix</strong>: <code>/26</code> or just <code>26</code></li>
+      <li>a <strong>dotted mask</strong>: <code>255.255.255.192</code> (what <code>ipconfig</code> shows as "Subnet Mask")</li>
+      <li>a <strong>wildcard mask</strong>: <code>0.0.0.63</code> (router access lists) — recognized and turned round</li>
+      <li><strong>hex</strong>: <code>ff.ff.ff.c0</code> or <code>0xffffffc0</code> (some Linux and firewall tools)</li>
+    </ul>
+    As you type, the box offers every prefix from /8 to /32 with its mask and how many hosts it holds.</td><td>Where the network part of the address ends and the device part begins. The mask decides everything else on the screen. A mask must be ones followed by zeros in binary; <code>255.0.255.0</code> is refused with an explanation, because no network can have that shape.</td></tr>
+  <tr><td><strong>Same subnet as…</strong> <span class="dim">(optional)</span></td><td>A second address, such as a printer's or a server's.</td><td>Answers "can these two talk directly?" — see <em>Checks</em> below.</td></tr>
+  <tr><td><strong>Hosts needed</strong> <span class="dim">(optional)</span></td><td>A number of devices, such as <code>50</code>.</td><td>Answers "how big a subnet do I need?" — see <em>Checks</em> below. It does not depend on the address or mask.</td></tr>
+  <tr><td><span class="btn">Use this PC</span></td><td>—</td><td>Fills in this computer's own address and mask (from the dashboard's last check, or by running <code>ipconfig /all</code>), so you can see the network you are on right now. Only in the desktop app and local-server edition.</td></tr>
+</table></div>
+
+<h4>Checks</h4>
+<p>Only shown when you fill in one of the optional boxes, and then at the very top, because it answers the question you asked.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it tells you</th><th>Example</th></tr>
+  <tr><td><strong>Same subnet?</strong></td><td>Whether the second address is on the same subnet as the first, <em>using the first address's mask</em>. <strong>Yes</strong> (green): the two can talk directly, device to device. <strong>No</strong> (amber): it names the subnet the second address is in, and traffic between them has to go through a router — if there is no router between those two subnets, they cannot reach each other at all. This is the classic cause of "I can't see the printer": two devices given addresses on different subnets, or the same address range with different masks.</td><td>192.168.1.100/26 against 192.168.1.130 → <em>No — 192.168.1.130 is in 192.168.1.128/26</em>. The addresses look close, but a /26 puts them in different blocks of 64.</td></tr>
+  <tr><td><strong>Subnet for N hosts</strong></td><td>The smallest subnet that holds that many devices, as a prefix and a mask, with how many usable addresses it gives and how many are left over. Every subnet size is a power of two minus two (the network and broadcast addresses), so there is usually some spare. For 2 hosts it also mentions that a /31 works on a link between two routers.</td><td>50 hosts → <em>/26 (255.255.255.192), 62 usable, 12 to spare</em>. 500 hosts → /23, 510 usable.</td></tr>
+</table></div>
+
+<h4>The subnet</h4>
+<p>The subnet the address belongs to, described every way you might need it.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it is</th><th>Example (192.168.1.100/26)</th></tr>
+  <tr><td><strong>Address</strong></td><td>Your address, tidied up, with what <em>kind</em> of address it is and the RFC (the internet standard) that defines that kind — see the table after this one. Amber when it is a special kind that should not be on a normal device, such as a documentation or self-assigned address.</td><td>192.168.1.100 — Private (RFC 1918)</td></tr>
+  <tr><td><strong>Network</strong></td><td>The subnet's own address — its first address, with every host bit set to zero — written with the prefix. It is the subnet's name: what you type into a route, a firewall rule or a DHCP scope. No device uses it (except on a /31 or /32, below).</td><td>192.168.1.64/26</td></tr>
+  <tr><td><strong>Subnet mask</strong></td><td>The mask in dotted form, whatever form you typed it in. In binary it is ones for the network part and zeros for the host part. If you typed a wildcard mask, it says it turned it round.</td><td>255.255.255.192</td></tr>
+  <tr><td><strong>Prefix length</strong></td><td>The same mask as a count of network bits — the <code>/26</code> in CIDR notation — and how many bits are left for hosts. The two always add up to 32.</td><td>/26 — 26 network bits, 6 host bits</td></tr>
+  <tr><td><strong>Wildcard mask</strong></td><td>The mask with every bit flipped. Cisco access lists and OSPF use this form: a zero means "must match", a one means "anything".</td><td>0.0.0.63</td></tr>
+  <tr><td><strong>Usable host range</strong></td><td>The first and last address you can give to a device: everything between the network address and the broadcast address. Use it for static addresses and DHCP ranges.</td><td>192.168.1.65 – 192.168.1.126</td></tr>
+  <tr><td><strong>Usable hosts</strong></td><td>How many devices the subnet can hold: the total minus the two reserved addresses.</td><td>62</td></tr>
+  <tr><td><strong>Total addresses</strong></td><td>Every address in the subnet, reserved ones included: 2 to the power of the host bits.</td><td>64 (2⁶)</td></tr>
+  <tr><td><strong>Broadcast</strong></td><td>The subnet's last address, with every host bit set to one. A packet sent to it reaches every device on the subnet at once; older discovery protocols (NetBIOS names, Wake-on-LAN, LAN games) use it. It cannot be given to a device.</td><td>192.168.1.127</td></tr>
+  <tr><td><strong>Next subnet / Previous subnet</strong></td><td>The subnets of the same size on either side. Handy when you are laying out several subnets in a row, or checking that two neighbors do not overlap.</td><td>192.168.1.128/26 · 192.168.1.0/26</td></tr>
+</table></div>
+<p><strong>Two special sizes.</strong> A <strong>/31</strong> has only two addresses and no broadcast; both are usable. It is used on a link between two routers, where nothing else will ever join (RFC 3021). A <strong>/32</strong> is one single address on its own — a <em>host route</em>, used for loopback addresses on routers and in firewall rules that mean "exactly this one computer". The calculator shows both the right way: no broadcast, and the network address counted as usable.</p>
+
+<p><strong>Kinds of address</strong> the Address row can report:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Range</th><th>Kind</th><th>What it means for you</th></tr>
+  <tr><td>10.0.0.0/8 · 172.16.0.0/12 · 192.168.0.0/16</td><td>Private (RFC 1918)</td><td>Used inside homes and offices; never routed on the internet. Almost every device on a home network has one.</td></tr>
+  <tr><td>100.64.0.0/10</td><td>Carrier-grade NAT (RFC 6598)</td><td>Your provider's own private range. If your <em>router's</em> WAN address is one of these, you are behind CGNAT and cannot forward ports from the internet.</td></tr>
+  <tr><td>169.254.0.0/16</td><td>Link-local, "APIPA" (RFC 3927)</td><td>The device gave itself an address because no DHCP server answered — a sign of a DHCP problem, not a working setup.</td></tr>
+  <tr><td>127.0.0.0/8</td><td>Loopback</td><td>This computer talking to itself; never leaves the machine.</td></tr>
+  <tr><td>192.0.2.0/24 · 198.51.100.0/24 · 203.0.113.0/24</td><td>Documentation (RFC 5737)</td><td>For examples in books and manuals only — including this one. Never used on real networks.</td></tr>
+  <tr><td>198.18.0.0/15</td><td>Benchmarking (RFC 2544)</td><td>For testing network equipment in a lab.</td></tr>
+  <tr><td>224.0.0.0/4</td><td>Multicast (class D)</td><td>A group address: one sender, many listeners. Not a device's address — the calculator says so above the results, because hosts and broadcast mean nothing for it.</td></tr>
+  <tr><td>240.0.0.0/4 · 255.255.255.255</td><td>Reserved (class E) · limited broadcast</td><td>Not used on networks; 255.255.255.255 means "every device on this link".</td></tr>
+  <tr><td>0.0.0.0/8</td><td>"This network"</td><td>0.0.0.0 on its own means "any address" (a server listening everywhere) or "no address yet".</td></tr>
+  <tr><td>anything else</td><td>Public</td><td>A globally routable internet address.</td></tr>
+</table></div>
+
+<h4>Class</h4>
+<p>Before 1993, the first number of an address decided the size of its network, in three fixed <em>classes</em>. Networks have been <em>classless</em> (any prefix length, CIDR) ever since, but the words survive in textbooks, certification exams and older equipment, so the calculator shows them.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it is</th><th>Example</th></tr>
+  <tr><td><strong>Class</strong></td><td>The historical class of the address, from its first number: A (1–126), B (128–191), C (192–223), D (224–239, multicast) or E (240–255, reserved).</td><td>Class C</td></tr>
+  <tr><td><strong>Classful default mask</strong></td><td>The mask that class had built in: /8 for A, /16 for B, /24 for C. D and E have none.</td><td>255.255.255.0 (/24)</td></tr>
+  <tr><td><strong>Subnet bits</strong></td><td>How many bits your mask <em>borrows</em> from the host part of the classful network to make subnets — your prefix minus the default one. Exam questions call this "bits borrowed".</td><td>2 (a /26 in a class C /24)</td></tr>
+  <tr><td><strong>Maximum subnets</strong></td><td>How many subnets of your size fit in that classful network: 2 to the power of the subnet bits. Its note names the classful network.</td><td>4 — 192.168.1.0/24 holds four /26s</td></tr>
+  <tr><td><strong>Supernet</strong></td><td>Shown instead of the two rows above when your prefix is <em>shorter</em> than the class default: the mask joins several classful networks into one bigger block, and it says how many.</td><td>192.168.4.77/22 → 2 bits shorter; joins 4 class C networks</td></tr>
+  <tr><td><strong>Subnet bitmap</strong></td><td>The 32 bits of the address as a pattern: first the fixed bits that mark the class (<code>110</code> for C), then <code>n</code> for the classful network bits, <code>s</code> for the borrowed subnet bits and <code>h</code> for the host bits. It shows at a glance how the address is divided.</td><td><code>110nnnnn.nnnnnnnn.nnnnnnnn.sshhhhhh</code></td></tr>
+</table></div>
+
+<h4>Encodings</h4>
+<p>The same address and mask written the ways other tools and documents need them.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Row</th><th>What it is</th><th>Example</th></tr>
+  <tr><td><strong>Binary</strong></td><td>The address as 32 ones and zeros, in four groups of eight (octets), colored the way the bitmap is split: <span style="color:var(--err)">red</span> classful network bits, <span style="color:var(--warn)">amber</span> subnet bits, <span style="color:var(--ok)">green</span> host bits. This is how a router sees the address, and the easiest way to see why two addresses are or are not on the same subnet: compare the red and amber bits.</td><td>11000000.10101000.00000001.01100100</td></tr>
+  <tr><td><strong>Hexadecimal</strong></td><td>Each octet as two hex digits, and the whole address as one hex number. Packet captures, some firewalls and programming tools show addresses this way.</td><td>C0.A8.01.64 (0xC0A80164)</td></tr>
+  <tr><td><strong>Decimal integer</strong></td><td>The address as a single 32-bit number. Databases and some logs store addresses like this, and it makes address arithmetic simple: the next address is one more.</td><td>3232235876</td></tr>
+  <tr><td><strong>Mask in hex</strong> / <strong>Mask in binary</strong></td><td>The mask in the same two forms. The binary line shows the ones and zeros the prefix counts.</td><td>ff.ff.ff.c0 · 11111111.11111111.11111111.11000000</td></tr>
+  <tr><td><strong>Reverse DNS name</strong></td><td>The name a <em>reverse</em> lookup (address → name, a PTR record) asks for: the four numbers backwards under <code>in-addr.arpa</code>. Use it when setting up reverse DNS for a server, or with <code>nslookup -type=PTR</code>.</td><td>100.1.168.192.in-addr.arpa</td></tr>
+</table></div>
+<p><span class="btn">Copy results</span> puts every row into a ticket or message as plain text; <span class="btn">Save report</span> keeps them as one HTML file.</p>
 
 <h3 id="nc-split">Split &amp; summarize</h3>
 <h4>Split into subnets</h4>
@@ -2202,7 +2273,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.31.2</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.31.3</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
