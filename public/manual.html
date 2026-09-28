@@ -255,7 +255,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.3</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.3</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.31.4</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.31.4</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -281,7 +281,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.3</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.31.4</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -501,9 +501,10 @@
   <tr><td><strong>amber underline</strong></td><td>The hop where latency jumps up and <em>stays</em> up for the rest of the path — the point where the delay is added. One slow hop that the later hops do not share is just a router answering slowly, and is not marked.</td><td>None. If there is one and it is hop 1, it is your link; hop 2 or 3, your provider; later, the internet beyond them.</td></tr>
   <tr><td><strong>the verdict line</strong> — Reached in 8 hops, 20 ms end to end · 1 silent hop (normal)</td><td>Whether the trace reached its destination, in how many hops, and the total.</td><td>"Reached". "Path stops after hop N" with the internet still working means a firewall on the way drops traceroute, not traffic.</td></tr>
 </table></div>
+<p>The card keeps the last traceroute. When it was taken behind a different router than the one this PC uses now, the card says the trace is from another network and dims it; <span class="btn">Trace now</span> measures the network you are on.</p>
 
 <h3 id="d-path">Live path</h3>
-<p>The Route card shows one traceroute — a snapshot. <span class="btn">Watch live</span> on that card runs the <a href="#cmd-path-monitor">live path monitor</a> instead: every hop to the same target is probed once a second for a minute (or 5 or 10 from this card's buttons), and this card fills in as the numbers arrive, with a verdict that says where loss or delay starts. The run itself is in the terminal as usual, and the card keeps the last result until you run another or clear it.</p>
+<p>The Route card shows one traceroute — a snapshot. <span class="btn">Watch live</span> on that card runs the <a href="#cmd-path-monitor">live path monitor</a> instead: every hop to the same target is probed once a second for a minute (or 5 or 10 from this card's buttons), and this card fills in as the numbers arrive, with a verdict that says where loss or delay starts. The run itself is in the terminal as usual, and the card keeps the last result until you run another or clear it. If that result was measured through a different router than the one this PC uses now — you have moved to another network — the card says so, dims the old figures, and asks you to Watch live again.</p>
 <figure class="shot"><img src="manual-img/live-path.webp" width="1824" height="741" alt="The Live path card: a verdict that loss starts at the provider's third hop, and a table of seven hops with loss, times and a range bar each" loading="lazy"><figcaption>An example: loss begins at hop 3, inside the provider's network, and carries on to the target — so it is real, and it is the provider's. Hop 5 never answers, which is normal.</figcaption></figure>
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
@@ -2273,7 +2274,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.31.3</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.31.4</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>

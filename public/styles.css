@@ -1230,6 +1230,9 @@ body[data-mode="static"] .live-only { display: none !important; }
 .dash-clear { color: var(--muted); }
 .dash-clear:hover:not(:disabled) { color: var(--err); border-color: var(--err); }
 
+/* a kept run from another network: still readable, clearly not current */
+.dash-chain.is-stale, .dash-path-wrap.is-stale { opacity: 0.45; }
+
 /* ---------- live path ---------- */
 .dash-path-wrap { overflow-x: auto; }
 table.dash-path { width: 100%; border-collapse: collapse; font-size: 12.5px; }

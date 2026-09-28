@@ -466,13 +466,13 @@ window.NetDeckDashboard = (() => {
         used = true;
       } else if (cmdId === 'path-monitor') {
         const d = summary(); if (!d || !Array.isArray(d.hops) || !d.hops.length) return;
-        series.live = { t, hid: h.hid, target: d.target, ip: d.ip, secs: d.secs, c: d.c, hops: d.hops };
+        series.live = { t, hid: h.hid, target: d.target, ip: d.ip, secs: d.secs, c: d.c, hops: d.hops, gw: ctx.gateway || '' };
         used = true;
       } else if (cmdId === 'tracert') {
         const c = D.PB.check('tracertPath', out, params || {}, ctx, {});
         if (!c.data || !c.data.hops || !c.data.hops.length) return;
         const host = String((params && params.host) || '').replace(/\{(\w+)\}/g, (m, k) => (h.params && h.params[k]) || ctx[k] || m);
-        series.trace = { t, hid: h.hid, host, target: c.data.target || '', hops: c.data.hops.map((x) => ({ n: x.n, addr: x.addr || '', ms: x.ms == null ? null : x.ms })), reached: c.data.reached, jump: c.data.jump ? { n: c.data.jump.at.n, delta: c.data.jump.delta } : null, where: c.data.where || '', summary: c.summary, status: c.status };
+        series.trace = { t, hid: h.hid, gw: ctx.gateway || '', host, target: c.data.target || '', hops: c.data.hops.map((x) => ({ n: x.n, addr: x.addr || '', ms: x.ms == null ? null : x.ms })), reached: c.data.reached, jump: c.data.jump ? { n: c.data.jump.at.n, delta: c.data.jump.delta } : null, where: c.data.where || '', summary: c.summary, status: c.status };
         used = true;
       }
     };
@@ -587,6 +587,15 @@ window.NetDeckDashboard = (() => {
     return card('Speed tests', when(last.t), big + chart, foot(`last run ${ago(last.t)}${last.colo ? ` · via ${esc(last.colo)}` : ''}`, true));
   }
 
+  /* A kept run measured behind a different router than the one this PC uses now: { then, now }, else null. */
+  function otherNetwork(rec) {
+    const now = (D.context() || {}).gateway || '';
+    const first = rec && rec.hops && rec.hops[0];
+    const then = (rec && rec.gw) || (first && (first.a || first.addr)) || '';
+    return now && then && now !== then ? { then, now } : null;
+  }
+  const otherNote = (o, what, button) => `This ${what} was made on a different network — through router ${o.then}; this PC now goes through ${o.now} — so it is not your current path. Press ${button} to measure this network.`;
+
   function routeCard() {
     const tr = series.trace;
     const host = (tr && tr.host) || '1.1.1.1';
@@ -601,7 +610,9 @@ window.NetDeckDashboard = (() => {
       return `<div class="dash-hop${jump ? ' is-jump' : ''}" data-net="${net}" title="hop ${h.n}: ${h.addr || 'no reply'}${h.ms != null ? `, ${h.ms} ms` : ''}${jump ? ` — latency jumps +${tr.jump.delta} ms here` : ''}"><span class="dash-hop-bar" style="height:${hgt}px"></span><span class="dash-hop-n">${h.n}</span><span class="dash-hop-ms">${h.ms == null ? '*' : `${h.ms} ms`}</span><span class="dash-hop-addr">${esc(h.addr || 'no reply')}</span></div>`;
     }).join('');
     const legend = '<div class="dash-stats"><span class="dash-stat"><span class="dash-swatch net-private"></span>your network</span><span class="dash-stat"><span class="dash-swatch net-cgnat"></span>provider</span><span class="dash-stat"><span class="dash-swatch net-public"></span>internet</span><span class="dash-stat"><span class="dash-swatch net-silent"></span>no reply</span></div>';
-    const body = `<p class="dash-verdict" data-tone="${TONE[tr.status] || 'idle'}">${esc(tr.summary || '')}</p><div class="dash-chain">${chain}</div>${legend}`;
+    const other = otherNetwork(tr);
+    const verdict = other ? `<p class="dash-verdict" data-tone="warn">${esc(otherNote(other, 'trace', 'Trace now'))}</p>` : `<p class="dash-verdict" data-tone="${TONE[tr.status] || 'idle'}">${esc(tr.summary || '')}</p>`;
+    const body = `${verdict}<div class="dash-chain${other ? ' is-stale' : ''}">${chain}</div>${legend}`;
     return card('Route to the internet', `${esc(host)} · ${when(tr.t)}`, body, `<span>tracert -d ${esc(host)} · ${ago(tr.t)} · the bar over each hop is its round-trip time</span><span class="dash-links">${links}<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="trace" title="Forget this trace">Clear</button></span>`);
   }
 
@@ -794,9 +805,10 @@ window.NetDeckDashboard = (() => {
     const scale = Math.max(1, ...hops.map((h) => (h.worst > 0 ? h.worst : 0)));
     const ms = (v) => (v == null || v < 0 ? '—' : v < 1 ? '<1' : String(Math.round(v)));
     const pos = (v) => ((Math.max(0, v) / scale) * 100).toFixed(1);
-    const v = pathVerdict(snap, running);
+    const other = running ? null : otherNetwork(series.live);
+    const v = other ? { tone: 'warn', text: otherNote(other, 'run', 'Watch live') } : pathVerdict(snap, running);
     if (collapsed.has('path')) {
-      const first = v.text.split(/(?<=\.) /)[0];
+      const first = other ? `from a different network (router ${other.then}) — Watch live to measure this one` : v.text.split(/(?<=\.) /)[0];
       const sum = running ? `${esc(target)} · ${esc(first)}` : `${esc(target)} · ${esc(when(series.live.t))} · ${esc(first)}`;
       const livePill = running ? `<span class="dash-pill" data-state="ok">live · ${snap ? snap.c : 0} / ${live.secs} s</span>` : '';
       return `<article class="card dash-card dash-wide is-collapsed" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${livePill}<span class="dash-collapsed-sum">${sum}</span>${manualBtn('d-path')}${collapseBtn('path')}</header></article>`;
@@ -810,13 +822,13 @@ window.NetDeckDashboard = (() => {
       return `<tr data-net="${net}"${silent ? ' class="is-silent"' : ''}><td class="n">${h.n}</td><td class="addr">${esc(h.a || '(no reply)')}${name}</td><td class="loss${loss && !silent ? ' has-loss' : ''}">${h.s ? `${loss}%` : ''}</td><td>${h.s}</td><td>${ms(h.last)}</td><td>${ms(h.avg)}</td><td>${ms(h.best)}</td><td>${ms(h.worst)}</td><td>${ms(h.j)}</td><td class="range">${bar}</td></tr>`;
     }).join('');
     const table = hops.length
-      ? `<div class="dash-path-wrap"><table class="dash-path"><thead><tr><th>#</th><th>hop</th><th>loss</th><th>sent</th><th>last</th><th>avg</th><th>best</th><th>worst</th><th>jitter</th><th>best – worst, tick = avg</th></tr></thead><tbody>${rows}</tbody></table></div>`
+      ? `<div class="dash-path-wrap${other ? ' is-stale' : ''}"><table class="dash-path"><thead><tr><th>#</th><th>hop</th><th>loss</th><th>sent</th><th>last</th><th>avg</th><th>best</th><th>worst</th><th>jitter</th><th>best – worst, tick = avg</th></tr></thead><tbody>${rows}</tbody></table></div>`
       : '<p class="dash-empty">Finding the path — the first figures arrive in a few seconds.</p>';
     const pill = running ? `<span class="dash-pill" data-state="ok">live · ${snap ? snap.c : 0} / ${live.secs} s</span>` : '';
     const meta = running ? esc(target) : `${esc(target)} · ${esc(when(series.live.t))} · ${esc(String(Math.max(1, Math.round(series.live.secs / 60))))} min`;
     const watch = (label, secs) => `<button type="button" class="tbtn tbtn-sm" data-live="${secs}"${running ? ' disabled' : ''}>${esc(label)}</button>`;
     const clear = running ? '' : '<button type="button" class="tbtn tbtn-sm dash-clear" data-clear="live" title="Forget this live run">Clear</button>';
-    const note = running ? 'every hop probed once a second — Stop is in its terminal tab' : 'the last live run';
+    const note = running ? 'every hop probed once a second — Stop is in its terminal tab' : other ? 'the last live run, from another network' : 'the last live run';
     const foot = `<footer class="dash-foot"><span>${note} · each bar runs from the hop's best to its worst time, the tick is its average</span><span class="dash-links">${watch('Watch 1 min', 60)}${watch('5 min', 300)}${watch('10 min', 600)}${clear}</span></footer>`;
     return `<article class="card dash-card dash-wide" id="dash-path"><header class="card-head"><h2 class="card-name">Live path</h2>${pill}<span class="dash-head-tools"><span class="card-cat">${meta}</span>${manualBtn('d-path')}${collapseBtn('path')}</span></header><p class="dash-verdict" data-tone="${v.tone}">${esc(v.text)}</p>${table}${foot}</article>`;
   }
