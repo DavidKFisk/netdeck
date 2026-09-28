@@ -602,6 +602,11 @@ fn sensors_status(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>) -> Value
 }
 
 #[tauri::command]
+fn alerts_set(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>, alerts: Value) -> Value {
+    mon.inner().set_alerts(&app, &alerts)
+}
+
+#[tauri::command]
 fn sensors_reset(app: AppHandle, mon: State<'_, Arc<outage::Monitor>>) -> Value {
     mon.inner().sensors_reset(&app)
 }
@@ -1116,6 +1121,7 @@ pub fn run() {
             autostart_set,
             sensors_status,
             sensors_reset,
+            alerts_set,
             tray_status_set,
             open_mini
         ])

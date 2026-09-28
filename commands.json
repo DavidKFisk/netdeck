@@ -309,6 +309,36 @@
     }
   },
   {
+    "id": "adapter-details",
+    "name": "Network adapter details",
+    "category": "Network Configuration & Interfaces",
+    "purpose": "Every connected network adapter and the settings behind slow or dropping connections: driver age, link speed and duplex, the Wi-Fi standards the card supports against what it is set to, and whether Windows may switch it off to save power",
+    "platforms": [
+      "powershell",
+      "unix"
+    ],
+    "safe": true,
+    "note": "Reads only; changes nothing. The current Wi-Fi standard, band and signal are withheld by Windows unless Location services are on.",
+    "win": "Get-NetAdapter -Physical + Get-NetAdapterAdvancedProperty + netsh wlan show drivers",
+    "unix": [
+      "ethtool <interface>",
+      "iw dev <interface> link",
+      "lspci -k | grep -A3 -i net"
+    ],
+    "help": {
+      "ps": "Get-NetAdapter"
+    },
+    "helpUnix": [
+      "ethtool",
+      "--help"
+    ],
+    "run": {
+      "kind": "ps",
+      "display": "Get-NetAdapter -Physical → driver, link, advanced settings, power management → findings",
+      "command": "$ErrorActionPreference = 'SilentlyContinue'\n[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n# Every physical network adapter that is connected, and the settings behind the usual Wi-Fi and cable problems:\n# driver age, link speed and duplex, what the Wi-Fi card can do against what it is set to, and power saving.\n# All of it is readable without administrator rights; nothing is changed.\n$defaultIf = @(Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric, InterfaceMetric)[0].InterfaceAlias\n$classKey = 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}'\n$classes = @(Get-ChildItem $classKey | ForEach-Object { Get-ItemProperty $_.PSPath })\n$drivers = (netsh wlan show drivers) -join \"`n\"\n$ifaces = (netsh wlan show interfaces) -join \"`n\"\nfunction Field($text, $label) { $m = [regex]::Match($text, '(?m)^\\s*' + $label + '\\s*:\\s*(.+)$'); if ($m.Success) { return $m.Groups[1].Value.Trim() } else { return '' } }\n$out = @()\n$list = @(Get-NetAdapter -Physical | Where-Object { $_.Status -eq 'Up' -or $_.Name -eq $defaultIf })\nif (-not $list.Count) { 'No connected physical network adapter.' }\nforeach ($a in $list) {\n  $wifi = $a.PhysicalMediaType -match '802\\.11' -or $a.MediaType -match '802\\.11'\n  $days = $null; if ($a.DriverDate) { $days = [int]((Get-Date) - [datetime]$a.DriverDate).TotalDays }\n  $cls = @($classes | Where-Object { $_.NetCfgInstanceId -eq $a.InterfaceGuid })[0]\n  $pnp = $null; if ($cls -and $null -ne $cls.PnPCapabilities) { $pnp = [int]$cls.PnPCapabilities }\n  $allowOff = $(if ($null -eq $pnp) { $true } elseif (($pnp -band 0x18) -eq 0x18) { $false } else { $true })\n  $adv = @(Get-NetAdapterAdvancedProperty -Name $a.Name -AllProperties | Where-Object { $_.DisplayName } | ForEach-Object { [ordered]@{ name = $_.DisplayName; value = [string]$_.DisplayValue; valid = @($_.ValidDisplayValues | ForEach-Object { [string]$_ }) } })\n  $info = [ordered]@{\n    name = $a.Name; desc = $a.InterfaceDescription; kind = $(if ($wifi) { 'wifi' } else { 'wired' }); default = ($a.Name -eq $defaultIf)\n    status = [string]$a.Status; link = [string]$a.LinkSpeed; linkBps = [int64]$a.ReceiveLinkSpeed; duplex = $(if ($wifi) { $null } else { [bool]$a.FullDuplex })\n    driver = [ordered]@{ version = [string]$a.DriverVersionString; date = $(if ($a.DriverDate) { ([datetime]$a.DriverDate).ToString('yyyy-MM-dd') } else { '' }); provider = [string]$a.DriverProvider; ageDays = $days }\n    power = [ordered]@{ allowOff = $allowOff; raw = $pnp }\n    adv = $adv\n  }\n  if ($wifi) {\n    $withheld = $ifaces -match 'location permission|requires elevation'\n    $info.wifi = [ordered]@{\n      supported = @((Field $drivers 'Radio types supported') -split '\\s+' | Where-Object { $_ })\n      sixGhz = [bool]($drivers -match '6 GHz'); withheld = [bool]$withheld\n      radio = (Field $ifaces 'Radio type'); band = (Field $ifaces 'Band'); channel = (Field $ifaces 'Channel'); signal = (Field $ifaces 'Signal')\n      rx = (Field $ifaces 'Receive rate \\(Mbps\\)'); tx = (Field $ifaces 'Transmit rate \\(Mbps\\)')\n    }\n  }\n  $out += $info\n  # the readable part\n  ''\n  $a.Name + ' - ' + $a.InterfaceDescription + $(if ($a.Name -eq $defaultIf) { '   (carries your internet traffic)' } else { '' })\n  '  Link        : ' + $a.LinkSpeed + $(if (-not $wifi) { $(if ($a.FullDuplex) { ', full duplex' } else { ', HALF duplex' }) } else { '' })\n  '  Driver      : ' + $a.DriverVersionString + ' from ' + $info.driver.date + ' (' + $a.DriverProvider + ')' + $(if ($null -ne $days) { ', ' + [math]::Round($days / 365.25, 1) + ' years old' } else { '' })\n  '  Power saving: ' + $(if ($allowOff) { 'Windows may turn this adapter off to save power' } else { 'Windows keeps this adapter on' })\n  if ($wifi) {\n    '  Wi-Fi       : supports ' + ($info.wifi.supported -join ' ') + $(if ($info.wifi.sixGhz) { ', 6 GHz' } else { '' })\n    if ($info.wifi.withheld) { '  Now         : withheld - Windows shares the current Wi-Fi connection only with Location services on' }\n    elseif ($info.wifi.radio) { '  Now         : ' + $info.wifi.radio + ', ' + $info.wifi.band + ', channel ' + $info.wifi.channel + ', signal ' + $info.wifi.signal + ', ' + $info.wifi.rx + '/' + $info.wifi.tx + ' Mbps' }\n  }\n  $shown = @($adv | Where-Object { $_.name -match '\\bmode\\b|band|width|power|roam|energy|green|eee|speed|duplex|802\\.11' })\n  if ($shown.Count) { '  Settings    :'; foreach ($p in $shown) { '    ' + $p.name.PadRight(34) + $p.value } }\n}\n''\n'SUMMARY ' + ([ordered]@{ adapters = @($out) } | ConvertTo-Json -Compress -Depth 6)"
+    }
+  },
+  {
     "id": "proxy-settings",
     "name": "Proxy settings (user)",
     "category": "Network Configuration & Interfaces",

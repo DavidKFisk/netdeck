@@ -355,6 +355,55 @@ window.NetDeckPlaybooks = (() => {
       return { status: problems.length ? 'warn' : 'pass', summary: problems.length ? `${summary} — ${problems.join('; ')}` : summary, data: { wifi: true, signal, channel, band, radio, rx, tx, problems, bssid: get('(?:AP )?BSSID').toLowerCase() } };
     },
 
+    /* adapter-details: per adapter, what is set up in a way that causes slow or dropping connections. */
+    adapters(out) {
+      const m = String(out || '').match(/^SUMMARY (\{.*\})\s*$/m);
+      let d = null;
+      try { d = m ? JSON.parse(m[1]) : null; } catch (e) { d = null; }
+      const list = d && Array.isArray(d.adapters) ? d.adapters : d && d.adapters ? [d.adapters] : [];
+      if (!list.length) return { status: 'info', summary: 'No connected physical network adapter found', data: { adapters: [] } };
+      const rank = { pass: 0, info: 1, warn: 2, fail: 3 };
+      const adv = (a, re) => (a.adv || []).find((p) => re.test(p.name));
+      const fmtBps = (b) => (b >= 1e9 ? `${+(b / 1e9).toFixed(1)} Gbps` : `${Math.round(b / 1e6)} Mbps`);
+      const std = (s) => ({ '802.11be': 7, '802.11ax': 6, '802.11ac': 5, '802.11n': 4, '802.11a': 3, '802.11g': 2, '802.11b': 1 }[String(s).toLowerCase()] || 0);
+      const wifiName = { 7: 'Wi-Fi 7 (802.11be)', 6: 'Wi-Fi 6/6E (802.11ax)', 5: 'Wi-Fi 5 (802.11ac)', 4: 'Wi-Fi 4 (802.11n)' };
+      for (const a of list) {
+        const f = [];
+        const add = (tone, text) => f.push({ tone, text });
+        const years = a.driver && a.driver.ageDays != null ? a.driver.ageDays / 365.25 : null;
+        if (years != null && years >= 3) add('warn', `Its driver is ${Math.floor(years)} years old (${a.driver.version}, ${a.driver.date}). Old drivers are a common cause of dropouts and slow links: look for a newer one on the PC maker's or ${a.driver.provider || 'adapter maker'}'s site — Windows Update often only offers the original.`);
+        if (a.kind === 'wired') {
+          const sd = adv(a, /speed.*duplex|duplex|link speed/i);
+          const gig = /gbe|gigabit|2\.5g|5g\b|10g/i.test(a.desc || '') || (sd && (sd.valid || []).some((v) => /1(\.0)?\s*g/i.test(v)));
+          if (a.duplex === false) add('fail', 'The link is running at half duplex: this end and the switch or router disagree about the link. It halves the speed and causes errors — set Speed & Duplex to Auto Negotiation on both ends.');
+          if (gig && a.linkBps && a.linkBps < 1e9) add('warn', `The link is running at ${fmtBps(a.linkBps)} although the adapter can do 1 Gbps. Almost always the cable (damaged, or an old one with only two pairs of wires), or a 100 Mbps port on the switch or router. Try another cable and port.`);
+          if (sd && !/auto/i.test(sd.value)) add('warn', `Speed & Duplex is fixed at "${sd.value}" instead of automatic. Unless the other end is fixed the same way, that causes a mismatch — set it back to Auto Negotiation.`);
+          const eee = (a.adv || []).filter((p) => /energy.?efficient|green ethernet|\beee\b/i.test(p.name) && /enabled|on/i.test(p.value));
+          if (eee.length) add('info', `Power-saving Ethernet features are on (${eee.map((p) => p.name).join(', ')}). They are usually fine, but if the link drops or stalls now and then, turning them off is a common fix.`);
+        } else if (a.kind === 'wifi' && a.wifi) {
+          const best = Math.max(0, ...(a.wifi.supported || []).map(std));
+          const mode = adv(a, /802\.11|wireless mode/i);
+          if (mode) {
+            const set = Math.max(0, ...(String(mode.value).match(/802\.11\w+/gi) || []).map(std));
+            if (set && best && set < best) add('warn', `The card is set to "${mode.value}" although it supports ${wifiName[best] || 'a newer standard'}. That caps its speed — set ${mode.name} to the newest option unless an old router needs otherwise.`);
+          }
+          const cur = std(a.wifi.radio);
+          if (cur && best && cur < best) add('info', `It is connected with ${wifiName[cur] || a.wifi.radio} although the card supports ${wifiName[best]}. The router (or the distance to it) sets that limit, not this PC.`);
+          if (a.linkBps && a.linkBps < 100e6) add('warn', `The Wi-Fi link is running at only ${fmtBps(a.linkBps)} — weak signal or interference. Move closer to the router, or use 5 GHz.`);
+          const ps = adv(a, /power sav|mimo power/i);
+          if (ps && /max/i.test(ps.value)) add('warn', `Wi-Fi power saving is set to "${ps.value}", which trades speed and responsiveness for battery. Set it to a lower level if calls or games stutter.`);
+          if (a.wifi.withheld) add('info', 'Windows withholds the current Wi-Fi connection (standard, band, signal) unless Location services are on, so only the link speed can be checked.');
+        }
+        if (a.power && a.power.allowOff) add('info', 'Windows is allowed to turn this adapter off to save power (the default). If the connection drops after the PC has been idle or asleep, switch that off: Device Manager → Network adapters → this adapter → Power Management → clear "Allow the computer to turn off this device to save power".');
+        a.findings = f;
+        a.status = f.reduce((s, x) => (rank[x.tone] > rank[s] ? x.tone : s), 'pass');
+      }
+      const main = list.find((a) => a.default) || list[0];
+      const worst = list.reduce((s, a) => (rank[a.status] > rank[s] ? a.status : s), 'pass');
+      const one = (a) => `${a.name}${a.default ? ' (in use)' : ''}: ${a.link || '—'}${a.kind === 'wired' && a.duplex != null ? (a.duplex ? ' full duplex' : ' HALF duplex') : ''} · driver ${a.driver && a.driver.date ? a.driver.date.slice(0, 7) : '—'}`;
+      return { status: worst === 'pass' ? 'pass' : worst === 'info' ? 'pass' : worst, summary: list.map(one).join(' · '), data: { adapters: list, main } };
+    },
+
     processes(out) {
       const map = P.processMap(out);
       return { status: 'info', summary: `${map.size} running processes indexed`, data: { map: Object.fromEntries(map) } };
@@ -1331,6 +1380,29 @@ window.NetDeckPlaybooks = (() => {
       },
     },
     {
+      id: 'adapter',
+      name: 'Is my network adapter set up right?',
+      description: "Checks the Wi-Fi card and Ethernet port behind the connection: how old the driver is, whether the cable link runs at full speed and full duplex, whether the Wi-Fi card is held back from the standard it supports, and whether Windows may switch it off to save power — the usual hidden causes of slow or dropping connections.",
+      params: [],
+      steps: [
+        { id: 'adapters', cmd: 'adapter-details', label: 'Read every connected adapter', check: 'adapters' },
+      ],
+      verdict(r, p, ctx, R) {
+        const d = R.adapters?.data;
+        if (!d || !d.adapters.length) return { tone: 'warn', text: R.adapters?.summary || 'No connected network adapter could be read.' };
+        const lines = [];
+        for (const a of d.adapters) {
+          const head = `${a.name}${a.default ? ' (carries your internet traffic)' : ''} — ${a.desc}: ${a.link}${a.kind === 'wired' && a.duplex != null ? (a.duplex ? ', full duplex' : ', HALF duplex') : ''}, driver ${a.driver.version} from ${a.driver.date}.`;
+          lines.push(head);
+          for (const f of a.findings) lines.push(`  ${f.tone === 'fail' || f.tone === 'warn' ? '⚠' : '•'} ${f.text}`);
+          if (!a.findings.length) lines.push('  ✓ Nothing set up in a way that holds it back.');
+        }
+        const worst = d.adapters.some((a) => a.status === 'fail') ? 'fail' : d.adapters.some((a) => a.status === 'warn') ? 'warn' : 'pass';
+        const lead = worst === 'pass' ? 'The adapters are set up well.' : worst === 'fail' ? 'An adapter is set up in a way that breaks the connection:' : 'Something is holding an adapter back:';
+        return { tone: worst, text: `${lead}\n${lines.join('\n')}` };
+      },
+    },
+    {
       id: 'outbound',
       name: 'Who is this PC talking to?',
       description: 'Every live outbound connection, grouped by the program that owns it — useful for spotting something unexpected phoning home, or what is using the connection right now.',
@@ -1719,7 +1791,7 @@ window.NetDeckPlaybooks = (() => {
     ['Connectivity', ['internet', 'website', 'slow', 'dropouts', 'drops', 'path', 'port', 'services', 'mtu', 'wifi', 'vpncheck', 'calls', 'doublenat']],
     ['DNS & email', ['dns', 'propagation', 'email']],
     ['Security & exposure', ['exposure', 'outbound', 'dnshonest', 'routercheck', 'proxy']],
-    ['This PC & local network', ['scan', 'lan', 'share', 'printer', 'rdphost', 'pchealth', 'timesync', 'routing', 'dhcp', 'ipv6']],
+    ['This PC & local network', ['scan', 'lan', 'share', 'printer', 'rdphost', 'pchealth', 'adapter', 'timesync', 'routing', 'dhcp', 'ipv6']],
   ];
   for (const [group, ids] of GROUPS) ids.forEach((id, i) => { const pb = PLAYBOOKS.find((p) => p.id === id); if (pb) { pb.group = group; pb.order = i; } });
   PLAYBOOKS.forEach((pb) => { if (!pb.group) { pb.group = 'Other'; pb.order = 99; } });

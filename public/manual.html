@@ -258,7 +258,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.32.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.32.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.33.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.33.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -284,7 +284,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.32.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.33.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -437,6 +437,7 @@
   <tr><td><strong>gateway</strong></td><td>Your router's address — the device every packet leaving your network goes through.</td><td>Usually the first or last address in your range, e.g. .1 or .254. Same as the Router tile pings.</td></tr>
   <tr><td><strong>dns</strong></td><td>The servers that turn names into addresses for you.</td><td>Often the router itself, or your ISP's or a public resolver (1.1.1.1, 8.8.8.8). The <a href="#pb-dnshonest">DNS honesty</a> playbook says who really answers.</td></tr>
   <tr><td><strong>dhcp</strong> — e.g. 192.168.1.1, 4 h of lease left</td><td>The server that handed out your address, and how much of the <em>lease</em> is left. A lease is a loan of an address for a fixed time; Windows renews it halfway through, quietly.</td><td>The router, with hours or days left. "static address" if you set the address by hand. An expired lease that was not renewed is a fault the DHCP playbook diagnoses.</td></tr>
+  <tr><td><strong>link</strong> — e.g. 1 Gbps full duplex, driver 2025-09-20</td><td>How fast the adapter in use is connected (for a cable, and whether it is full duplex), and the date of its driver. "⚠ … things to check" means the <a href="#pb-adapter">adapter playbook</a> found something holding it back; the <span class="btn">Adapter</span> button runs it.</td><td>1 Gbps full duplex on a cable; hundreds of Mbps on Wi-Fi; a driver from the last few years.</td></tr>
   <tr><td><strong>mac</strong> — e.g. C4-13-75-…, Dell</td><td>The adapter's hardware address, and the manufacturer looked up from its first half (the IEEE registry).</td><td>Fixed for the life of the adapter. The manufacturer tells you whose chip it is, which is not always the PC's brand.</td></tr>
   <tr><td><strong>wi-fi</strong> — e.g. 72% signal, 5 GHz ch 36, 802.11ax, 866/866 Mbps</td><td>Signal strength, band and channel, the Wi-Fi generation, and the link rate — the speed negotiated between your adapter and the access point <em>right now</em>.</td><td>Signal above 55%, 5 GHz or 6 GHz, 802.11ac or ax, and a link rate well above your internet speed. The link rate is not your internet speed; it is the ceiling for this hop. "details withheld": turn on Location services.</td></tr>
   <tr><td><strong>ipv6</strong></td><td>Your IPv6 address, if the network has one. An address starting fd… is private to your network; 2… or 3… is global.</td><td>Either is fine. See the <a href="#pb-ipv6">IPv6 check</a> for whether it actually works.</td></tr>
@@ -500,6 +501,16 @@
 <p><strong>Where the numbers come from.</strong> The pings come from the same connection watcher as the <a href="#d-outages">Outage log</a>: every 2 seconds while this card or the mini monitor is open, every 5 seconds otherwise. In the desktop app it keeps counting with the window closed to the tray, so the minimum, maximum and average cover the whole time. Traffic and Wi-Fi are read by this card itself, every 4 and 15 seconds, only while it is open. Like the other chart cards it starts folded, with the key numbers on its summary line.</p>
 <p><span class="btn">Pop out</span> opens the <strong>mini monitor</strong>: a small window with the live ping graph — or a traffic graph, with the <em>Ping</em> / <em>Traffic</em> switch — and the latest numbers above it. In the desktop app it stays on top of other windows, so you can keep it in a corner during a video call or a game and see a spike or a drop the moment it happens. The tray menu opens it too (<em>Mini monitor</em>). In the local-server edition it is a small browser window.</p>
 <p><span class="btn">Tray light: on</span> (desktop app) turns the NetDeck tray icon into a connection light, described in <a href="#tray-light">The tray light</a>.</p>
+<h4 id="d-alerts">Alerts</h4>
+<p><span class="btn">Alerts</span> opens four limits under the table. Tick one and NetDeck sends a notification when the reading crosses it — and another when it is back to normal — so you hear about a problem while it is happening instead of noticing later:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Alert</th><th>Trips when</th><th>Good for</th></tr>
+  <tr><td><strong>Internet ping above … ms for … s</strong> (150 ms, 30 s)</td><td>Every internet ping over that time is above the limit.</td><td>A connection that becomes sluggish — congestion in the evening, a download hogging the line.</td></tr>
+  <tr><td><strong>Router ping above … ms for … s</strong> (50 ms, 30 s)</td><td>Every router ping over that time is above the limit.</td><td>Wi-Fi trouble: interference or a weak signal shows here first.</td></tr>
+  <tr><td><strong>Internet loss above … % over a minute</strong> (2%)</td><td>That share of internet pings in the last minute got no answer.</td><td>Choppy calls and games, before the line fails outright.</td></tr>
+  <tr><td><strong>Internet down for … s</strong> (20 s)</td><td>No internet reply for that long; the notification says whether the router still answered.</td><td>Knowing at once, rather than when the <a href="#d-outages">Outage log</a> records it afterwards.</td></tr>
+</table></div>
+<p>The values in brackets are where each starts; every alert is off until you tick it, and the settings are remembered. A tripped alert shows <em>now</em> beside it and ⚠ on the button, and the latest alerts are listed under the limits. In the desktop app the alerts are checked by the connection watcher, so they work with the window closed to the tray. In the local-server edition they are shown as browser notifications while the page is open.</p>
 
 <h3 id="d-speed">Speed tests</h3>
 <p>Every <a href="#cmd-speed-test">speed test</a> you run — from this card, the command, or a playbook — is kept here, up to a hundred, so you can see whether the line is getting better or worse rather than remembering one number.</p>
@@ -1232,6 +1243,23 @@ Drops: 3, most on "WFP Native MAC Layer LightWeight Filter" (Filter), reason WFP
 
 <figure class="shot"><img src="manual-img/pb-pchealth.webp" width="1350" height="887" alt="Result of the “PC health snapshot” playbook" loading="lazy"><figcaption>Uptime, memory, disk, hung programs, the biggest memory users and the most recent update, in one pass.</figcaption></figure>
 
+<h3 id="pb-adapter">Is my network adapter set up right?</h3>
+<p>Checks the hardware end of the connection — the part a speed test and a router check never look at. It reads every connected adapter with <a href="#cmd-adapter-details">Network adapter details</a> and says what holds each one back. The verdict lists every adapter with its link and driver, then what to look at:</p>
+<div class="tbl-wrap"><table>
+  <tr><th>Finding</th><th>What it means</th><th>What to do</th></tr>
+  <tr><td><strong>Half duplex</strong> (red)</td><td>The cable link runs in one direction at a time: this end and the switch or router disagree about the link.</td><td>Set <em>Speed &amp; Duplex</em> to Auto Negotiation on both ends; try another cable.</td></tr>
+  <tr><td><strong>100 Mbps on a gigabit port</strong></td><td>The adapter can do 1 Gbps but linked at 100 Mbps — nearly always a damaged cable, an old cable with only two pairs of wires, or a 100 Mbps port.</td><td>Another cable, another port.</td></tr>
+  <tr><td><strong>Speed &amp; Duplex fixed</strong></td><td>Set by hand instead of automatic, which causes a mismatch unless the other end is set the same way.</td><td>Back to Auto Negotiation.</td></tr>
+  <tr><td><strong>Old driver</strong> (3 years or more)</td><td>Old network drivers are a common cause of Wi-Fi dropouts and slow links.</td><td>A newer driver from the PC or adapter maker — Windows Update often has only the original.</td></tr>
+  <tr><td><strong>Wi-Fi card held back</strong></td><td>The card supports a newer standard (say Wi-Fi 6) but its <em>wireless mode</em> setting limits it to an older one.</td><td>Set the mode to the newest option.</td></tr>
+  <tr><td><strong>Connected with an older standard</strong> (information)</td><td>The card could do more, but the connection uses an older standard — the router or the distance sets that limit.</td><td>Nothing on this PC; a newer router, or closer.</td></tr>
+  <tr><td><strong>Low Wi-Fi link rate</strong></td><td>Under 100 Mbps: weak signal or interference.</td><td>Closer to the router, or 5 GHz.</td></tr>
+  <tr><td><strong>Wi-Fi power saving at maximum</strong></td><td>Trades speed and responsiveness for battery.</td><td>A lower level if calls or games stutter.</td></tr>
+  <tr><td><strong>Power-saving Ethernet on</strong> (information)</td><td>Energy-Efficient Ethernet or Green Ethernet: usually fine, occasionally the cause of a link that drops or stalls.</td><td>Turn them off if you see that.</td></tr>
+  <tr><td><strong>Windows may switch the adapter off</strong> (information)</td><td>The Windows default. If the connection drops after the PC has been idle or asleep, this is a prime suspect.</td><td>Device Manager → Network adapters → the adapter → Power Management → clear "Allow the computer to turn off this device to save power".</td></tr>
+</table></div>
+<p>The Dashboard's <a href="#d-computer">This computer</a> card shows the adapter in use on its <strong>link</strong> row, with a warning when there is something to check.</p>
+
 <h3 id="pb-timesync">Clock &amp; time sync</h3>
 <p>Measures your clock against <code>time.windows.com</code>. Within a second is healthy. A clock that is <em>minutes</em> out breaks things that seem unrelated: every HTTPS site shows certificate errors (certificates look expired or not yet valid), and logins to work accounts fail (Kerberos allows five minutes). The second step shows where the clock syncs from; on a home PC the Windows Time service is usually idle between scheduled syncs, which is normal. If the clock keeps drifting back, the motherboard battery may be failing.</p>
 
@@ -1405,6 +1433,20 @@ neighbor-guest 2.4 GHz       8 55%    Open          n        5c:e3:0e:11:22:33 o
 <span class="hl">A4-6B-B6-12-34-56</span>   \Device\Tcpip_{8E1F...}
 00-1C-42-00-00-08   Media disconnected</pre>
   <p><strong>Linux / macOS:</strong> <code>ip link</code>.</p>
+</article>
+
+<article class="cmd" id="cmd-adapter-details">
+  <h4><code>Network adapter details</code> <span class="tag">PS</span> <span class="tag run">runnable</span></h4>
+  <p>Every connected network adapter — the Wi-Fi card and the Ethernet port — and the settings behind most "it's slow" and "it keeps dropping" problems that no speed test explains: how old the <strong>driver</strong> is, the <strong>link speed</strong> and (for a cable) <strong>duplex</strong>, the Wi-Fi standards the card <strong>supports</strong> against what it is <strong>set to</strong> and connected with, its advanced settings (band, channel width, roaming, power saving), and whether Windows is allowed to <strong>switch it off to save power</strong>. It only reads; it changes nothing. The <a href="#pb-adapter">adapter playbook</a> turns the same output into findings.</p>
+  <pre>Ethernet - Realtek PCIe GbE Family Controller   (carries your internet traffic)
+  Link        : <span class="hl">100 Mbps, full duplex</span>        <span class="dim">← a gigabit port at 100 Mbps: suspect the cable</span>
+  Driver      : 10.1 from 2019-03-01 (Realtek), 7.5 years old
+  Power saving: Windows may turn this adapter off to save power
+  Settings    :
+    Speed &amp; Duplex                    Auto Negotiation
+    Energy-Efficient Ethernet         Enabled</pre>
+  <p>Windows 11 withholds the <em>current</em> Wi-Fi connection — standard, band, signal — from programs unless Location services are on; the card's capabilities and the link speed are still shown.</p>
+  <p><strong>Linux / macOS:</strong> <code>ethtool &lt;interface&gt;</code> for speed, duplex and driver; <code>iw dev &lt;interface&gt; link</code> for the Wi-Fi link.</p>
 </article>
 
 <article class="cmd" id="cmd-proxy-settings">
@@ -2294,7 +2336,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.32.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.33.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>

@@ -18,6 +18,7 @@ window.NetDeckDashboard = (() => {
     { key: 'wifi', cmd: 'netsh', check: 'wlan' },
     { key: 'os', cmd: 'os-health', check: 'osHealth' },
     { key: 'fw', cmd: 'netsh', preset: 'advfirewall-show-allprofiles', check: 'firewall' },
+    { key: 'adapter', cmd: 'adapter-details', check: 'adapters' },
   ];
   const STATE = { pass: 'ok', warn: 'warn', fail: 'err', info: 'idle' };
   const TONE = { pass: 'ok', warn: 'warn', fail: 'err' };
@@ -53,6 +54,7 @@ window.NetDeckDashboard = (() => {
     els = { view: D.$('view-dashboard'), strip: D.$('dash-strip'), grid: D.$('dash-grid'), status: D.$('dash-status'), refresh: D.$('dash-refresh'), off: D.$('dash-static') };
     els.refresh.addEventListener('click', () => refresh());
     els.view.addEventListener('click', onClick);
+    els.view.addEventListener('change', (e) => { const a = e.target.closest('[data-alert]'); if (a) alertChange(a); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && shown) pollTraffic(); });
     try { localStorage.removeItem('netdeck.dashboard.collapsed'); } catch (e) { /* 1.25.1 remembered folded cards; they now start folded every time */ }
     // snapshot: a small dialog for the anonymize choice, then one HTML file
@@ -326,11 +328,16 @@ window.NetDeckDashboard = (() => {
   function computerCard(ctx) {
     const T = snap.tiles;
     const t = T.ip, info = t && t.info, w = T.wifi && T.wifi.data, os = T.os && T.os.data;
+    const ad = T.adapter && T.adapter.data && T.adapter.data.main;
     const oui = window.NetDeckOui;
     const rows = [];
     const row = (k, v, small) => { if (v) rows.push(`<dt>${esc(k)}</dt><dd>${esc(v)}${small ? ` <small>${esc(small)}</small>` : ''}</dd>`); };
     row('host', (info && info.host) || ctx.hostname);
     row('adapter', (info && info.adapter) || ctx.adapter, info && info.description);
+    if (ad) {
+      const issues = (ad.findings || []).filter((x) => x.tone === 'warn' || x.tone === 'fail').length;
+      row('link', `${ad.link}${ad.kind === 'wired' && ad.duplex != null ? (ad.duplex ? ' full duplex' : ' HALF duplex') : ''}`, `driver ${ad.driver.date || '—'}${issues ? ` · ⚠ ${issues} thing${issues === 1 ? '' : 's'} to check — see the adapter playbook` : ''}`);
+    }
     row('ip', (info && info.ip) || ctx.ip, info && info.mask ? `mask ${info.mask}` : '');
     row('gateway', (info && info.gateway) || ctx.gateway);
     row('dns', ((info && info.dns.length) ? info.dns : (ctx.dns || [])).join(', '));
@@ -341,7 +348,7 @@ window.NetDeckDashboard = (() => {
     if (info && info.ipv6) row('ipv6', info.ipv6);
     if (os) { row('os', os.os, os.version); row('up', `${os.uptime} days`, `memory ${os.usedPct}% used · ${os.free} of ${os.total} GB free`); }
     const body = rows.length ? `<dl class="dash-kv">${rows.join('')}</dl>` : '<p class="dash-empty">Press Refresh to read this computer\'s configuration.</p>';
-    const foot = `<span>ipconfig /all · netsh wlan show interfaces · Win32_OperatingSystem${t ? ` · ${ago(t.at)}` : ''}</span><span class="dash-links">${btn('ipconfig /all', 'ipconfig-all')}${btn('OS', 'os-health')}</span>`;
+    const foot = `<span>ipconfig /all · netsh wlan show interfaces · Win32_OperatingSystem${t ? ` · ${ago(t.at)}` : ''}</span><span class="dash-links">${btn('ipconfig /all', 'ipconfig-all')}${btn('OS', 'os-health')}${pbBtn('Adapter', 'adapter')}</span>`;
     return card('This computer', ctx.admin ? 'admin' : '', body, foot);
   }
 
@@ -704,10 +711,17 @@ window.NetDeckDashboard = (() => {
   // traffic and Wi-Fi are sampled here while the card is open.
   const SN = () => window.NetDeckSensors;
   let sstate = null, stimer = null, sbusy = false, spage = null, swifiAt = 0, swifiNote = '', sround = 0;
+  let salerts = false, slastEvent = null;   // the Alerts panel is open; the newest alert event already seen
   const newPage = () => ({ down: SN().acc(), up: SN().acc(), sig: SN().acc(), rx: SN().acc(), tx: SN().acc(), hist: [], sampler: null, adapter: '' });
   async function pollSensors() {
     if (!window.NetDeckAPI || !window.NetDeckAPI.sensors || !D.canRun()) return;
     try { sstate = await window.NetDeckAPI.sensors(); } catch (e) { sstate = null; }
+    const ev = (sstate && sstate.alertEvents) || [];
+    const newest = ev.length ? ev[ev.length - 1].t : 0;
+    if (slastEvent !== null && !window.__TAURI__ && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      for (const e of ev) if (e.t > slastEvent) { try { new Notification(e.title, { body: e.text }); } catch (x) { /* blocked */ } }
+    }
+    slastEvent = newest;
     // traffic every other round (4 s), Wi-Fi every 15 s — only while the card is open
     if (!collapsed.has('sensors') && shown && (sround++ % 2 === 0)) await samplePage();
     if (shown) patchSensors();
@@ -750,11 +764,13 @@ window.NetDeckDashboard = (() => {
   function stopSensors() { clearInterval(stimer); stimer = null; }
   function patchSensors() {
     const el = els && els.grid.querySelector('#dash-sensors');
+    if (el && document.activeElement && el.contains(document.activeElement) && document.activeElement.matches('input')) return;
     if (el) el.outerHTML = sensorsCard();
   }
   async function sensorsAction(what) {
     const api = window.NetDeckAPI;
     if (what === 'mini') { if (api.openMini) api.openMini().catch(() => {}); return; }
+    if (what === 'alerts') { salerts = !salerts; patchSensors(); return; }
     if (what === 'reset') {
       try { sstate = await api.sensorsReset(); } catch (e) { /* keep the old figures */ }
       spage = newPage();
@@ -774,7 +790,7 @@ window.NetDeckDashboard = (() => {
     const pct = (v) => (v == null ? '—' : v === 0 ? '0' : v < 0.1 ? '<0.1' : v.toFixed(v < 10 ? 1 : 0));
     const [tone, label] = SN_STATE[(s && s.state) || 'unknown'] || SN_STATE.unknown;
     const pill = s ? `<span class="dash-pill" data-state="${tone}">${esc(label)} · ${esc(SN().clock(s.now - s.since))}</span>` : '';
-    const btns = `<button type="button" class="tbtn tbtn-sm" data-sensors="reset" title="Start the minimum, maximum and average over from now">Reset</button><button type="button" class="tbtn tbtn-sm" data-sensors="mini" title="A small window with the live graph${window.__TAURI__ ? ' that stays on top of other windows' : ''}">Pop out</button>`;
+    const btns = `<button type="button" class="tbtn tbtn-sm" data-sensors="reset" title="Start the minimum, maximum and average over from now">Reset</button><button type="button" class="tbtn tbtn-sm" data-sensors="mini" title="A small window with the live graph${window.__TAURI__ ? ' that stays on top of other windows' : ''}">Pop out</button><button type="button" class="tbtn tbtn-sm${salerts ? ' is-on' : ''}" data-sensors="alerts" aria-expanded="${salerts}" title="Get a notification when a reading crosses a limit you set">Alerts${s && s.alertActive && s.alertActive.some(Boolean) ? ' ⚠' : ''}</button>`;
     if (folded) {
       const sum = !s ? 'starting…' : `internet ${SN().fmtMs(s.internet.last)} ms (${SN().fmtMs(s.internet.min)}–${SN().fmtMs(s.internet.max)}) · router ${SN().fmtMs(s.router.last)} ms · loss ${pct(s.internet.lossPct)}%`;
       return `<article class="card dash-card dash-wide is-collapsed" id="dash-sensors"><header class="card-head"><h2 class="card-name">Network sensors</h2>${pill}<span class="dash-collapsed-sum">${esc(sum)}</span>${manualBtn('d-sensors')}${collapseBtn('sensors')}</header></article>`;
@@ -808,7 +824,33 @@ window.NetDeckDashboard = (() => {
     const table = `<div class="dash-path-wrap"><table class="dash-sn"><thead><tr><th>sensor</th><th>current</th><th>minimum</th><th>maximum</th><th>average</th><th></th><th>last 5 min</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     const tray = s.trayNative ? `<button type="button" class="tbtn tbtn-sm${s.tray ? ' is-on' : ''}" data-sensors="tray" title="${s.tray ? 'The tray icon shows the connection as a green, amber or red light, with the latest pings in its tooltip (on)' : 'Show the connection as a green, amber or red light on the tray icon'}">Tray light: ${s.tray ? 'on' : 'off'}</button>` : '';
     const foot = `<footer class="dash-foot"><span>minimum, maximum and average since ${esc(clockShort(s.since))} · pings every ${Math.round((s.intervalMs || 5000) / 1000)} s${s.trayNative ? ', and keep counting with the window closed to the tray' : ''} · traffic and Wi-Fi while this card is open</span><span class="dash-links">${tray}</span></footer>`;
-    return `<article class="card dash-card dash-wide" id="dash-sensors">${head}${table}${foot}</article>`;
+    return `<article class="card dash-card dash-wide" id="dash-sensors">${head}${table}${salerts ? alertsPanel(s) : ''}${foot}</article>`;
+  }
+
+  /* Four limits; each sends a notification when it is crossed and again when things are back to normal. */
+  function alertsPanel(s) {
+    const a = s.alerts;
+    if (!a) return '<p class="dash-empty">Alerts need the desktop app or the local server.</p>';
+    const act = s.alertActive || [];
+    const num = (k, f, min, max, step) => `<input type="number" class="sn-num" data-alert="${k}" data-field="${f}" value="${esc(String(a[k][f]))}" min="${min}" max="${max}" step="${step}">`;
+    const rule = (k, i, text) => `<label class="sn-rule${act[i] ? ' is-tripped' : ''}"><input type="checkbox" data-alert="${k}" data-field="on"${a[k].on ? ' checked' : ''}> <span>${text}</span>${act[i] ? '<span class="dash-pill" data-state="err">now</span>' : ''}</label>`;
+    const rows = [
+      rule('ping', 0, `Internet ping above ${num('ping', 'limit', 10, 5000, 10)} ms for ${num('ping', 'secs', 5, 3600, 5)} s`),
+      rule('router', 1, `Router ping above ${num('router', 'limit', 2, 5000, 5)} ms for ${num('router', 'secs', 5, 3600, 5)} s`),
+      rule('loss', 2, `Internet loss above ${num('loss', 'limit', 0.5, 100, 0.5)} % over a minute`),
+      rule('down', 3, `Internet down for ${num('down', 'secs', 5, 3600, 5)} s`),
+    ].join('');
+    const ev = (s.alertEvents || []).slice(-6).reverse().map((e) => `<li class="dash-check" data-status="${e.kind === 'alert' ? 'fail' : 'pass'}"><span class="dash-dot"></span><span class="dash-check-name">${esc(when(e.t))}</span><span class="dash-check-sum">${esc(e.title.replace(/^NetDeck: /, ''))} — ${esc(e.text)}</span></li>`).join('');
+    const where = s.trayNative ? 'A desktop notification each time — even with NetDeck closed to the tray.' : 'A browser notification each time, while this page is open (allow notifications when asked).';
+    return `<div class="sn-alerts"><h3 class="dash-sub-h">Alerts</h3><div class="sn-rules">${rows}</div><p class="dash-sub">${where} Another when the reading is back to normal.</p>${ev ? `<ul class="dash-checks sn-events">${ev}</ul>` : ''}</div>`;
+  }
+  async function alertChange(el) {
+    const k = el.dataset.alert, f = el.dataset.field;
+    const v = f === 'on' ? el.checked : Number(el.value);
+    if (f === 'on' && v && !window.__TAURI__ && typeof Notification !== 'undefined' && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch (e) { /* declined */ } }
+    try { const a = await window.NetDeckAPI.alertsSet({ [k]: { [f]: v } }); if (sstate) sstate = { ...sstate, alerts: a, alertActive: [false, false, false, false] }; } catch (e) { /* unchanged */ }
+    if (document.activeElement && document.activeElement.blur && f !== 'on') document.activeElement.blur();
+    patchSensors();
   }
 
   /* ================= live path: the path-monitor command, read as it streams ================= */

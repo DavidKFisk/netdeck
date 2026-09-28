@@ -27,6 +27,7 @@ window.NetDeckAPI = (() => {
       // Network sensors: the watcher's readings since the last reset and its recent history (asking keeps it at 2 s).
       sensors: () => invoke('sensors_status'),
       sensorsReset: () => invoke('sensors_reset'),
+      alertsSet: (alerts) => invoke('alerts_set', { alerts }),
       // The tray icon as a connection light; the mini monitor is a small always-on-top window.
       traySet: (enabled) => invoke('tray_status_set', { enabled: Boolean(enabled) }),
       onTrayStatus: (cb) => (tauri.event?.listen ? tauri.event.listen('traystatus', (e) => cb(e.payload)) : Promise.resolve(null)),
@@ -98,6 +99,7 @@ window.NetDeckAPI = (() => {
     onAutostart: null,
     sensors: () => request('/api/sensors').then(jsonOrThrow),
     sensorsReset: () => request('/api/sensors/reset', { method: 'POST' }).then(jsonOrThrow),
+    alertsSet: (alerts) => request('/api/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(alerts || {}) }).then(jsonOrThrow),
     traySet: null,
     onTrayStatus: null,
     // no always-on-top window in a browser: a small popup window instead

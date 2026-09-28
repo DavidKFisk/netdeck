@@ -99,6 +99,52 @@ impl Current {
 }
 
 const LAYERS: [&str; 4] = ["isp", "lan", "offline", "unknown"];
+const RULES: [&str; 4] = ["ping", "router", "loss", "down"];
+
+/// One alert: on or off, its limit (ms or %), and how long it must hold (s).
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Rule {
+    on: bool,
+    limit: f64,
+    secs: u64,
+}
+
+impl Default for Rule {
+    fn default() -> Self {
+        Rule { on: false, limit: 0.0, secs: 30 }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Alerts {
+    /// internet ping above limit ms for secs
+    ping: Rule,
+    /// router ping above limit ms for secs
+    router: Rule,
+    /// internet loss above limit % over the last minute
+    loss: Rule,
+    /// no internet reply for secs
+    down: Rule,
+}
+
+impl Default for Alerts {
+    fn default() -> Self {
+        Alerts {
+            ping: Rule { on: false, limit: 150.0, secs: 30 },
+            router: Rule { on: false, limit: 50.0, secs: 30 },
+            loss: Rule { on: false, limit: 2.0, secs: 60 },
+            down: Rule { on: false, limit: 0.0, secs: 20 },
+        }
+    }
+}
+
+impl Alerts {
+    fn any(&self) -> bool {
+        self.ping.on || self.router.on || self.loss.on || self.down.on
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -115,11 +161,12 @@ struct Log {
     /// the router has answered a ping at some point, so "no answer" from it means something
     gateway_answers: bool,
     current: Option<Current>,
+    alerts: Alerts,
 }
 
 impl Default for Log {
     fn default() -> Self {
-        Log { enabled: false, notify: false, tray: true, coverage: vec![], outages: vec![], blips: vec![], gateway_answers: false, current: None }
+        Log { enabled: false, notify: false, tray: true, coverage: vec![], outages: vec![], blips: vec![], gateway_answers: false, current: None, alerts: Alerts::default() }
     }
 }
 
@@ -195,6 +242,10 @@ struct Stats {
     tick: u64,
     gateway: Option<String>,
     state: &'static str,
+    /// alerts: which are tripped now, since when, and the recent alert / all-clear events
+    active: [bool; 4],
+    active_since: [u64; 4],
+    events: VecDeque<Value>,
 }
 
 struct TrayIcons {
@@ -324,6 +375,9 @@ impl Monitor {
             "ring": ring,
             "tray": self.log.lock().unwrap().tray,
             "trayNative": true,
+            "alerts": self.log.lock().unwrap().alerts,
+            "alertActive": st.active,
+            "alertEvents": st.events,
         })
     }
 
@@ -337,6 +391,116 @@ impl Monitor {
             st.prev_internet = None;
         }
         self.sensors(app)
+    }
+
+    /// Merge new alert settings (any subset of rules and fields) and start watching if one is on.
+    pub fn set_alerts(self: &Arc<Self>, app: &AppHandle, input: &Value) -> Value {
+        {
+            let mut log = self.log.lock().unwrap();
+            let mut cur = serde_json::to_value(&log.alerts).unwrap_or(json!({}));
+            if let (Some(c), Some(i)) = (cur.as_object_mut(), input.as_object()) {
+                for (k, v) in i {
+                    if let (Some(dst), Some(src)) = (c.get_mut(k).and_then(|x| x.as_object_mut()), v.as_object()) {
+                        for (fk, fv) in src {
+                            dst.insert(fk.clone(), fv.clone());
+                        }
+                    }
+                }
+            }
+            if let Ok(a) = serde_json::from_value::<Alerts>(cur) {
+                log.alerts = sane(a);
+            }
+            self.save(&log);
+        }
+        {
+            // a rule switched off or changed starts over
+            let mut st = self.stats.lock().unwrap();
+            st.active = [false; 4];
+        }
+        self.start(app);
+        json!(self.log.lock().unwrap().alerts)
+    }
+
+    fn check_alerts(&self, app: &AppHandle, now: u64) {
+        let cfg = self.log.lock().unwrap().alerts.clone();
+        if !cfg.any() {
+            return;
+        }
+        let mut notes: Vec<(String, String)> = vec![];
+        {
+            let mut st = self.stats.lock().unwrap();
+            let window = |ring: &VecDeque<(u64, Option<f64>, Option<f64>, bool)>, secs: u64| -> Vec<(u64, Option<f64>, Option<f64>, bool)> {
+                ring.iter().filter(|e| now.saturating_sub(e.0) <= secs * 1000).cloned().collect()
+            };
+            let mean = |v: &[f64]| if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 };
+            // (rule index, on, exceeded, cleared, alert title, alert text, clear title, clear text)
+            let mut results: Vec<(usize, bool, bool, bool, String, String, String, String)> = vec![];
+            for (idx, rule, pick) in [(0usize, &cfg.ping, 2u8), (1, &cfg.router, 1)] {
+                let w = window(&st.ring, rule.secs.max(5));
+                let ok: Vec<f64> = w.iter().filter(|e| pick == 2 || e.3).filter_map(|e| if pick == 2 { e.2 } else { e.1 }).collect();
+                let covered = w.first().map_or(false, |e| now.saturating_sub(e.0) * 10 >= rule.secs * 1000 * 7);
+                let exceeded = covered && ok.len() >= 2 && ok.iter().all(|v| *v > rule.limit);
+                let tail: Vec<f64> = ok.iter().rev().take(3).cloned().collect();
+                let cleared = tail.len() >= 2 && tail.iter().all(|v| *v <= rule.limit);
+                let what = if pick == 2 { "Internet ping" } else { "Router ping" };
+                results.push((
+                    idx, rule.on, exceeded, cleared,
+                    format!("NetDeck: {} high", what.to_lowercase()),
+                    format!("{} ms on average over the last {} s (your limit: {} ms).", mean(&ok).round(), rule.secs, rule.limit),
+                    format!("NetDeck: {} back to normal", what.to_lowercase()),
+                    format!("{} ms now.", tail.first().map_or(0.0, |v| v.round())),
+                ));
+            }
+            {
+                let rule = &cfg.loss;
+                let w = window(&st.ring, 60);
+                let pct = if w.len() >= 10 { 100.0 * w.iter().filter(|e| e.2.is_none()).count() as f64 / w.len() as f64 } else { 0.0 };
+                results.push((
+                    2, rule.on, w.len() >= 10 && pct >= rule.limit.max(0.1), pct < rule.limit / 2.0,
+                    "NetDeck: packet loss".to_string(),
+                    format!("{}% of internet pings lost in the last minute (your limit: {}%).", pct.round(), rule.limit),
+                    "NetDeck: packet loss has stopped".to_string(),
+                    format!("{}% lost in the last minute.", pct.round()),
+                ));
+            }
+            {
+                let rule = &cfg.down;
+                let down_for = st.fail_start.map_or(0, |s| now.saturating_sub(s));
+                let side = if st.router.last.is_some() { "past your router" } else { "your router is not answering either" };
+                results.push((
+                    3, rule.on, down_for >= rule.secs.max(5) * 1000, st.fail_start.is_none(),
+                    "NetDeck: internet down".to_string(),
+                    format!("No internet reply for {} — {}.", duration_text(down_for), side),
+                    "NetDeck: internet is back".to_string(),
+                    String::new(),
+                ));
+            }
+            for (idx, on, exceeded, cleared, at, ab, ct, cb) in results {
+                if !on {
+                    st.active[idx] = false;
+                    continue;
+                }
+                if !st.active[idx] && exceeded {
+                    st.active[idx] = true;
+                    st.active_since[idx] = now;
+                    st.events.push_back(json!({ "t": now, "rule": RULES[idx], "kind": "alert", "title": at, "text": ab }));
+                    notes.push((at, ab));
+                } else if st.active[idx] && cleared {
+                    st.active[idx] = false;
+                    let lasted = duration_text(now.saturating_sub(st.active_since[idx]));
+                    let body = if cb.is_empty() { format!("It lasted {lasted}.") } else { format!("{cb} It lasted {lasted}.") };
+                    st.events.push_back(json!({ "t": now, "rule": RULES[idx], "kind": "clear", "title": ct, "text": body }));
+                    notes.push((ct, body));
+                }
+            }
+            while st.events.len() > 30 {
+                st.events.pop_front();
+            }
+        }
+        for (title, body) in notes {
+            let _ = app.notification().builder().title(title).body(body).show();
+        }
+        let _ = app.emit("alerts", json!({}));
     }
 
     pub fn tray_enabled(&self) -> bool {
@@ -358,7 +522,7 @@ impl Monitor {
 
     fn should_run(&self) -> bool {
         let log = self.log.lock().unwrap();
-        log.enabled || log.tray || now_ms() < self.live_until.load(Ordering::SeqCst)
+        log.enabled || log.tray || log.alerts.any() || now_ms() < self.live_until.load(Ordering::SeqCst)
     }
 
     /// Starts the watching thread if something needs it (log, tray or a live view) and it is not already running.
@@ -450,6 +614,7 @@ impl Monitor {
         }
 
         self.record_sensors(now, tick, gateway.clone(), gw, internet);
+        self.check_alerts(app, now);
 
         let mut ended: Option<Outage> = None;
         let mut started = false;
@@ -592,6 +757,18 @@ impl Monitor {
         tip.truncate(120);
         let _ = tray.set_tooltip(Some(tip));
     }
+}
+
+/// Keep alert settings within sensible bounds.
+fn sane(mut a: Alerts) -> Alerts {
+    a.ping.limit = a.ping.limit.clamp(10.0, 5000.0);
+    a.ping.secs = a.ping.secs.clamp(5, 3600);
+    a.router.limit = a.router.limit.clamp(2.0, 5000.0);
+    a.router.secs = a.router.secs.clamp(5, 3600);
+    a.loss.limit = a.loss.limit.clamp(0.5, 100.0);
+    a.loss.secs = 60;
+    a.down.secs = a.down.secs.clamp(5, 3600);
+    a
 }
 
 /// The app icon with a colored dot in the lower right corner, for each state.

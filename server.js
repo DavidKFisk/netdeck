@@ -295,6 +295,17 @@ async function handleHealth(req, res) {
 const OUTAGE_FILE = path.join(DATA_DIR, 'outage-log.json');
 const OUTAGE = { interval: 5000, liveInterval: 2000, liveHold: 12000, gap: 20000, grace: 60000, downMs: 10000, keep: 90 * 864e5, ctxEvery: 600000, saveEvery: 60000, ring: 900 };
 const OUTAGE_LAYERS = ['isp', 'lan', 'offline', 'unknown'];
+/* alerts: internet ping above limit ms for secs, router ping likewise, internet loss above limit % over the last
+   minute, no internet reply for secs — the same rules and defaults as outage.rs */
+const ALERT_RULES = ['ping', 'router', 'loss', 'down'];
+const ALERT_DEFAULTS = { ping: { on: false, limit: 150, secs: 30 }, router: { on: false, limit: 50, secs: 30 }, loss: { on: false, limit: 2, secs: 60 }, down: { on: false, limit: 0, secs: 20 } };
+const clampN = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : d);
+function alertsSane(a) {
+  const r = (k, lo, hi, slo, shi) => ({ on: Boolean(a[k] && a[k].on), limit: clampN(a[k] && a[k].limit, lo, hi, ALERT_DEFAULTS[k].limit), secs: clampN(a[k] && a[k].secs, slo, shi, ALERT_DEFAULTS[k].secs) });
+  return { ping: r('ping', 10, 5000, 5, 3600), router: r('router', 2, 5000, 5, 3600), loss: { ...r('loss', 0.5, 100, 60, 60) }, down: r('down', 0, 0, 5, 3600) };
+}
+const alertsAny = (a) => ALERT_RULES.some((k) => a[k] && a[k].on);
+const durText = (ms) => { const s = Math.round(ms / 1000); return s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`; };
 const outageDominant = (c) => { let best = 3; for (let i = 0; i < 4; i++) if (c.counts[i] > c.counts[best] || (c.counts[i] === c.counts[best] && i < best)) best = i; return OUTAGE_LAYERS[best]; };
 const outageDown = (c) => (c.last - c.start) + (c.tick || OUTAGE.interval) >= OUTAGE.downMs;
 const outageClose = (c, end, open) => ({ start: c.start, end, layer: outageDominant(c), fails: c.fails, ...(c.adapter ? { adapter: c.adapter } : {}), ...(c.gateway ? { gateway: c.gateway } : {}), ...(open ? { open: true } : {}) });
@@ -308,6 +319,7 @@ function outageLoad() {
   let log = {};
   try { log = JSON.parse(fs.readFileSync(OUTAGE_FILE, 'utf8')); } catch { /* none yet */ }
   log = { enabled: false, notify: false, tray: true, coverage: [], outages: [], blips: [], gatewayAnswers: false, current: null, ...log };
+  log.alerts = alertsSane({ ...ALERT_DEFAULTS, ...(log.alerts || {}) });
   if (log.current) { if (outageDown(log.current)) log.outages.push(outageClose(log.current, log.current.last, true)); log.current = null; }
   outagePrune(log, Date.now());
   return log;
@@ -337,7 +349,33 @@ function accAdd(a, v, now) {
   a.last = v; a.min = a.min == null ? v : Math.min(a.min, v); a.max = a.max == null ? v : Math.max(a.max, v); a.sum += v; a.n++;
 }
 const accJson = (a) => ({ last: a.last, min: a.min, max: a.max, avg: a.n ? a.sum / a.n : null, sent: a.sent, lost: a.lost, lossPct: a.sent ? (100 * a.lost) / a.sent : 0, worstMinutePct: Math.max(a.worst, a.bSent >= 10 ? (100 * a.bLost) / a.bSent : 0) });
-const sensors = { since: Date.now(), router: newAcc(), internet: newAcc(), jitter: newAcc(), prevInternet: null, ring: [], failStart: null, tick: OUTAGE.interval, gateway: null, state: 'unknown' };
+const sensors = { since: Date.now(), router: newAcc(), internet: newAcc(), jitter: newAcc(), prevInternet: null, ring: [], failStart: null, tick: OUTAGE.interval, gateway: null, state: 'unknown', active: [false, false, false, false], activeSince: [0, 0, 0, 0], events: [] };
+function checkAlerts(now) {
+  const cfg = outage.alerts, s = sensors;
+  if (!alertsAny(cfg)) return;
+  const win = (secs) => s.ring.filter((e) => now - e[0] <= secs * 1000);
+  const mean = (v) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
+  const res = [];
+  for (const [idx, k, col, what] of [[0, 'ping', 2, 'Internet ping'], [1, 'router', 1, 'Router ping']]) {
+    const rule = cfg[k], w = win(Math.max(5, rule.secs));
+    const ok = w.map((e) => e[col]).filter((v) => v != null && v >= 0);
+    const covered = w.length && (now - w[0][0]) * 10 >= rule.secs * 1000 * 7;
+    const tail = ok.slice(-3).reverse();
+    res.push([idx, rule.on, covered && ok.length >= 2 && ok.every((v) => v > rule.limit), tail.length >= 2 && tail.every((v) => v <= rule.limit),
+      `NetDeck: ${what.toLowerCase()} high`, `${Math.round(mean(ok))} ms on average over the last ${rule.secs} s (your limit: ${rule.limit} ms).`,
+      `NetDeck: ${what.toLowerCase()} back to normal`, `${Math.round(tail[0] || 0)} ms now.`]);
+  }
+  { const rule = cfg.loss, w = win(60); const pct = w.length >= 10 ? (100 * w.filter((e) => e[2] == null).length) / w.length : 0;
+    res.push([2, rule.on, w.length >= 10 && pct >= Math.max(0.1, rule.limit), pct < rule.limit / 2, 'NetDeck: packet loss', `${Math.round(pct)}% of internet pings lost in the last minute (your limit: ${rule.limit}%).`, 'NetDeck: packet loss has stopped', `${Math.round(pct)}% lost in the last minute.`]); }
+  { const rule = cfg.down, downFor = s.failStart != null ? now - s.failStart : 0;
+    res.push([3, rule.on, downFor >= Math.max(5, rule.secs) * 1000, s.failStart == null, 'NetDeck: internet down', `No internet reply for ${durText(downFor)} — ${s.router.last != null ? 'past your router' : 'your router is not answering either'}.`, 'NetDeck: internet is back', '']); }
+  for (const [idx, on, exceeded, cleared, at, ab, ct, cb] of res) {
+    if (!on) { s.active[idx] = false; continue; }
+    if (!s.active[idx] && exceeded) { s.active[idx] = true; s.activeSince[idx] = now; s.events.push({ t: now, rule: ALERT_RULES[idx], kind: 'alert', title: at, text: ab }); }
+    else if (s.active[idx] && cleared) { s.active[idx] = false; const lasted = durText(now - s.activeSince[idx]); s.events.push({ t: now, rule: ALERT_RULES[idx], kind: 'clear', title: ct, text: cb ? `${cb} It lasted ${lasted}.` : `It lasted ${lasted}.` }); }
+  }
+  if (s.events.length > 30) s.events.splice(0, s.events.length - 30);
+}
 function recordSensors(now, tick, gateway, gw, internet) {
   const s = sensors;
   s.tick = tick; s.gateway = gateway || null;
@@ -358,6 +396,7 @@ function sensorsStatus() {
     router: accJson(s.router), internet: accJson(s.internet), jitter: accJson(s.jitter),
     downSince: s.failStart != null && now - s.failStart + s.tick >= OUTAGE.downMs ? s.failStart : null,
     ring: s.ring, tray: false, trayNative: false,
+    alerts: outage.alerts, alertActive: s.active, alertEvents: s.events,
   };
 }
 
@@ -387,6 +426,7 @@ async function outageTick(tick) {
   ]);
   if (internet == null && !failing) { ctx = await getContext(true).catch(() => ctx) || ctx; outageRun.lastCtx = now; }
   recordSensors(now, tick, ctx.gateway, gw, internet);
+  checkAlerts(now);
   if (!logging) return;
   const settling = now - outageRun.watchStart < (test !== null ? 0 : OUTAGE.grace);
   if (gw != null) outage.gatewayAnswers = true;
@@ -403,7 +443,7 @@ async function outageTick(tick) {
   }
   if (ended || started || now - outageRun.lastSave > OUTAGE.saveEvery) { outagePrune(outage, now); outageSave(); outageRun.lastSave = now; }
 }
-const outageShouldRun = () => outage.enabled || Date.now() < liveUntil;
+const outageShouldRun = () => outage.enabled || alertsAny(outage.alerts) || Date.now() < liveUntil;
 function outageStart() {
   if (!outageShouldRun() || outageRunning) return;
   outageRunning = true;
@@ -434,6 +474,20 @@ async function handleOutage(req, res) {
     outageSave();
     outageStart();
     json(res, 200, outageStatus());
+  } catch (e) {
+    res.writeHead(400).end('Invalid request.');
+  }
+}
+async function handleAlerts(req, res) {
+  try {
+    const body = JSON.parse(await readBody(req) || '{}');
+    const merged = { ...outage.alerts };
+    for (const k of ALERT_RULES) if (body[k] && typeof body[k] === 'object') merged[k] = { ...merged[k], ...body[k] };
+    outage.alerts = alertsSane(merged);
+    sensors.active = [false, false, false, false];
+    outageSave();
+    outageStart();
+    json(res, 200, outage.alerts);
   } catch (e) {
     res.writeHead(400).end('Invalid request.');
   }
@@ -643,6 +697,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/outage' && ['GET', 'POST', 'DELETE'].includes(req.method)) return handleOutage(req, res);
   if (url.pathname === '/api/sensors' && req.method === 'GET') return handleSensors(req, res, false);
   if (url.pathname === '/api/sensors/reset' && req.method === 'POST') return handleSensors(req, res, true);
+  if (url.pathname === '/api/alerts' && req.method === 'POST') return handleAlerts(req, res);
   if (req.method === 'GET') return serveStatic(req, res);
   res.writeHead(405).end('Method not allowed');
 });
