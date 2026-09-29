@@ -216,7 +216,7 @@ window.NetDeckDashboard = (() => {
       : busy ? 'Checking…' : 'No check yet — press Refresh';
     const ctx = D.context() || {};
     els.strip.innerHTML = chips(ctx).join('');
-    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), sensorsCard(), speedCard(), routeCard(), postureCard(), pathCard(), outageCard(), latencyCard(), trafficCard()].join('');
+    els.grid.innerHTML = [computerCard(ctx), connectionCard(ctx), lanCard(ctx), speedCard(), routeCard(), postureCard(), sensorsCard(), pathCard(), outageCard(), latencyCard(), trafficCard()].join('');
   }
 
   function chip({ key, label, val, sub, state, title, run, pb, params, preset }) {

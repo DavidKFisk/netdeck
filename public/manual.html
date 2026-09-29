@@ -199,14 +199,14 @@
       <li class="sub"><a href="#d-computer">This computer</a></li>
       <li class="sub"><a href="#d-connection">Connection</a></li>
       <li class="sub"><a href="#d-network">Network</a></li>
-      <li class="sub"><a href="#d-sensors">Network sensors</a></li>
-      <li class="sub"><a href="#d-latency">Latency &amp; loss</a></li>
       <li class="sub"><a href="#d-speed">Speed tests</a></li>
       <li class="sub"><a href="#d-route">Route to the internet</a></li>
-      <li class="sub"><a href="#d-path">Live path</a></li>
-      <li class="sub"><a href="#d-traffic">Traffic</a></li>
       <li class="sub"><a href="#d-posture">Security posture</a></li>
+      <li class="sub"><a href="#d-sensors">Network sensors</a></li>
+      <li class="sub"><a href="#d-path">Live path</a></li>
       <li class="sub"><a href="#d-outages">Outage log</a></li>
+      <li class="sub"><a href="#d-latency">Latency &amp; loss</a></li>
+      <li class="sub"><a href="#d-traffic">Traffic</a></li>
       <li><a href="#calculator">Network calculator</a></li>
       <li class="sub"><a href="#nc-basics">How IP addresses work</a></li>
       <li class="sub"><a href="#nc-subnetting">Subnetting, step by step</a></li>
@@ -258,7 +258,7 @@
     <li>The Manual and Cheat sheet open in a window of their own, so you can read and work side by side; close it whenever you like. The book icon on any card opens the manual at that command.</li>
     <li>You never need a terminal or Node.js. If something asks for administrator rights, use the <strong>Run as admin</strong> button beside the STANDARD USER badge.</li>
     <li>Commands you add yourself are kept in your user profile, so they survive updates. To update, run a newer installer over the top; to remove, use <em>Settings → Apps → NetDeck</em>.</li>
-    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.33.0</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.33.0</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
+    <li><strong>Two installers.</strong> <code>NetDeck_<span class="nd-version">1.33.1</span>_x64-setup.exe</code> is the everyday one (about 5 MB). The app draws its window with Microsoft Edge WebView2, which Windows 11 and up-to-date Windows 10 already have; on a PC without it, this installer downloads it from Microsoft. <code>NetDeck_<span class="nd-version">1.33.1</span>_x64-offline-setup.exe</code> (about 210 MB) carries WebView2 inside, so it installs with no internet at all — use it on air-gapped machines, or on a PC whose network is the thing you are trying to fix. Both install the same app.</li>
   </ul>
 </div>
 
@@ -284,7 +284,7 @@
 
 <h3 id="s-header">Header &amp; search</h3>
 <div class="ui">
-  <div>&gt;_ NetDeck · v<span class="nd-version">1.33.0</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
+  <div>&gt;_ NetDeck · v<span class="nd-version">1.33.1</span></div><div>The app name and the version you are running (hover it to see which edition: desktop app, local server or hosted reference). Quote the version when reporting a problem; every edition built from the same source shows the same number.</div>
   <div>Search box</div><div>Type anything — a command name (<code>ping</code>), part of its syntax (<code>-ano</code>), or a word from its purpose (<code>cache</code>). The cards filter as you type. Press <kbd>/</kbd> anywhere on the page to jump into the box.</div>
   <div>Jump to… <kbd>Ctrl</kbd>+<kbd>K</kbd></div><div>The command palette. A pop-up search over every command <em>and</em> playbook. With nothing typed it lists your pinned items first, then the commands and playbooks you ran most recently, then every playbook and every command, so it doubles as a scrollable index; typing narrows it. Arrow keys move, <kbd>Enter</kbd> jumps straight to that card (clearing any filters that were hiding it) and puts the cursor in its host box or on its run button, so <kbd>Ctrl</kbd>+<kbd>K</kbd>, "trac", <kbd>Enter</kbd>, type a host, <kbd>Enter</kbd> runs a traceroute without touching the mouse.</div>
   <div>Calculator icon</div><div>Opens the <a href="#calculator">network calculator</a>: subnets, IPv6, MAC addresses, bandwidth and latency, Wi-Fi planning, certificate expiry, password strength, hashes and more — all worked out in the page.</div>
@@ -474,16 +474,39 @@
   <tr><td><strong>manufacturer bars</strong></td><td>The devices grouped by who made them, from their MAC addresses. "private address (randomized)" is not a manufacturer: it is what phones, tablets and recent laptops do on Wi-Fi on purpose, so they cannot be tracked between networks.</td><td>A rough inventory. Six Amazon devices and four Wyze cameras is a smart home; twelve "unrecognized" is worth a scan with the table open.</td></tr>
 </table></div>
 
-<h3 id="d-latency">Latency &amp; loss</h3>
-<p><strong>Latency</strong> is how long a packet takes to get somewhere and back, in milliseconds; <strong>loss</strong> is the share of packets that never came back; <strong>jitter</strong> is how much the latency varies from one packet to the next. Downloads mostly care about speed; calls, games and remote desktop care about these three, and this card is where they show. It draws the same router and internet pings the context strip takes every ten seconds, kept for 24 hours.</p>
+<h3 id="d-speed">Speed tests</h3>
+<p>Every <a href="#cmd-speed-test">speed test</a> you run — from this card, the command, or a playbook — is kept here, up to a hundred, so you can see whether the line is getting better or worse rather than remembering one number.</p>
 <div class="tbl-wrap"><table>
   <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>the chart</strong></td><td>Time runs left to right for the chosen range (10m, 1h, 6h, 24h). The green line is the router, the gray line the internet; each point is the average of the pings in that slice of time. A red mark on the baseline means a ping in that slice got no reply — the taller the mark, the larger the share lost. Hover anywhere for the exact figures at that moment.</td><td>Two flat, low lines. The internet line sits above the router line by your ISP's delay. Spikes that appear on both lines started on your link (usually Wi-Fi); spikes only on the gray line started beyond your router. A gap is time NetDeck was closed or hidden — not a fault.</td></tr>
-  <tr><td><strong>router / internet</strong> — 3 ms avg · worst 28 ms · no loss</td><td>For the range shown: the average latency, the single worst ping, and the share lost.</td><td>Router: avg under 5 ms wired, under 20 ms Wi-Fi, worst not more than a few times the average. Internet: avg 10–40 ms. Any loss on the router line is a local problem; loss only on the internet line is the provider's.</td></tr>
-  <tr><td><strong>N samples</strong></td><td>How many ten-second pings fall in the range.</td><td>6 per minute while NetDeck is open and showing.</td></tr>
-  <tr><td><strong>Longer monitors</strong> — 180/180, 0 ms, jitter 0 ms</td><td>Results of <a href="#pb-dropouts">Does my connection drop out?</a>: one ping a second for three minutes to each of the router and the internet — answered/sent, average, jitter, and "loss runs" (several lost in a row, which is what a dropout feels like).</td><td>All answered, jitter under 10 ms to the router and under 30 ms to the internet, no loss runs. A monitor with loss runs on the internet leg only is the pattern of a flaky provider link.</td></tr>
+  <tr><td><strong>down / up</strong> — e.g. 234 / 46 Mbit/s</td><td>Download and upload throughput measured against Cloudflare's speed servers, in megabits per second — the unit on your ISP contract.</td><td>Close to what you pay for, on a cable. Wi-Fi typically gives a fraction of the plan; that is the Wi-Fi, not the ISP. Upload is usually much lower than download on cable and DSL, by design.</td></tr>
+  <tr><td><strong>idle ms</strong> — e.g. 22</td><td>The latency to the speed server when nothing else was happening: the baseline for the next figure.</td><td>Similar to the Internet tile.</td></tr>
+  <tr><td><strong>bufferbloat</strong> — A / B / C / D, +21 ms</td><td>How much the latency rose <em>while</em> the download and upload were running. A router that queues too much lets it climb by hundreds of milliseconds under load, so a call stutters whenever someone else downloads. A: under 30 ms; B: under 100; C: under 300 (noticeable); D: more (severe).</td><td>A or B. C or D is fixed by a router with smart queue management (SQM, sometimes sold as "QoS"), not by a faster plan.</td></tr>
+  <tr><td><strong>bars</strong></td><td>One pair per past run — green download, gray upload — oldest on the left. Hover a bar for that run's figures and the Cloudflare site it tested against (an airport code such as IAD or LHR: the nearest data center).</td><td>Bars of similar height. A slope downwards over weeks is a line problem worth showing the provider — the Snapshot does exactly that.</td></tr>
 </table></div>
-<p>This card, Traffic, Outage log and Live path start folded to their header, with a one-line summary, each time NetDeck opens (Live path unfolds by itself when you start a live run). The <strong>▸</strong> in the corner opens one for the rest of the session; <strong>▾</strong> folds it again.</p>
+<p><span class="btn">Clear</span> forgets the kept runs (they stay in History), for a fresh start after changing network or provider.</p>
+
+<h3 id="d-route">Route to the internet</h3>
+<p>A traceroute follows a packet hop by hop — each router it passes through on the way to 1.1.1.1 — and times each one. The card draws the last one as a chain. It is the map behind the Internet tile: <em>where</em> the delay is, not just how much.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
+  <tr><td><strong>the chain</strong> — 1 · 1 ms · 192.168.1.1 › 2 · 3 ms · 10.0.0.1 › …</td><td>One box per hop: its number, the round trip <em>to that hop</em> (not the time between hops), and its address. The bar over each box is its delay, so the shape of the bars is the shape of the path.</td><td>Hop 1 is your router at 1–2 ms. The next one or two are your provider's. Then the internet. Eight to fifteen hops and 10–40 ms end to end is typical; a long chain is not a fault by itself.</td></tr>
+  <tr><td><strong>colors</strong></td><td>Green: inside your own network (a private address). Amber: your provider's access network (carrier-grade NAT addresses, 100.64–127.x). Gray: the internet. An empty box with * is a hop that did not reply.</td><td>Routers are often configured not to answer traceroute; a * with normal hops after it is fine. Two green hops in a row is double NAT — see <a href="#pb-doublenat">the playbook</a>.</td></tr>
+  <tr><td><strong>amber underline</strong></td><td>The hop where latency jumps up and <em>stays</em> up for the rest of the path — the point where the delay is added. One slow hop that the later hops do not share is just a router answering slowly, and is not marked.</td><td>None. If there is one and it is hop 1, it is your link; hop 2 or 3, your provider; later, the internet beyond them.</td></tr>
+  <tr><td><strong>the verdict line</strong> — Reached in 8 hops, 20 ms end to end · 1 silent hop (normal)</td><td>Whether the trace reached its destination, in how many hops, and the total.</td><td>"Reached". "Path stops after hop N" with the internet still working means a firewall on the way drops traceroute, not traffic.</td></tr>
+</table></div>
+<p>The card keeps the last traceroute. When it was taken behind a different router than the one this PC uses now, the card says the trace is from another network and dims it; <span class="btn">Trace now</span> measures the network you are on.</p>
+
+<h3 id="d-posture">Security posture</h3>
+<p>One list of the security checks NetDeck has, and how each one last came out. Only the firewall state is live (it is one of the quick checks); the others show the most recent run of their playbook or command, with its age, and are gray until you have run them once. The verdict line counts them up: the card is only as complete as the checks you have run.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
+  <tr><td><strong>Firewall</strong></td><td>Windows Firewall on or off, per profile.</td><td>On for all three. Off is worth a look even if a security suite replaced it.</td></tr>
+  <tr><td><strong>Exposed services</strong></td><td>From <a href="#pb-exposure">What is this PC exposing?</a>: which ports on this PC other devices on the network can reach, and which of those are the risky kind (remote access, databases, file sharing).</td><td>Only what you expect. "17 ports reachable" on a developer PC with a database is normal; on a laptop that does nothing of the sort, it is not.</td></tr>
+  <tr><td><strong>Firewall rules</strong></td><td>From the <a href="#cmd-fw-audit">firewall rule audit</a>: how wide open the inbound allow rules are.</td><td>"Reasonable". "Attention" lists rules open to any address on public networks — often leftovers from installers and games.</td></tr>
+  <tr><td><strong>Proxy &amp; HTTPS inspection</strong></td><td>From <a href="#pb-proxy">its playbook</a>: whether a proxy is configured and whether the certificates you receive are signed by a real authority or re-signed by something in between.</td><td>"No proxy … not being intercepted". Interception is normal on a work PC and alarming on a home one.</td></tr>
+  <tr><td><strong>DNS honesty</strong> / <strong>Hosts file &amp; DNS cache</strong></td><td>From <a href="#pb-dnshonest">Is my DNS honest?</a>: who really answers your lookups and whether anything is tampered with; and whether this PC's own hosts file pins any sites.</td><td>"honest" and a hosts file with no surprises. A hosts file redirecting security or update sites is the classic malware move.</td></tr>
+  <tr><td><strong>Router</strong></td><td>From the <a href="#pb-routercheck">Router check-up</a>.</td><td>"healthy".</td></tr>
+</table></div>
 
 <h3 id="d-sensors">Network sensors</h3>
 <p>The connection's vital signs in one table, the way a hardware monitor shows temperatures and clock speeds: for each reading, its <strong>current</strong> value and the <strong>minimum</strong>, <strong>maximum</strong> and <strong>average</strong> since you last pressed <span class="btn">Reset</span>. The point is the columns you would otherwise never see — a connection that is 22 ms <em>now</em> but reached 480 ms at some point in the last hour, or lost a whole minute's pings while you were on a call. Press <span class="btn">Reset</span> before a call, a game or a download, and look again afterwards.</p>
@@ -512,28 +535,6 @@
 </table></div>
 <p>The values in brackets are where each starts; every alert is off until you tick it, and the settings are remembered. A tripped alert shows <em>now</em> beside it and ⚠ on the button, and the latest alerts are listed under the limits. In the desktop app the alerts are checked by the connection watcher, so they work with the window closed to the tray. In the local-server edition they are shown as browser notifications while the page is open.</p>
 
-<h3 id="d-speed">Speed tests</h3>
-<p>Every <a href="#cmd-speed-test">speed test</a> you run — from this card, the command, or a playbook — is kept here, up to a hundred, so you can see whether the line is getting better or worse rather than remembering one number.</p>
-<div class="tbl-wrap"><table>
-  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>down / up</strong> — e.g. 234 / 46 Mbit/s</td><td>Download and upload throughput measured against Cloudflare's speed servers, in megabits per second — the unit on your ISP contract.</td><td>Close to what you pay for, on a cable. Wi-Fi typically gives a fraction of the plan; that is the Wi-Fi, not the ISP. Upload is usually much lower than download on cable and DSL, by design.</td></tr>
-  <tr><td><strong>idle ms</strong> — e.g. 22</td><td>The latency to the speed server when nothing else was happening: the baseline for the next figure.</td><td>Similar to the Internet tile.</td></tr>
-  <tr><td><strong>bufferbloat</strong> — A / B / C / D, +21 ms</td><td>How much the latency rose <em>while</em> the download and upload were running. A router that queues too much lets it climb by hundreds of milliseconds under load, so a call stutters whenever someone else downloads. A: under 30 ms; B: under 100; C: under 300 (noticeable); D: more (severe).</td><td>A or B. C or D is fixed by a router with smart queue management (SQM, sometimes sold as "QoS"), not by a faster plan.</td></tr>
-  <tr><td><strong>bars</strong></td><td>One pair per past run — green download, gray upload — oldest on the left. Hover a bar for that run's figures and the Cloudflare site it tested against (an airport code such as IAD or LHR: the nearest data center).</td><td>Bars of similar height. A slope downwards over weeks is a line problem worth showing the provider — the Snapshot does exactly that.</td></tr>
-</table></div>
-<p><span class="btn">Clear</span> forgets the kept runs (they stay in History), for a fresh start after changing network or provider.</p>
-
-<h3 id="d-route">Route to the internet</h3>
-<p>A traceroute follows a packet hop by hop — each router it passes through on the way to 1.1.1.1 — and times each one. The card draws the last one as a chain. It is the map behind the Internet tile: <em>where</em> the delay is, not just how much.</p>
-<div class="tbl-wrap"><table>
-  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>the chain</strong> — 1 · 1 ms · 192.168.1.1 › 2 · 3 ms · 10.0.0.1 › …</td><td>One box per hop: its number, the round trip <em>to that hop</em> (not the time between hops), and its address. The bar over each box is its delay, so the shape of the bars is the shape of the path.</td><td>Hop 1 is your router at 1–2 ms. The next one or two are your provider's. Then the internet. Eight to fifteen hops and 10–40 ms end to end is typical; a long chain is not a fault by itself.</td></tr>
-  <tr><td><strong>colors</strong></td><td>Green: inside your own network (a private address). Amber: your provider's access network (carrier-grade NAT addresses, 100.64–127.x). Gray: the internet. An empty box with * is a hop that did not reply.</td><td>Routers are often configured not to answer traceroute; a * with normal hops after it is fine. Two green hops in a row is double NAT — see <a href="#pb-doublenat">the playbook</a>.</td></tr>
-  <tr><td><strong>amber underline</strong></td><td>The hop where latency jumps up and <em>stays</em> up for the rest of the path — the point where the delay is added. One slow hop that the later hops do not share is just a router answering slowly, and is not marked.</td><td>None. If there is one and it is hop 1, it is your link; hop 2 or 3, your provider; later, the internet beyond them.</td></tr>
-  <tr><td><strong>the verdict line</strong> — Reached in 8 hops, 20 ms end to end · 1 silent hop (normal)</td><td>Whether the trace reached its destination, in how many hops, and the total.</td><td>"Reached". "Path stops after hop N" with the internet still working means a firewall on the way drops traceroute, not traffic.</td></tr>
-</table></div>
-<p>The card keeps the last traceroute. When it was taken behind a different router than the one this PC uses now, the card says the trace is from another network and dims it; <span class="btn">Trace now</span> measures the network you are on.</p>
-
 <h3 id="d-path">Live path</h3>
 <p>The Route card shows one traceroute — a snapshot. <span class="btn">Watch live</span> on that card runs the <a href="#cmd-path-monitor">live path monitor</a> instead: every hop to the same target is probed once a second for a minute (or 5 or 10 from this card's buttons), and this card fills in as the numbers arrive, with a verdict that says where loss or delay starts. The run itself is in the terminal as usual, and the card keeps the last result until you run another or clear it. If that result was measured through a different router than the one this PC uses now — you have moved to another network — the card says so, dims the old figures, and asks you to Watch live again.</p>
 <figure class="shot"><img src="manual-img/live-path.webp" width="1824" height="741" alt="The Live path card: a verdict that loss starts at the provider's third hop, and a table of seven hops with loss, times and a range bar each" loading="lazy"><figcaption>An example: loss begins at hop 3, inside the provider's network, and carries on to the target — so it is real, and it is the provider's. Hop 5 never answers, which is normal.</figcaption></figure>
@@ -549,29 +550,6 @@
   <tr><td><strong>the bar</strong></td><td>Each hop's best-to-worst spread on one shared scale, with a tick at its average. A long bar means the time jumps around; a bar far to the right means that hop is slow.</td><td>Short bars that move gradually right down the table.</td></tr>
 </table></div>
 <p><strong>Where the loss starts, and whose it is:</strong> hop 1 is the link between this PC and your router (Wi-Fi or cable — yours); a private address after it is a second router or modem at home; the next few hops, usually named after your provider, are <em>their</em> network; anything after that is the wider internet, which neither you nor your provider controls and which usually clears up by itself. Probes cost almost nothing — one tiny packet per hop per second.</p>
-
-<h3 id="d-traffic">Traffic</h3>
-<p>How much is flowing through your adapter right now. While the dashboard is showing and this card is open, NetDeck reads the adapter's byte counters every six seconds and turns the difference into a rate. Fold the card and the sampling stops.</p>
-<div class="tbl-wrap"><table>
-  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>down / up</strong> — e.g. 51 kbit/s · 18 kbit/s</td><td>The rate over the last six-second interval, in bits per second: what is being received and sent at this moment.</td><td>A few kbit/s when idle (Windows and its apps chatter). Tens of Mbit/s during a download or a video call. If it is high and you are not doing anything, the <a href="#pb-outbound">Who is this PC talking to?</a> playbook names the program.</td></tr>
-  <tr><td><strong>link</strong> — e.g. 1.00 Gbit/s · 0% used</td><td>The speed your adapter negotiated with the switch or access point — the most this hop could ever carry — and how much of it the current rate uses.</td><td>Wired: 1 Gbit/s (2.5 on newer PCs). A wired link at 100 Mbit/s means a bad cable or port. Wi-Fi: the link rate, which rises and falls with signal.</td></tr>
-  <tr><td><strong>received / sent since boot</strong> — e.g. 6.0 GB · 2.2 GB</td><td>Totals since the adapter was last reset (normally the last restart).</td><td>Informational. Received is usually several times sent.</td></tr>
-  <tr><td><strong>the chart</strong></td><td>The last ten minutes: green for download, gray for upload, with the scale in the top-left corner.</td><td>Spiky: traffic comes in bursts. A flat, sustained line is a transfer or a stream.</td></tr>
-  <tr><td><strong>other adapters</strong></td><td>Any other adapter that is up, with its rates.</td><td>VPN or virtual adapters usually show little. Two physical adapters both carrying traffic is unusual.</td></tr>
-</table></div>
-
-<h3 id="d-posture">Security posture</h3>
-<p>One list of the security checks NetDeck has, and how each one last came out. Only the firewall state is live (it is one of the quick checks); the others show the most recent run of their playbook or command, with its age, and are gray until you have run them once. The verdict line counts them up: the card is only as complete as the checks you have run.</p>
-<div class="tbl-wrap"><table>
-  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
-  <tr><td><strong>Firewall</strong></td><td>Windows Firewall on or off, per profile.</td><td>On for all three. Off is worth a look even if a security suite replaced it.</td></tr>
-  <tr><td><strong>Exposed services</strong></td><td>From <a href="#pb-exposure">What is this PC exposing?</a>: which ports on this PC other devices on the network can reach, and which of those are the risky kind (remote access, databases, file sharing).</td><td>Only what you expect. "17 ports reachable" on a developer PC with a database is normal; on a laptop that does nothing of the sort, it is not.</td></tr>
-  <tr><td><strong>Firewall rules</strong></td><td>From the <a href="#cmd-fw-audit">firewall rule audit</a>: how wide open the inbound allow rules are.</td><td>"Reasonable". "Attention" lists rules open to any address on public networks — often leftovers from installers and games.</td></tr>
-  <tr><td><strong>Proxy &amp; HTTPS inspection</strong></td><td>From <a href="#pb-proxy">its playbook</a>: whether a proxy is configured and whether the certificates you receive are signed by a real authority or re-signed by something in between.</td><td>"No proxy … not being intercepted". Interception is normal on a work PC and alarming on a home one.</td></tr>
-  <tr><td><strong>DNS honesty</strong> / <strong>Hosts file &amp; DNS cache</strong></td><td>From <a href="#pb-dnshonest">Is my DNS honest?</a>: who really answers your lookups and whether anything is tampered with; and whether this PC's own hosts file pins any sites.</td><td>"honest" and a hosts file with no surprises. A hosts file redirecting security or update sites is the classic malware move.</td></tr>
-  <tr><td><strong>Router</strong></td><td>From the <a href="#pb-routercheck">Router check-up</a>.</td><td>"healthy".</td></tr>
-</table></div>
 
 <h3 id="d-outages">Outage log</h3>
 <p>Most connection problems hide from you: the internet drops for forty seconds at 3 a.m., or twice during a call, and by the time you run a test everything looks fine. The outage log catches those drops. Once you press <span class="btn">Start watching</span>, NetDeck checks the connection every 5 seconds for as long as it runs — with the window open or closed to the tray — and writes down every outage: when it started, how long it lasted, and <em>which side of your router</em> it happened on. That last part is what settles the usual argument: whether the fault is your internet provider's or something at home.</p>
@@ -615,6 +593,28 @@
 <div class="callout"><span class="lbl">Talking to your provider</span><p>Support lines usually test the line while you are on the phone, find nothing and close the ticket. A report changes that: give them the exact times and lengths of the outages, and ask them to check their records for your line at those moments. If every outage is "past your router" while the PC was on a cable to the router, the fault is theirs to find. If they are "between this PC and the router", start with Wi-Fi: move closer to the router, or try a cable, and watch whether the outages stop.</p></div>
 
 <div class="callout"><span class="lbl">Hosted version</span><p>A web page cannot read your network, so the hosted dashboard shows a note instead — until a local NetDeck is connected, when it works like the desktop app's.</p></div>
+
+<h3 id="d-latency">Latency &amp; loss</h3>
+<p><strong>Latency</strong> is how long a packet takes to get somewhere and back, in milliseconds; <strong>loss</strong> is the share of packets that never came back; <strong>jitter</strong> is how much the latency varies from one packet to the next. Downloads mostly care about speed; calls, games and remote desktop care about these three, and this card is where they show. It draws the same router and internet pings the context strip takes every ten seconds, kept for 24 hours.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
+  <tr><td><strong>the chart</strong></td><td>Time runs left to right for the chosen range (10m, 1h, 6h, 24h). The green line is the router, the gray line the internet; each point is the average of the pings in that slice of time. A red mark on the baseline means a ping in that slice got no reply — the taller the mark, the larger the share lost. Hover anywhere for the exact figures at that moment.</td><td>Two flat, low lines. The internet line sits above the router line by your ISP's delay. Spikes that appear on both lines started on your link (usually Wi-Fi); spikes only on the gray line started beyond your router. A gap is time NetDeck was closed or hidden — not a fault.</td></tr>
+  <tr><td><strong>router / internet</strong> — 3 ms avg · worst 28 ms · no loss</td><td>For the range shown: the average latency, the single worst ping, and the share lost.</td><td>Router: avg under 5 ms wired, under 20 ms Wi-Fi, worst not more than a few times the average. Internet: avg 10–40 ms. Any loss on the router line is a local problem; loss only on the internet line is the provider's.</td></tr>
+  <tr><td><strong>N samples</strong></td><td>How many ten-second pings fall in the range.</td><td>6 per minute while NetDeck is open and showing.</td></tr>
+  <tr><td><strong>Longer monitors</strong> — 180/180, 0 ms, jitter 0 ms</td><td>Results of <a href="#pb-dropouts">Does my connection drop out?</a>: one ping a second for three minutes to each of the router and the internet — answered/sent, average, jitter, and "loss runs" (several lost in a row, which is what a dropout feels like).</td><td>All answered, jitter under 10 ms to the router and under 30 ms to the internet, no loss runs. A monitor with loss runs on the internet leg only is the pattern of a flaky provider link.</td></tr>
+</table></div>
+<p>This card, Traffic, Outage log and Live path start folded to their header, with a one-line summary, each time NetDeck opens (Live path unfolds by itself when you start a live run). The <strong>▸</strong> in the corner opens one for the rest of the session; <strong>▾</strong> folds it again.</p>
+
+<h3 id="d-traffic">Traffic</h3>
+<p>How much is flowing through your adapter right now. While the dashboard is showing and this card is open, NetDeck reads the adapter's byte counters every six seconds and turns the difference into a rate. Fold the card and the sampling stops.</p>
+<div class="tbl-wrap"><table>
+  <tr><th>What you see</th><th>What it is</th><th>What is normal</th></tr>
+  <tr><td><strong>down / up</strong> — e.g. 51 kbit/s · 18 kbit/s</td><td>The rate over the last six-second interval, in bits per second: what is being received and sent at this moment.</td><td>A few kbit/s when idle (Windows and its apps chatter). Tens of Mbit/s during a download or a video call. If it is high and you are not doing anything, the <a href="#pb-outbound">Who is this PC talking to?</a> playbook names the program.</td></tr>
+  <tr><td><strong>link</strong> — e.g. 1.00 Gbit/s · 0% used</td><td>The speed your adapter negotiated with the switch or access point — the most this hop could ever carry — and how much of it the current rate uses.</td><td>Wired: 1 Gbit/s (2.5 on newer PCs). A wired link at 100 Mbit/s means a bad cable or port. Wi-Fi: the link rate, which rises and falls with signal.</td></tr>
+  <tr><td><strong>received / sent since boot</strong> — e.g. 6.0 GB · 2.2 GB</td><td>Totals since the adapter was last reset (normally the last restart).</td><td>Informational. Received is usually several times sent.</td></tr>
+  <tr><td><strong>the chart</strong></td><td>The last ten minutes: green for download, gray for upload, with the scale in the top-left corner.</td><td>Spiky: traffic comes in bursts. A flat, sustained line is a transfer or a stream.</td></tr>
+  <tr><td><strong>other adapters</strong></td><td>Any other adapter that is up, with its rates.</td><td>VPN or virtual adapters usually show little. Two physical adapters both carrying traffic is unusual.</td></tr>
+</table></div>
 
 <h2 id="calculator">Network calculator</h2>
 <p>The calculator icon beside the theme button opens a popup with nine tools for the arithmetic of networking: working out subnets and masks, splitting and combining networks, decoding IPv6 and MAC addresses, estimating bandwidth, throughput and latency, planning Wi-Fi, and a few security and infrastructure calculations. You can also reach any tool from the command palette: press <kbd>Ctrl</kbd>+<kbd>K</kbd> and type <em>calc</em>, <em>subnet</em>, <em>VLSM</em>, <em>password</em>… Everything is calculated inside the page — nothing is sent anywhere — so it works the same in the hosted edition. A few tools can also read real values from this PC (your own address and mask, the Wi-Fi networks around you, a site's certificate); those buttons appear only when NetDeck can run commands.</p>
@@ -2336,7 +2336,7 @@ BUILTIN\Administrators    Alias    S-1-5-32-544    Group used for deny only</pre
 <p class="foot">NetDeck runs only the commands listed as runnable, with the exact arguments shown, on your own machine. Commands marked copy-only are for you to run in a terminal when you've decided that's what you want.</p>
 <!-- about:start (generated by tools/licenses.js) -->
 <h2 id="about">About &amp; license</h2>
-<p>NetDeck <span class="nd-version">1.33.0</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
+<p>NetDeck <span class="nd-version">1.33.1</span> — a network &amp; system command reference with live execution and guided playbooks. Source code, releases and issue tracker: <a href="https://github.com/DavidKFisk/netdeck">github.com/DavidKFisk/netdeck</a>.</p>
 
 <h3 id="license">License</h3>
 <p>NetDeck is free software under the MIT License. In short: you may use, copy, change and pass it on, including commercially, as long as the copyright notice and this license text go with it — and it comes with no warranty of any kind. The full text:</p>
